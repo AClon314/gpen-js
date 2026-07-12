@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+  </head>
+  <body>
+    <div id="demo"></div>
+
+    <script type="module">
+      import '@spectrum-web-components/theme/sp-theme.js';
+      import '@spectrum-web-components/theme/theme-dark.js';
+      import '@spectrum-web-components/theme/scale-medium.js';
+      import { html, render } from 'lit';
+      import '../dist/src/components/DopeSheet.js';
+      import '../dist/src/components/FloatingBall.js';
+
+      const header = 'Hello owc World!';
+      render(
+        html`<sp-theme system="spectrum" color="dark" scale="medium">
+          <floating-ball> </floating-ball>
+        </sp-theme> `,
+        document.querySelector('#demo'),
+      );
+    </script>
+  </body>
+</html>
