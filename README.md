@@ -62,6 +62,25 @@ For most of the tools, the configuration is in the `package.json` to reduce the 
 
 If you customize the configuration a lot, you can consider moving them to individual files.
 
+## Protobuf / Connect RPC codegen
+
+`gpen-js` can generate TypeScript protobuf descriptors from the sibling
+`gpen-protocol` checkout with Buf and `protoc-gen-es`. The generation entrypoint
+is `../gpen-protocol/protocol/all.proto`.
+
+Install dependencies and generate:
+
+```bash
+bun i
+npm run proto:generate
+```
+
+Generated files are written to `src/gen`, and the stable package entrypoint is:
+
+```ts
+import { GpenSchema } from 'dope-sheet/gen/gpen/v1/gpen_pb.js';
+```
+
 ## Local Demo with `web-dev-server`
 
 ```bash

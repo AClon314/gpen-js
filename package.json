@@ -9,7 +9,7 @@
   "module": "dist/src/index.js",
   "exports": {
     ".": "./dist/src/index.js",
-    "./dope-sheet.js": "./dist/src/dope-sheet.js"
+    "./*": "./dist/src/*"
   },
   "scripts": {
     "analyze": "cem analyze --litelement",
@@ -18,9 +18,13 @@
     "prepublish": "tsc && npm run analyze -- --exclude dist",
     "lint": "eslint --ext .ts,.html . --ignore-path .gitignore && prettier \"**/*.ts\" --check --ignore-path .gitignore",
     "format": "eslint --ext .ts,.html . --fix --ignore-path .gitignore && prettier \"**/*.ts\" --write --ignore-path .gitignore",
+    "proto:generate": "buf generate ../gpen-protocol/protocol/all.proto --template buf.gen.yaml",
     "prepare": "husky"
   },
   "dependencies": {
+    "@bufbuild/protobuf": "^2.0.0",
+    "@connectrpc/connect": "^2.0.0",
+    "@connectrpc/connect-web": "^2.0.0",
     "@interactjs/actions": "^1.10.27",
     "@interactjs/auto-start": "^1.10.27",
     "@interactjs/dev-tools": "^1.10.27",
@@ -29,6 +33,7 @@
     "lit": "^3.3.3"
   },
   "devDependencies": {
+    "@bufbuild/protoc-gen-es": "^2.0.0",
     "@custom-elements-manifest/analyzer": "^0.10.10",
     "@open-wc/eslint-config": "^12.0.3",
     "@spectrum-web-components/bundle": "^1.12.1",
