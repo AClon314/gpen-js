@@ -22,6 +22,7 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@lit/reactive-element": "^2.1.2",
     "@bufbuild/protobuf": "^2.0.0",
     "@connectrpc/connect": "^2.0.0",
     "@connectrpc/connect-web": "^2.0.0",
@@ -30,7 +31,11 @@
     "@interactjs/dev-tools": "^1.10.27",
     "@interactjs/interact": "^1.10.27",
     "@interactjs/modifiers": "^1.10.27",
-    "lit": "^3.3.3"
+    "@spectrum-web-components/button": "^1.12.1",
+    "@spectrum-web-components/theme": "^1.12.1",
+    "lit": "^3.3.3",
+    "lit-element": "^4.2.2",
+    "lit-html": "^3.3.3"
   },
   "devDependencies": {
     "@bufbuild/protoc-gen-es": "^2.0.0",

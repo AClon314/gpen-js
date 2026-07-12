@@ -1,5 +1,6 @@
 /** Layer图层-动画摄影表 */
-import { html, css, LitElement } from 'lit';
+import { html, LitElement } from 'lit';
+import { css } from '@lit/reactive-element/css-tag.js';
 import { property } from 'lit/decorators.js';
 
 export class DopeSheet extends LitElement {

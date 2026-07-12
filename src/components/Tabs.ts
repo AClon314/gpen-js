@@ -1,5 +1,6 @@
 /** 标签页，支持水平与垂直 */
-import { html, css, LitElement } from 'lit';
+import { html, LitElement } from 'lit';
+import { css } from '@lit/reactive-element/css-tag.js';
 import { customElement, property } from 'lit/decorators.js';
 import { emit } from '@/vue3.js';
 
@@ -16,6 +17,7 @@ export class Tabs extends LitElement {
   `;
 
   @property({ type: Array }) icoStrs: IcoStr[] = [];
+
   @property({ type: String }) showClose: '' | 'current' | 'all' = 'current';
 
   close(icoStr: IcoStr) {
@@ -24,10 +26,11 @@ export class Tabs extends LitElement {
 
   renderTab(icoStr: IcoStr) {
     return html`
-      <img src="${icoStr.ico}" />
+      <img src="${icoStr.ico}" alt="" />
       <sp-button @click=${() => this.close(icoStr)}>x</sp-button>
     `;
   }
+
   render() {
     return html`
       <nav>${this.icoStrs.map(icoStr => this.renderTab(icoStr))}</nav>

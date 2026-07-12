@@ -4,7 +4,8 @@ import '@interactjs/auto-start';
 import '@interactjs/modifiers';
 import interact from '@interactjs/interact';
 import '@spectrum-web-components/button/sp-button.js';
-import { html, css, LitElement } from 'lit';
+import { html, LitElement } from 'lit';
+import { css } from '@lit/reactive-element/css-tag.js';
 import { customElement, property } from 'lit/decorators.js';
 
 type DragMoveEvent = {
@@ -16,7 +17,9 @@ type DragMoveEvent = {
 @customElement('floating-ball')
 export class FloatingBall extends LitElement {
   private xPercent = 0;
+
   private yPercent = 0;
+
   private interactable?: { unset(): void };
 
   static styles = css`
@@ -30,6 +33,7 @@ export class FloatingBall extends LitElement {
   `;
 
   @property({ type: String }) header = 'Hey there';
+
   @property({ type: Number }) counter = 5;
 
   override firstUpdated() {
@@ -57,7 +61,7 @@ export class FloatingBall extends LitElement {
   override disconnectedCallback() {
     this.interactable?.unset();
     this.interactable = undefined;
-    super.disconnectedCallback();
+    super.disconnectedCallback?.();
   }
 
   showEditor() {
