@@ -42,6 +42,7 @@
     "@custom-elements-manifest/analyzer": "^0.10.10",
     "@open-wc/eslint-config": "^12.0.3",
     "@spectrum-web-components/bundle": "^1.12.1",
+    "@types/bun": "^1.3.14",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
     "@web/dev-server": "^0.4.6",
@@ -65,10 +66,16 @@
       "@typescript-eslint"
     ],
     "rules": {
-      "no-unused-vars": "off",
-      "@typescript-eslint/no-unused-vars": [
-        "error"
+      "camelcase": [
+        "warn"
       ],
+      "no-console": "off",
+      "no-undef": "off",
+      "no-param-reassign": [
+        "warn"
+      ],
+      "no-unused-vars": "off",
+      "@typescript-eslint/no-unused-vars": 2,
       "import/no-unresolved": "off",
       "import/extensions": [
         "error",

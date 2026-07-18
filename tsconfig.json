@@ -1,4 +1,7 @@
 {
+  "include": [
+    "**/*.ts"
+  ],
   "compilerOptions": {
     "target": "es2021",
     "module": "NodeNext",
@@ -8,6 +11,9 @@
       "es2021",
       "dom",
       "DOM.Iterable"
+    ],
+    "types": [
+      "bun"
     ],
     "strict": true,
     // "esModuleInterop": false,
@@ -26,8 +32,6 @@
     "declaration": true,
     "incremental": true,
     "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
   },
-  "include": [
-    "**/*.ts"
-  ]
 }
