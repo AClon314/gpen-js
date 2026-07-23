@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
-// 受模拟环境限制，未测试 createKvBackend()
 import {
   GPEN_PROTOCOL_MAJOR_VERSION,
+  createKvBackend,
   createKvStore,
 } from '../src/systems/storage.js';
 
@@ -67,6 +67,13 @@ function createLooseHarness() {
     plain: 'value',
   });
 }
+
+type GmGlobals = typeof globalThis & {
+  GM_getValue?: (key: string, defaultValue?: unknown) => unknown;
+  GM_setValue?: (key: string, value: unknown) => void;
+  GM_deleteValue?: (key: string) => void;
+  GM_listValues?: () => string[];
+};
 
 describe('createKvStore', () => {
   let harness: ReturnType<typeof createHarness>;
@@ -141,6 +148,14 @@ describe('createKvStore', () => {
     expect(harness.getLoadCount()).toBe(3);
   });
 
+  it('lists keys for root and nested objects', async () => {
+    const store = createKvStore(harness.backend);
+
+    await expect(store.keys()).resolves.toEqual(['nested', 'plain']);
+    await expect(store.nested.keys()).resolves.toEqual(['list']);
+    await expect(store.nested.list[0].keys()).resolves.toEqual(['label']);
+  });
+
   it('does not implicitly deep-clone values before saving', async () => {
     const looseHarness = createLooseHarness();
     const store = createKvStore(looseHarness.backend);
@@ -151,6 +166,54 @@ describe('createKvStore', () => {
 
     await expect(store.session()).resolves.toBe(payload);
     expect(looseHarness.getState().session).toBe(payload);
+  });
+
+  it('supports native delete syntax for background deletion', async () => {
+    const store = createKvStore(harness.backend);
+
+    // @ts-expect-error
+    expect(delete store.plain).toBe(true);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    await expect(
+      (store.plain as () => Promise<unknown>)(),
+    ).resolves.toBeUndefined();
+    expect('plain' in harness.getState()).toBe(false);
+    expect(harness.getState().nested).toEqual({
+      list: [{ label: 'zero' }, { label: 'one' }],
+    });
+  });
+
+  it('supports native delete syntax on nested paths', async () => {
+    const settingsHarness = createHarnessWithSettings();
+    const store = createKvStore(settingsHarness.backend) as unknown as Record<
+      string,
+      unknown
+    >;
+
+    expect(
+      delete (
+        (store.settings as Record<string, unknown>).panels as Array<
+          Record<string, unknown>
+        >
+      )[0].title,
+    ).toBe(true);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    await expect(
+      (
+        (
+          (store.settings as Record<string, unknown>).panels as Array<
+            Record<string, unknown>
+          >
+        )[0].title as () => Promise<unknown>
+      )(),
+    ).resolves.toBeUndefined();
+    expect(settingsHarness.getState().settings.panels[0] as unknown).toEqual(
+      {},
+    );
   });
 
   it('lets callers serialize writes explicitly with await', async () => {
@@ -241,5 +304,57 @@ describe('createKvStore', () => {
 describe('protocol version', () => {
   it('derives dbVersion major from generated proto package', () => {
     expect(GPEN_PROTOCOL_MAJOR_VERSION).toBe(1);
+  });
+});
+
+describe('createKvBackend in GM environment', () => {
+  const gmGlobals = globalThis as GmGlobals;
+  const previous = {
+    GM_getValue: gmGlobals.GM_getValue,
+    GM_setValue: gmGlobals.GM_setValue,
+    GM_deleteValue: gmGlobals.GM_deleteValue,
+    GM_listValues: gmGlobals.GM_listValues,
+  };
+
+  function restoreGlobals() {
+    gmGlobals.GM_getValue = previous.GM_getValue;
+    gmGlobals.GM_setValue = previous.GM_setValue;
+    gmGlobals.GM_deleteValue = previous.GM_deleteValue;
+    gmGlobals.GM_listValues = previous.GM_listValues;
+  }
+
+  it('uses GM_listValues() for keys() and GM_deleteValue() for top-level delete', async () => {
+    const gmStorage = new Map<string, unknown>();
+    const deletedKeys: string[] = [];
+
+    gmGlobals.GM_getValue = (key: string, defaultValue?: unknown) =>
+      gmStorage.has(key) ? gmStorage.get(key) : defaultValue;
+    gmGlobals.GM_setValue = (key: string, value: unknown) => {
+      gmStorage.set(key, value);
+    };
+    gmGlobals.GM_deleteValue = (key: string) => {
+      deletedKeys.push(key);
+      gmStorage.delete(key);
+    };
+    gmGlobals.GM_listValues = () => [...gmStorage.keys()];
+
+    gmStorage.set('prefs.alpha', { enabled: true });
+    gmStorage.set('prefs.beta', 123);
+
+    const store = createKvStore(
+      createKvBackend({ kvRootKey: 'prefs' }) as Parameters<
+        typeof createKvStore
+      >[0],
+    );
+
+    await expect(store.keys()).resolves.toEqual(['alpha', 'beta']);
+    expect(delete store.beta).toBe(true);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(deletedKeys).toContain('prefs.beta');
+    await expect(store.keys()).resolves.toEqual(['alpha']);
+
+    restoreGlobals();
   });
 });
