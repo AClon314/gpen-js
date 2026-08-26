@@ -10,13 +10,14 @@ class FakeFile {
   }
 
   async createWritable() {
+    const file = this;
     let next = new Uint8Array();
     return {
       async write(value: Blob) {
         next = new Uint8Array(await value.arrayBuffer());
       },
       async close() {
-        (this as InstanceType<typeof FakeFile>).bytes = next;
+        file.bytes = next;
       },
       async abort() {},
     } as unknown as FileSystemWritableFileStream;
