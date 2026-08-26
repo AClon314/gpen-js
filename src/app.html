@@ -1,0 +1,32 @@
+<!doctype html>
+
+<html lang="%paraglide.lang%" dir="%paraglide.dir%">
+  <head>
+    <meta charset="utf-8" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta name="text-scale" content="scale" />
+    %sveltekit.head%
+  </head>
+
+  <body data-sveltekit-preload-data="hover">
+    <div
+      id="gpen-wc-demo"
+      style="
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #e5e7eb;
+        font:
+          14px/1.4 system-ui,
+          sans-serif;
+      "
+    >
+      <span>web component in app.html:</span>
+      <gpen-button label="Svelte 5 CE"></gpen-button>
+    </div>
+    <div style="display: contents">%sveltekit.body%</div>
+  </body>
+</html>

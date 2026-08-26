@@ -1,0 +1,37 @@
+.*/
+!.vscode/
+!.husky/
+.husky/*
+!.husky/pre-commit
+!.husky/commit-msg
+!.husky/pre-push
+node_modules
+
+# Output
+.output
+.vercel
+.netlify
+.wrangler
+/.svelte-kit
+/build
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.*
+!.env.example
+!.env.test
+
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+# Paraglide
+src/lib/paraglide
+project.inlang/cache/
+
+# Playwright
+/playwright-report
+/test-results
