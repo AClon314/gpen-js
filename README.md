@@ -10,3 +10,10 @@ bun run dev
 
 - `/` 主页面
 - `/demo/web-component` Svelte 5 custom element demo（`<gpen-button>`）
+- `/demo/panel` 可收缩面板 web component demo（`<gpen-panel>`）
+
+UI 组件的 Spectrum Web Components 评估和 `<gpen-panel>` 的属性、事件契约见
+[`docs/web-components.md`](docs/web-components.md)。
+
+面板库评估、Blender/Adobe UX 要点和 gpen 面板系统设计见
+[`docs/panel.md`](docs/panel.md)。

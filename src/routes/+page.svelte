@@ -9,6 +9,7 @@
 	</p>
 	<p>客户端渲染，不做 SSR。词条之后走 Paraglide。</p>
 	<p><a href={resolve('/demo/web-component')}>web component demo</a></p>
+	<p><a href={resolve('/demo/panel')}>collapsible panel demo</a></p>
 	<p><a href={resolve('/demo/storage')}>storage demo</a></p>
 	<p><a href={resolve('/demo/cross-tab-bus')}>cross-tab bus demo</a></p>
 </main>

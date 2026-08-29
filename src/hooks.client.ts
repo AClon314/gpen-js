@@ -1,2 +1,3 @@
-// Importing a tagged custom element registers <gpen-button> globally.
+// Importing tagged custom elements registers them globally.
 import "#lib/ce/GpenButton.svelte";
+import "#lib/ce/GpenPanel.svelte";
