@@ -122,6 +122,22 @@ export type {
 } from "./blob.js";
 export { asExternalUrl, bindBlobToKv, createBlobKvSyncHooks } from "./sync.js";
 export type { BlobKvRecordContext, BlobKvSyncOptions } from "./sync.js";
+export {
+  createGpenBinaryStore,
+  GPEN_BLOB_PREFIX,
+  GPEN_BLOB_TYPE,
+  GPEN_CODEC_VERSION,
+  GPEN_KV_NAMESPACE,
+  GPEN_SCHEMA_VERSION,
+  GpenStorageError,
+} from "./gpenBinary.js";
+export type {
+  GpenBinaryStore,
+  GpenBinaryStoreDeps,
+  GpenKvRoot,
+  GpenMetadata,
+  GpenStorageErrorCode,
+} from "./gpenBinary.js";
 export { createTabBusBlobBackend, createTabBusBlobBroker } from "./tabBusBlob.js";
 export type { TabBusBlobOptions } from "./tabBusBlob.js";
 export {

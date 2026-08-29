@@ -30,6 +30,8 @@
     "prepare": "svelte-kit sync && husky"
   },
   "dependencies": {
+    "flatbuffers": "25.9.23",
+    "gpen-protocol": "file:../gpen-protocol",
     "penpal": "^8.0.1"
   },
   "devDependencies": {
