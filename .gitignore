@@ -6,6 +6,7 @@
 !.husky/commit-msg
 !.husky/pre-push
 node_modules
+tmp/
 
 # Output
 .output

@@ -30,8 +30,10 @@
     "prepare": "svelte-kit sync && husky"
   },
   "dependencies": {
+    "dockview": "^8.2.0",
     "flatbuffers": "25.9.23",
     "gpen-protocol": "file:../gpen-protocol",
+    "moveable": "^0.53.0",
     "penpal": "^8.0.1"
   },
   "devDependencies": {
