@@ -3,11 +3,11 @@
 
 	// ---- 概念 ----
 	// dpr  = window.devicePixelRatio  （设备物理像素 / CSS px；桌面 Ctrl+/- 会改，捏合不改）
-	// dppc = 屏幕真实 device px / css px（= visualViewport.scale × dpr）
+	// dppc = visualViewport.scale（本实现直接取 scale，未乘 dpr；这是用户确认的现状，保留）
 	//
 	// 区分 PC 与捏合不用基线，改用两个「归一化到 100% 时≈1」的度量：
 	//   - 桌面 Ctrl+/-：outerWidth/innerWidth（detect-zoom chrome 式）
-	//   - 捏合：dppc/dpr = visualViewport.scale（你猜的公式，方向正确，且无需基线）
+	//   - 捏合：dppc = visualViewport.scale（方向正确，且无需基线）
 	// 判断用「谁在变」：dpr 变→PC 用 outer/inner；dpr 不变、scale 变→捏合用 scale。
 	const _init_dpr = window.devicePixelRatio || 1;
 	const _init_dppc = measureDppc();
@@ -16,11 +16,10 @@
 	let dppc = $state(_init_dppc);
 	let zoomFactor = $state(_init_dppc);
 	let mode = $state<'pc' | 'mobile' | 'none'>('none');
-	$inspect(dpr, dppc, zoomFactor);
 
-	// 仅用于「变化检测」（区分 dpr 是否变、scale 是否变），非响应式。
-	let lastDpr = $state(_init_dpr);
-	let lastScale = $state(window.visualViewport?.scale ?? 1);
+	// 仅用于「变化检测」（区分 dpr 是否变、scale 是否变），非响应式，故用普通 let。
+	let lastDpr = _init_dpr;
+	let lastScale = _init_dppc;
 
 	// 归一化到【1】的缩放因子：无缩放时为 1，不依赖加载时基线。
 	function normalize(v: number): number {
@@ -30,7 +29,7 @@
 	}
 
 	function measureDppc(): number {
-		return (window.visualViewport?.scale ?? 1) ;
+		return window.visualViewport?.scale ?? 1;
 	}
 
 	function applyChange() {
@@ -81,11 +80,11 @@
 			positionPinned();
 		};
 
-		window.addEventListener('scroll', onMove);
+		window.visualViewport?.addEventListener('scroll', onMove);
 		window.visualViewport?.addEventListener('resize', onMove);
 
 		return () => {
-			window.removeEventListener('scroll', onMove);
+			window.visualViewport?.removeEventListener('scroll', onMove);
 			window.visualViewport?.removeEventListener('resize', onMove);
 		};
 	});
@@ -140,15 +139,6 @@
 		<div class="readout-item">
 			<span class="readout-label">应用的 counter zoom</span>
 			<span class="readout-value">{counterPercent}%</span>
-		</div>
-
-		<div class="readout-item">
-			<span class="readout-label">lastDpr</span>
-			<span class="readout-value">{lastDpr.toFixed(2)}</span>
-		</div>
-		<div class="readout-item">
-			<span class="readout-label">lastDppr</span>
-			<span class="readout-value">{lastScale.toFixed(2)}</span>
 		</div>
 	</section>
 

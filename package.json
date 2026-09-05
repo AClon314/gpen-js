@@ -62,9 +62,10 @@
   },
   "lint-staged": {
     "*.{js,mjs,cjs,jsx,ts,mts,cts,tsx,svelte}": [
-      "oxfmt --write",
       "oxlint"
     ],
-    "*.{json,jsonc,css,md}": "oxfmt --write"
+    "*.{js,mjs,cjs,jsx,ts,mts,cts,tsx}": [
+      "oxfmt --write"
+    ]
   }
 }
