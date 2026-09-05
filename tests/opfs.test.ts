@@ -10,6 +10,7 @@ class FakeFile {
   }
 
   async createWritable() {
+    // oxlint-disable-next-line typescript/no-this-alias
     const file = this;
     let next = new Uint8Array();
     return {
@@ -36,7 +37,9 @@ class FakeDirectory {
     if (existing instanceof FakeDirectory) return existing;
     if (existing) throw new Error("Not a directory");
     if (!options.create)
-      throw Object.assign(new Error("Missing directory"), { name: "NotFoundError" });
+      throw Object.assign(new Error("Missing directory"), {
+        name: "NotFoundError",
+      });
     const directory = new FakeDirectory();
     this.entries.set(name, directory);
     return directory;
@@ -54,7 +57,9 @@ class FakeDirectory {
 
   async removeEntry(name: string) {
     if (!this.entries.delete(name)) {
-      throw Object.assign(new Error("Missing entry"), { name: "NotFoundError" });
+      throw Object.assign(new Error("Missing entry"), {
+        name: "NotFoundError",
+      });
     }
   }
 }

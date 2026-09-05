@@ -12,6 +12,7 @@
 	<p><a href={resolve('/demo/panel')}>collapsible panel demo</a></p>
 	<p><a href={resolve('/demo/storage')}>storage demo</a></p>
 	<p><a href={resolve('/demo/cross-tab-bus')}>cross-tab bus demo</a></p>
+	<p><a href={resolve('/demo/zoom')}>browser zoom counter demo</a></p>
 </main>
 
 <style>

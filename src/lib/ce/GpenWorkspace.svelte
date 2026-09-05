@@ -18,6 +18,7 @@
 	import BlenderTopBar from './blender/BlenderTopBar.svelte';
 	import BlenderViewport from './blender/BlenderViewport.svelte';
 
+	// oxlint-disable-next-line no-unassigned-vars
 	let container: HTMLDivElement;
 	let dockview: ReturnType<typeof createDockview> | undefined;
 	let layerTree: UiLayerTree | undefined;
