@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import GpenOverlay from '#lib/ce/GpenOverlay.svelte';
+	import GpenOverlay from '#lib/components/GpenOverlay.svelte';
 </script>
 
 <svelte:head><title>Blender workspace · gpen</title></svelte:head>

@@ -154,6 +154,8 @@ function downloadWithMonkey(
       }
     } catch (cause) {
       fail(cause);
+      // oxlint-disable-next-line catch/no-bare-return -- fail() 已 reject，错误已传播
+      return;
     }
   });
 }

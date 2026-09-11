@@ -43,6 +43,8 @@
 			status = cause instanceof Error ? cause.message : String(cause);
 			broker?.destroy();
 			bus?.destroy();
+			console.debug("[gpen] ignored rejection: storage-broker start", cause);
+			return;
 		});
 
 		return () => {

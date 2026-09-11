@@ -1,0 +1,21 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "typescript",
+    "unicorn",
+    "oxc"
+  ],
+  "jsPlugins": [
+    "./rules/catch-must-return-or-throw.mts"
+  ],
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {
+    "catch/must-return-or-throw": "error",
+    "catch/no-bare-return": "warn"
+  },
+  "env": {
+    "builtin": true
+  }
+}

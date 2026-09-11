@@ -82,6 +82,8 @@
 		} catch (cause) {
 			status = '存储不可用';
 			errorMessage = cause instanceof Error ? cause.message : String(cause);
+			console.debug("[gpen] ignored rejection: demo.storage initialize", cause);
+			return;
 		}
 	}
 
@@ -94,6 +96,8 @@
 		} catch (cause) {
 			status = '操作失败';
 			errorMessage = cause instanceof Error ? cause.message : String(cause);
+			console.debug("[gpen] ignored rejection: demo.storage runAction", cause);
+			return;
 		} finally {
 			busy = false;
 		}

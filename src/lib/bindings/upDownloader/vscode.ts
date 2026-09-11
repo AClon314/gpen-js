@@ -236,6 +236,7 @@ function attachSourcePath(file: File, source: string | undefined): File {
   } catch {
     // Some host-provided File implementations are sealed; the upload result
     // still carries source separately through uploadDetailed().
+    return file; // unrecahble
   }
   return file;
 }
@@ -318,7 +319,10 @@ function toFile(bytes: Uint8Array, name: string, type: string): File {
     lastModified?: number;
   };
   Object.defineProperty(blob, "name", { value: name, enumerable: true });
-  Object.defineProperty(blob, "lastModified", { value: Date.now(), enumerable: true });
+  Object.defineProperty(blob, "lastModified", {
+    value: Date.now(),
+    enumerable: true,
+  });
   return blob as File;
 }
 
@@ -374,7 +378,11 @@ export function createVscodeUploadDownloadSelector(
       return;
     }
     if (bridge) {
-      await bridge.request<void>({ operation: "writeFile", path, data: asArrayBuffer(data) });
+      await bridge.request<void>({
+        operation: "writeFile",
+        path,
+        data: asArrayBuffer(data),
+      });
       return;
     }
     throw new Error("VS Code file write API is unavailable");
@@ -421,6 +429,7 @@ export function createVscodeUploadDownloadSelector(
       try {
         await attempt();
         return;
+        // oxlint-disable-next-line catch/must-return-or-throw -- 收集各 provider 失败，循环外统一抛 AggregateError
       } catch (cause) {
         causes.push(cause);
       }
@@ -450,6 +459,7 @@ export function createVscodeUploadDownloadSelector(
     let state: Record<string, unknown> = {};
     try {
       state = parseJsonc(await readFile(statePath));
+      // oxlint-disable-next-line catch/must-return-or-throw -- 读取/解析失败时回落到空状态继续
     } catch {
       state = {};
     }
@@ -492,7 +502,9 @@ export function createVscodeUploadDownloadSelector(
         // A local shell symlink only needs the path. Reading is best effort so
         // desktop hosts without a file-read adapter can still attach it.
         if (mode !== "local") {
-          throw new Error(`Unable to read VS Code upload source: ${input}`, { cause });
+          throw new Error(`Unable to read VS Code upload source: ${input}`, {
+            cause,
+          });
         }
       }
       if (!file) {
@@ -572,6 +584,7 @@ export function createVscodeUploadDownloadSelector(
         // as a last-resort fallback, while preferring VS Code open-file locally.
         if (!api?.download) throw cause;
         await api.download(value, name);
+        console.debug("[gpen] ignored rejection: vscode download fallback", cause);
         return;
       }
     }
@@ -581,7 +594,11 @@ export function createVscodeUploadDownloadSelector(
     }
     if (bridge) {
       if (typeof value === "string") {
-        await bridge.request<void>({ operation: "download", path: value, name });
+        await bridge.request<void>({
+          operation: "download",
+          path: value,
+          name,
+        });
       } else {
         await bridge.request<void>({
           operation: "download",

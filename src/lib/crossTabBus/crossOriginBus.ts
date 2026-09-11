@@ -137,7 +137,10 @@ export class CrossOriginBus extends TabBusBase {
     });
     // A bus may be used only for incoming notifications. Keep a connection
     // failure observable through `ready` without creating an unhandled rejection.
-    void this.ready.catch(() => undefined);
+    void this.ready.catch((e) => {
+      console.debug("[gpen] ignored rejection: crossOriginBus ready", e);
+      return;
+    });
   }
 
   async send(type: string, payload: unknown, options?: TabBusSendOptions): Promise<void> {
@@ -156,7 +159,10 @@ export class CrossOriginBus extends TabBusBase {
       }
       await this._remote.receive(message);
     });
-    this._sendTail = operation.catch(() => undefined);
+    this._sendTail = operation.catch((e) => {
+      console.debug("[gpen] ignored rejection: crossOriginBus sendTail", e);
+      return;
+    });
     return operation;
   }
 
@@ -209,7 +215,10 @@ export function createCrossOriginStatelessRelay(
   });
   const onMessage = (event: MessageEvent) => {
     if (!isTabBusMessage(event.data)) return;
-    void peer.send(event.data.type, event.data.payload).catch(() => undefined);
+    void peer.send(event.data.type, event.data.payload).catch((e) => {
+      console.debug("[gpen] ignored rejection: crossOriginBus forward", e);
+      return;
+    });
   };
   channel.onmessage = onMessage;
 

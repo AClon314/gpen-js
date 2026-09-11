@@ -170,7 +170,10 @@ function createWebviewBridge(api: VscodeWebviewApi, timeoutMs: number): VscodeSt
           );
         } catch (cause) {
           const current = pending.get(id);
-          if (!current) return;
+          if (!current) {
+            console.debug("[gpen] ignored rejection: storage vscode pending entry missing", cause);
+            return;
+          }
           pending.delete(id);
           clearTimeout(current.timer);
           current.reject(cause);

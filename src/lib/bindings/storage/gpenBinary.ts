@@ -304,7 +304,10 @@ export function createGpenBinaryStore(deps: GpenBinaryStoreDeps): GpenBinaryStor
     if (state.timer !== undefined) clearTimeout(state.timer);
     state.timer = setTimeout(() => {
       state.timer = undefined;
-      void flushId(id).catch(() => undefined);
+      void flushId(id).catch((e) => {
+        console.debug("[gpen] ignored rejection: gpenBinary flush", e);
+        return;
+      });
     }, debounceMs);
   };
 
@@ -408,6 +411,7 @@ export function createGpenBinaryStore(deps: GpenBinaryStoreDeps): GpenBinaryStor
       if (raw !== undefined) {
         try {
           blobId = parseMetadata(raw, id).blob;
+          // oxlint-disable-next-line catch/must-return-or-throw -- 畸形元数据交由下方删除处理
         } catch {
           /* remove malformed metadata below */
         }

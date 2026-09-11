@@ -330,7 +330,10 @@ export function createBlobFallbackBackend(
           await preferred.ready?.();
           return preferred;
         } catch {
-          await Promise.resolve(preferred.close?.()).catch(() => undefined);
+          await Promise.resolve(preferred.close?.()).catch((e) => {
+            console.debug("[gpen] ignored rejection: blob.select close(preferred)", e);
+            return;
+          });
           return fallback;
         }
       })();
@@ -353,8 +356,14 @@ export function createBlobFallbackBackend(
       if (closed) return;
       closed = true;
       await Promise.all([
-        Promise.resolve(preferred.close?.()).catch(() => undefined),
-        Promise.resolve(fallback.close?.()).catch(() => undefined),
+        Promise.resolve(preferred.close?.()).catch((e) => {
+          console.debug("[gpen] ignored rejection: blob.close preferred", e);
+          return;
+        }),
+        Promise.resolve(fallback.close?.()).catch((e) => {
+          console.debug("[gpen] ignored rejection: blob.close fallback", e);
+          return;
+        }),
       ]);
     },
   };

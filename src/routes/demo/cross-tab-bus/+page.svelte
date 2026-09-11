@@ -73,6 +73,8 @@
 		} catch (cause) {
 			status = '发送失败';
 			errorMessage = cause instanceof Error ? cause.message : String(cause);
+			console.debug("[gpen] ignored rejection: cross-tab-bus sendText", cause);
+			return;
 		} finally {
 			isSending = false;
 		}
@@ -110,6 +112,8 @@
 		} catch (cause) {
 			status = '连接失败';
 			errorMessage = cause instanceof Error ? cause.message : String(cause);
+			console.debug("[gpen] ignored rejection: cross-tab-bus onMount", cause);
+			return;
 		}
 	});
 </script>

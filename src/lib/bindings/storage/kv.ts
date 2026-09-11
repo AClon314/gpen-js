@@ -322,7 +322,10 @@ function createKvRuntime<T extends JsonValue>(
 
   // Start once so a promise or callback initializer has one well-defined lifetime.
   const initialization = initialize();
-  void initialization.catch(() => undefined);
+  void initialization.catch((e) => {
+    console.debug("[gpen] ignored rejection: kv initialization", e);
+    return;
+  });
 
   const useInitialization = async (): Promise<T> => {
     const value = await initialization;
@@ -400,7 +403,10 @@ function createKvRuntime<T extends JsonValue>(
         throw error;
       }
     });
-    void transition.catch(() => undefined);
+    void transition.catch((e) => {
+      console.debug("[gpen] ignored rejection: kv cache transition", e);
+      return;
+    });
   };
 
   return {

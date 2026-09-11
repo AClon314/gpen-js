@@ -122,7 +122,10 @@ export function createTabBusBlobBackend(
         : undefined;
       void bus.send(BLOB_REQUEST, payload, sendOptions).catch((error) => {
         const current = pending.get(payload.requestId);
-        if (!current) return;
+        if (!current) {
+          console.debug("[gpen] ignored rejection: tabBusBlob pending entry missing", error);
+          return;
+        }
         pending.delete(payload.requestId);
         clearTimeout(current.timer);
         reject(error);
@@ -216,8 +219,13 @@ export function createTabBusBlobBroker(bus: ITabBus, backend: BlobBackend): { de
           ok: false,
           error: asError(error, String(error)).message,
         });
+        // oxlint-disable-next-line catch/no-bare-return -- 已通过 sendResponse 回传错误
+        return;
       }
-    })().catch(() => undefined);
+    })().catch((e) => {
+      console.debug("[gpen] ignored rejection: tabBusBlob handleRequest", e);
+      return;
+    });
   });
 
   return {

@@ -10,13 +10,13 @@
 	import { createDefaultGpen } from '../bindings/flatbuffers/defaults';
 	import { buildLayerTree } from '../bindings/layers/layerAdapter';
 	import type { UiLayerTree } from '../bindings/layers/types';
-	import BlenderOutliner from './blender/BlenderOutliner.svelte';
-	import BlenderProperties from './blender/BlenderProperties.svelte';
-	import BlenderStatusBar from './blender/BlenderStatusBar.svelte';
-	import BlenderTimeline from './blender/BlenderTimeline.svelte';
-	import BlenderToolStrip from './blender/BlenderToolStrip.svelte';
-	import BlenderTopBar from './blender/BlenderTopBar.svelte';
-	import BlenderViewport from './blender/BlenderViewport.svelte';
+	import BlenderOutliner from './areas/Outliner.svelte';
+	import BlenderProperties from './areas/Properties.svelte';
+	import BlenderStatusBar from './areas/StatusBar.svelte';
+	import BlenderTimeline from './areas/Timeline.svelte';
+	import BlenderToolStrip from './areas/ToolStrip.svelte';
+	import BlenderTopBar from './areas/TopBar.svelte';
+	import BlenderViewport from './areas/Viewport.svelte';
 
 	// oxlint-disable-next-line no-unassigned-vars
 	let container: HTMLDivElement;
@@ -53,8 +53,10 @@
 		if (!storageReady) return;
 		try {
 			localStorage.setItem(UI_SCALE_KEY, String(uiScale));
-		} catch {
+		} catch (e) {
 			// localStorage may be unavailable in privacy-restricted contexts.
+			console.debug("[gpen] ignored rejection: GpenWorkspace uiScale persist", e);
+			return;
 		}
 	});
 
@@ -84,8 +86,10 @@
 		const url = `${window.location.origin}${window.location.pathname}#popout-${id}`;
 		try {
 			void dockview?.addPopoutGroup(panel, { popoutUrl: url });
-		} catch {
+		} catch (e) {
 			// Popout may be blocked (no window.open permission); ignore.
+			console.debug("[gpen] ignored rejection: GpenWorkspace popoutPanel", e);
+			return;
 		}
 	}
 
@@ -257,6 +261,7 @@
 					uiScale = normalizeUiScale(storedScale);
 				}
 			}
+			// oxlint-disable-next-line catch/must-return-or-throw -- 保留默认值并继续初始化
 		} catch {
 			// Keep the default when localStorage is unavailable or unreadable.
 		}

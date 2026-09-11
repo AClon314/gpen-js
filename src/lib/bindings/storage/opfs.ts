@@ -69,7 +69,10 @@ export function createOpfsBlobBackend(options: OpfsBlobOptions = {}): BlobBacken
         await writable.write(value);
         await writable.close();
       } catch (error) {
-        await writable.abort().catch(() => undefined);
+        await writable.abort().catch((e) => {
+          console.debug("[gpen] ignored rejection: opfs writable.abort", e);
+          return;
+        });
         throw error;
       }
     },
@@ -100,7 +103,10 @@ export function createOpfsBlobBackend(options: OpfsBlobOptions = {}): BlobBacken
         );
         await directory.removeEntry(parts.at(-1)!);
       } catch (error) {
-        if (isNotFoundError(error)) return;
+        if (isNotFoundError(error)) {
+          console.debug("[gpen] ignored rejection: opfs delete entry not found", error);
+          return;
+        }
         throw error;
       }
     },
@@ -171,6 +177,8 @@ function waitForIframe(
       container.append(iframe);
     } catch (cause) {
       finish(asError(cause, String(cause)));
+      // oxlint-disable-next-line catch/no-bare-return -- finish() 已 reject，错误已传播
+      return;
     }
   });
 }

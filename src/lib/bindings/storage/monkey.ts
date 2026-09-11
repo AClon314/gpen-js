@@ -114,7 +114,12 @@ export function createMonkeyStorage<T extends JsonValue = JsonValue>(
     blob,
     close: async () => {
       await blobBackend.close();
-      (await fallbackDbPromise.catch(() => undefined))?.close();
+      (
+        await fallbackDbPromise.catch((e) => {
+          console.debug("[gpen] ignored rejection: monkey fallbackDb", e);
+          return;
+        })
+      )?.close();
     },
   };
 }
