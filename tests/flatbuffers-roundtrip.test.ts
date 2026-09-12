@@ -9,8 +9,8 @@ import {
   WorkspaceUiT,
 } from "gpen-protocol/flatbuffers";
 
-import { decodeGpen, encodeGpen } from "../src/lib/bindings/flatbuffers/codec";
-import { NONE_INDEX } from "../src/lib/bindings/flatbuffers/constants";
+import { decodeGpen, encodeGpen } from "../src/lib/protocol/codec";
+import { NONE_INDEX } from "../src/lib/protocol/constants";
 
 /** Keep generated constructor defaults while setting only the fields under test. */
 function make<T>(ctor: new () => T, init: Record<string, unknown>): T {

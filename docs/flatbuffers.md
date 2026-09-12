@@ -135,7 +135,7 @@ gpen-protocol/
    └─ gpen/v1/*.ts                         # generated accessors
 
 gpen-js/
-└─ src/lib/bindings/flatbuffers/
+└─ src/lib/protocol/
    ├─ codec.ts                             # protocol-independent binary boundary
    └─ index.ts
 ```
@@ -151,7 +151,7 @@ gpen-js/
 | FBS-001 | `gpen-protocol`                          | 核对 TSP → proto → FBS 的确定性；记录 sentinel、`DrawingSlot` 和 matrix/index 的服务端数据约定，补 fixture 基线                                    | 无                         |
 | FBS-002 | `gpen-protocol`                          | 用现有 `flatc-wasm` 生成 TS accessor；确定输出目录、`.js` import、是否启用 object API；添加 barrel、package export 和“不手改 generated files”检查  | FBS-001                    |
 | FBS-003 | 两个 JS package                          | 固定并验证 compiler/runtime 版本；让 `flatbuffers` 成为可解析的直接 runtime dependency；确认 `flatc-wasm` 不进入 gpen-js bundle                    | FBS-001，可与 FBS-002 并行 |
-| FBS-004 | `gpen-js/src/lib/bindings/flatbuffers`   | 实现纯 codec、错误类型和 `Uint8Array` 生命周期规则；直接使用生成的 `*T`，不新增 domain model/validator；覆盖 root、空文档和完整图层/笔迹           | FBS-002、FBS-003           |
+| FBS-004 | `gpen-js/src/lib/protocol`   | 实现纯 codec、错误类型和 `Uint8Array` 生命周期规则；直接使用生成的 `*T`，不新增 domain model/validator；覆盖 root、空文档和完整图层/笔迹           | FBS-002、FBS-003           |
 | FBS-005 | `gpen-js` storage                        | 将 codec 接到 Blob/KV；定义 binary key、metadata、schema migration、写入 debounce/失败恢复，不污染现有 JSON KV API                                 | FBS-004                    |
 | FBS-006 | `gpen-js` + `gpen-zig` + `gpen-protocol` | 建立最小/完整/owned drawing/reference/invalid fixture；用 `flatc-wasm` JSON、JS accessor 和 Zig accessor 互相验证；同步 Zig 生成物                 | FBS-001、FBS-002、FBS-003  |
 | FBS-007 | `gpen-js` layer                          | 从 protocol model 映射 `nodes/layers/groups/active_node_index`，实现 parent/child 顺序和 flags；业务模型不得把 CSS z-index 当协议字段              | FBS-004、FBS-006           |

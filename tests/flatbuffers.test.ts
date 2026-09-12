@@ -35,8 +35,8 @@ import {
   encodeGpen,
   encodeToolbarState,
   GpenCodecError,
-} from "../src/lib/bindings/flatbuffers/codec";
-import { NONE_INDEX } from "../src/lib/bindings/flatbuffers/constants";
+} from "../src/lib/protocol/codec";
+import { NONE_INDEX } from "../src/lib/protocol/constants";
 
 /**
  * Build a generated `*T` object from a partial literal. The generated object

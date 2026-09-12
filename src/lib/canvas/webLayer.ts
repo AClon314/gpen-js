@@ -104,7 +104,7 @@ export function guessWebLayer(root?: ParentNode): HTMLElement | null {
 
     const candidates: HTMLElement[] = [];
     collectCandidates(source, candidates);
-    console.debug("[gpen] guessWebLayer", candidates);
+    console.debug("[gpen] guessWebLayer candidates", candidates);
     if (candidates.length === 0) return null;
 
     const metrics = candidates.map((candidate) => metricsFor(candidate));
@@ -113,6 +113,7 @@ export function guessWebLayer(root?: ParentNode): HTMLElement | null {
       area: metrics.reduce((sum, value) => sum + value.area, 0),
       textLength: metrics.reduce((sum, value) => sum + value.textLength, 0),
     };
+    console.debug("[gpen] guessWebLayer metrics", metrics);
 
     let bestIndex = -1;
     let bestScore = 0;

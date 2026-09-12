@@ -11,11 +11,11 @@ import {
   LayerTreeNodeT,
 } from "gpen-protocol/flatbuffers";
 
-import { decodeGpen } from "../src/lib/bindings/flatbuffers/codec";
-import { NONE_INDEX } from "../src/lib/bindings/flatbuffers/constants";
-import { buildLayerTree } from "../src/lib/bindings/layers/layerAdapter";
-import { LAYER_NODE_GROUP, LAYER_NODE_LAYER } from "../src/lib/bindings/layers/types";
-import type { UiLayerGroupNode, UiLayerNode } from "../src/lib/bindings/layers/types";
+import { decodeGpen } from "../src/lib/protocol/codec";
+import { NONE_INDEX } from "../src/lib/protocol/constants";
+import { buildLayerTree } from "../src/lib/layers/layerAdapter";
+import { LAYER_NODE_GROUP, LAYER_NODE_LAYER } from "../src/lib/layers/types";
+import type { UiLayerGroupNode, UiLayerNode } from "../src/lib/layers/types";
 
 // tests/ -> ../../gpen-protocol/fixtures/gpen/v1 (same layout as
 // flatbuffers-fixtures.test.ts; independent of the process CWD).

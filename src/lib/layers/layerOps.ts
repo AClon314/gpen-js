@@ -9,8 +9,8 @@ import {
   RenderBy,
 } from "gpen-protocol/flatbuffers";
 
-import { NONE_INDEX } from "../flatbuffers/constants";
-import { isDrawableLayer } from "../flatbuffers/defaults";
+import { NONE_INDEX } from "../protocol/constants";
+import { isDrawableLayer } from "../protocol/defaults";
 
 export interface CreateDrawingLayerOptions {
   /** Insert the new layer immediately after this layer in its group. */

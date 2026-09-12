@@ -8,9 +8,9 @@
 		type SerializedDockview
 	} from 'dockview';
 	import { MimeType } from 'gpen-protocol/flatbuffers';
-	import { createDefaultGpen } from '../bindings/flatbuffers/defaults';
-	import { buildLayerTree } from '../bindings/layers/layerAdapter';
-	import type { UiLayerTree } from '../bindings/layers/types';
+	import { createDefaultGpen } from '../protocol/defaults';
+	import { buildLayerTree } from '../layers/layerAdapter';
+	import type { UiLayerTree } from '../layers/types';
 	import {
 		cloneGpenPanelLayout,
 		createDefaultGpenWorkspaceState,

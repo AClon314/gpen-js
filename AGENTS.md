@@ -16,7 +16,7 @@
 ## lib 目录与导入
 
 - 跨路由复用的代码放 `src/lib/`，从 `src/lib/index.ts` 统一导出；消费方用 `#lib` / `#lib/*`（别名见 `package.json` 的 `imports`）。
-- 按领域分目录：`bindings/`（storage / upDownloader / shell 等平台适配）、`crossTabBus/`（消息层）、`gestures/`（交互手势，如 `draggable` action）、`components/`（Svelte 组件）；单文件工具直接放 `src/lib/`（`error.ts`、`instanceId.ts`）。
+- 按领域分目录：`bindings/`（只放 target/runtime 适配：storage / upDownloader / shell）、`protocol/`（gpen-protocol 编解码）、`layers/`（图层领域模型）、`crossTabBus/`（消息层）、`gestures/`（交互手势，如 `draggable` action）、`components/`（Svelte 组件）；单文件工具直接放 `src/lib/`（`error.ts`、`instanceId.ts`）。
 - 逻辑与框架解耦：纯逻辑导出成普通函数（便于 `bun test` 单测，如 `boundsFor` / `clampToBounds` / `reconcileBoundsPosition`），DOM / Svelte 相关部分放 action 或组件。
 
 ## 样式与 token

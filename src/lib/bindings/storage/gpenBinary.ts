@@ -12,8 +12,8 @@
  * diagnostic (blob size vs. stored metadata size) instead of silently
  * serving a half-written document.
  */
-import type { GpenT } from "../flatbuffers/codec";
-import { decodeGpen, encodeGpen, GpenCodecError } from "../flatbuffers/codec";
+import type { GpenT } from "../../protocol/codec";
+import { decodeGpen, encodeGpen, GpenCodecError } from "../../protocol/codec";
 import type { KvStorage } from "./kv.js";
 import type { ITabBus, TabBusSendOptions } from "../../crossTabBus/index.js";
 import type { BlobBackend } from "./types.js";

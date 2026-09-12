@@ -20,8 +20,8 @@
  */
 import type { LayerTreeNodeT } from "gpen-protocol/flatbuffers";
 
-import { GpenT } from "../flatbuffers/codec";
-import { NONE_INDEX } from "../flatbuffers/constants";
+import { GpenT } from "../protocol/codec";
+import { NONE_INDEX } from "../protocol/constants";
 import { LAYER_NODE_GROUP, LAYER_NODE_LAYER } from "./types";
 import type { UiLayerGroupNode, UiLayerNode, UiLayerTree, UiLayerTreeNode } from "./types";
 

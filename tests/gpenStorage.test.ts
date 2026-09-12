@@ -24,8 +24,8 @@ import {
   type GpenKvRoot,
   type GpenMetadata,
 } from "../src/lib/bindings/storage/index.ts";
-import { decodeGpen, encodeGpen } from "../src/lib/bindings/flatbuffers/codec";
-import { NONE_INDEX } from "../src/lib/bindings/flatbuffers/constants";
+import { decodeGpen, encodeGpen } from "../src/lib/protocol/codec";
+import { NONE_INDEX } from "../src/lib/protocol/constants";
 
 /**
  * Build a generated `*T` object from a partial literal. The generated object

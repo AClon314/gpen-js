@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { MimeType, RenderBy } from "gpen-protocol/flatbuffers";
 
-import { createDefaultGpen, isDrawableLayer } from "../src/lib/bindings/flatbuffers/defaults";
-import { NONE_INDEX } from "../src/lib/bindings/flatbuffers/constants";
-import { buildLayerTree } from "../src/lib/bindings/layers/layerAdapter";
+import { createDefaultGpen, isDrawableLayer } from "../src/lib/protocol/defaults";
+import { NONE_INDEX } from "../src/lib/protocol/constants";
+import { buildLayerTree } from "../src/lib/layers/layerAdapter";
 
 const URL = "https://example.com/docs";
 

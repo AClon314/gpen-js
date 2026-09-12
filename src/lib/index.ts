@@ -1,3 +1,5 @@
+export * from "./protocol/index.js";
+export * from "./layers/index.js";
 export * from "./bindings/storage/index.js";
 export * from "./bindings/upDownloader/index.js";
 export * from "./bindings/shell/symlink.js";
