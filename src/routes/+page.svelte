@@ -31,8 +31,6 @@
 			/* 节点定位上下文 */
 			position: relative;
 
-			/* 拖拽时别选中 */
-			user-select: none;
 		}
 	}
 </style>
