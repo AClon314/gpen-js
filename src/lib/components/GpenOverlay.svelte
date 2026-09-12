@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
+	import { applyFakeInfiniteCanvas, guessWebLayer } from '#lib/canvas/index';
 	import { draggable, type DragPosition } from '#lib/gestures/index';
 	import { createInstanceId } from '#lib/instanceId';
 	import GpenWorkspace from './GpenWorkspace.svelte';
@@ -14,6 +15,7 @@
 	let workspaceState = $state(createDefaultGpenWorkspaceState());
 	let overlayEl = $state<HTMLDivElement | undefined>(undefined);
 	let storageReady = $state(false);
+	let infiniteCanvas: ReturnType<typeof applyFakeInfiniteCanvas> | undefined;
 
 	const workspaceStorage = createLocalStorageGpenWorkspaceStateStorage();
 	const BALL_SIZE = 3.25; // rem, matches .floating-button
@@ -76,6 +78,26 @@
 		return () => {
 			active = false;
 		};
+	});
+
+	// Keep the host page in a large document coordinate space while the gpen
+	// workspace is open. The effect cleanup also runs when this component is
+	// unmounted, so a route change cannot leave the host transformed.
+	$effect(() => {
+		if (!workspaceState.open) return;
+
+		const layer = guessWebLayer();
+		const applied = layer ? applyFakeInfiniteCanvas(layer) : undefined;
+		infiniteCanvas = applied;
+		return () => {
+			applied?.destroy();
+			if (infiniteCanvas === applied) infiniteCanvas = undefined;
+		};
+	});
+
+	onDestroy(() => {
+		infiniteCanvas?.destroy();
+		infiniteCanvas = undefined;
 	});
 
 	// A fixed element can stop tracking the visual viewport after pinch zoom.

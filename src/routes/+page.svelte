@@ -20,17 +20,4 @@
 		padding: 1.5lh 3.6ch;
 		background: linear-gradient(135deg, var(--gpen-panel-background) 0%, var(--gpen-panel-accent) 100%);
 	}
-	:global {
-		main {
-			/* 关键：用 margin 外扩，撑开滚动范围 */
-			margin: 500px;
-
-			width: 100vw;
-			height: 100vh;
-
-			/* 节点定位上下文 */
-			position: relative;
-
-		}
-	}
 </style>
