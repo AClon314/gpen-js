@@ -209,14 +209,14 @@
 
 <style>
 	main {
-		max-width: 58rem;
+		max-width: 140ch;
 		margin: 0 auto;
-		padding: 1.5rem;
+		padding: 1.5lh 3.6ch;
 		color: #1d2833;
 	}
 
 	header {
-		padding: 3rem 0 2rem;
+		padding: 3lh 0 2lh;
 		border-bottom: 1px solid #ccd5dc;
 	}
 
@@ -227,7 +227,7 @@
 	}
 
 	h1 {
-		margin-bottom: 0.75rem;
+		margin-bottom: 0.75lh;
 		font-size: 2.25rem;
 	}
 
@@ -237,7 +237,7 @@
 	}
 
 	.eyebrow {
-		margin-bottom: 0.5rem;
+		margin-bottom: 0.5lh;
 		color: #63717c;
 		font-size: 0.75rem;
 		font-weight: 700;
@@ -246,8 +246,8 @@
 	}
 
 	.status {
-		min-height: 1.5rem;
-		margin: 1rem 0 0;
+		min-height: 1.5lh;
+		margin: 1lh 0 0;
 		color: #36566b;
 	}
 
@@ -256,7 +256,7 @@
 	}
 
 	section {
-		padding: 2rem 0;
+		padding: 2lh 0;
 		border-bottom: 1px solid #ccd5dc;
 	}
 
@@ -267,7 +267,7 @@
 	.log-meta {
 		display: flex;
 		align-items: center;
-		gap: 1rem;
+		gap: 2.4ch;
 	}
 
 	.overview,
@@ -277,7 +277,7 @@
 
 	.section-heading {
 		align-items: end;
-		margin-bottom: 1.25rem;
+		margin-bottom: 1.25lh;
 	}
 
 	.section-heading code,
@@ -292,7 +292,7 @@
 
 	label {
 		display: block;
-		margin-bottom: 0.6rem;
+		margin-bottom: 0.6lh;
 		font-weight: 650;
 	}
 
@@ -305,9 +305,9 @@
 		min-width: 0;
 		flex: 1;
 		border: 1px solid #aebbc4;
-		border-radius: 4px;
-		padding: 0.65rem 0.75rem;
-		background: #fff;
+		border-radius: var(--gpen-radius);
+		padding: 0.65lh 1.8ch;
+		background: var(--gpen-panel-background);
 		color: inherit;
 		font: inherit;
 	}
@@ -315,8 +315,8 @@
 	button {
 		width: fit-content;
 		border: 1px solid #315a70;
-		border-radius: 4px;
-		padding: 0.55rem 0.8rem;
+		border-radius: var(--gpen-radius);
+		padding: 0.55lh 1.9ch;
 		background: #315a70;
 		color: #fff;
 		font: inherit;
@@ -325,7 +325,7 @@
 
 	button.secondary {
 		border-color: #aebbc4;
-		background: #fff;
+		background: var(--gpen-panel-background);
 		color: #315a70;
 	}
 
@@ -335,7 +335,7 @@
 	}
 
 	.actions {
-		margin-top: 0.75rem;
+		margin-top: 0.75lh;
 		flex-wrap: wrap;
 	}
 
@@ -345,7 +345,7 @@
 
 	.empty {
 		margin: 0;
-		padding: 1.25rem;
+		padding: 1.25lh 3ch;
 		border: 1px dashed #aebbc4;
 		color: #63717c;
 		text-align: center;
@@ -353,7 +353,7 @@
 
 	.log {
 		display: grid;
-		gap: 0.75rem;
+		gap: 0.75lh;
 		margin: 0;
 		padding: 0;
 		list-style: none;
@@ -361,7 +361,7 @@
 
 	.log li {
 		border-left: 3px solid #315a70;
-		padding: 0.75rem 1rem;
+		padding: 0.75lh 2.4ch;
 		background: #f3f6f8;
 	}
 
@@ -377,7 +377,7 @@
 	}
 
 	.log p {
-		margin: 0.45rem 0;
+		margin: 0.45lh 0;
 		font-size: 1.05rem;
 		overflow-wrap: anywhere;
 	}
@@ -388,7 +388,7 @@
 		overflow-wrap: anywhere;
 	}
 
-	@media (max-width: 36rem) {
+	@media (max-width: 86ch) {
 		.overview,
 		.composer {
 			align-items: stretch;

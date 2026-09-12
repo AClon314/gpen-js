@@ -11,15 +11,15 @@
 		height: 100%;
 		min-width: 0;
 		min-height: 0;
-		font: 11px/1.2 system-ui, sans-serif;
+		font: 11px/1.2 var(--gpen-font-sans);
 	}
 
 	.blender-panel-statusbar {
 		display: flex;
 		align-items: center;
-		gap: 7px;
+		gap: 1ch;
 		overflow: hidden;
-		padding: 0 10px;
+		padding: 0 1.5ch;
 		background: #1f1f1f;
 		color: #aaa;
 		white-space: nowrap;

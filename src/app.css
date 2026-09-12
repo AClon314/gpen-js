@@ -1,0 +1,41 @@
+/*
+ * 全局样式入口（由 src/routes/+layout.svelte 引入）。
+ * 内容 = Tailwind v4 入口 + 全局设计 token。
+ */
+
+/* Tailwind v4：@import / @plugin 必须在文件顶部。 */
+@import "tailwindcss";
+@plugin '@tailwindcss/forms';
+@plugin '@tailwindcss/typography';
+
+/*
+ * 全局设计 token（轻量）
+ *
+ * 值在这里定义一次，组件用 var(--gpen-*) 消费。
+ * 长度单位约定见 AGENTS.md：横向尺寸/间距用 ch，纵向（尤其 height/行高）用 lh；
+ * 字号 / 边框宽度 / 圆角 / 阴影等非布局长度保留 px。
+ *
+ * 这些 --gpen-* 名字此前散落在 GpenWorkspace/GpenOverlay 的局部 :root 里，
+ * 现在提升到这里，作为全局默认；组件仍可局部覆盖变量本身。
+ */
+
+:root {
+	/* typography */
+	--gpen-font-sans: system-ui, sans-serif;
+	--gpen-font-mono: ui-monospace, monospace;
+	--gpen-font-size: 13px;
+	--gpen-line-height: 1.4;
+
+	/* workspace + panel palette */
+	--gpen-workspace-background: transparent;
+	--gpen-panel-background: #ffffff;
+	--gpen-panel-border: #cbd5e1;
+	--gpen-panel-foreground: #1e293b;
+	--gpen-panel-muted: #64748b;
+	--gpen-panel-accent: #4f46e5;
+	--gpen-panel-shadow: 0 2px 8px rgb(15 23 42 / 0.12);
+
+	/* shape（非布局长度，保留 px） */
+	--gpen-radius: 4px;
+	--gpen-radius-sm: 3px;
+}

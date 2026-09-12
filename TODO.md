@@ -35,11 +35,24 @@
 
 > 大多数据骨架已搭好，以下是把「假界面」推进到「能编辑工具/图层」的收尾。
 
+#### T1-T4 本轮验收记录
+
+- [x] **T1 workspace viewport 锚定**：`GpenOverlay` 使用 `absolute + visualViewport.pageTop/pageLeft` 重定位，尺寸跟随 visual viewport；`GpenWorkspace` 以 `uiScale / (browserZoom × pinchZoom)` 计算 CSS `zoom`，并在 `ResizeObserver`、window/visualViewport 变化时调用 `dockview.layout(w, h)`。
+- [x] **T2 工具共享状态与鼠标模式**：`GpenWorkspaceState` 由 workspace 持有并传给 `ToolStrip`；`[鼠标]` 选中后 workspace 收起，只保留最上层的「恢复 gpen」/关闭入口，且会 blur 当前焦点。其余绘制工具仍是 UI 占位，尚未实现 stroke 捕获、命中、undo/redo。
+- [x] **T3 透明 viewport 事件穿透可行**：结论是可行，但必须让 overlay/workspace shell 与 viewport group/content 使用 `pointer-events: none`，再给非 viewport 的 group、tab header、sash 和显式交互子元素恢复 `auto`；否则 dockview 的覆盖层会吃掉事件。
+  - Chrome 最小复现（`/demo/blender`）证据：viewport 空白点 `elementFromPoint()` 命中页面测试按钮；真实 click、wheel、touch 的事件 target 都是页面按钮（touch 的 `pointerType=touch`），且滚动后 `overlay.style.top === visualViewport.pageTop`、视觉 rect 仍从 `(0, 0)` 覆盖当前 visual viewport。
+  - dockview 证据：viewport 的 `.dv-groupview` / `.dv-content-container` 计算值为 `pointer-events:none`；其它 group 为 `auto`，viewport tab header、`.dv-sash` 及 axis gizmo 仍为 `auto`，所以 tab/resize/gizmo 仍可交互。
+  - iframe 差异：外层命中目标是 `<iframe>` 元素，事件交给 iframe 后由其文档处理；同源测试可从父页面观察其内部 target，跨 origin 则只能由 iframe 自己处理，父页面不能读取其 DOM。
+  - 键盘/软键盘：透明 viewport 没有焦点目标；workspace 控件仍可获取焦点。切到 `[鼠标]` 会 blur 当前 activeElement 并移除 workspace，键盘/触摸交给网页；若用户主动聚焦 overlay 控件，它仍会按正常焦点规则抢占键盘/软键盘。
+- [x] **T4 UI state / storage seam**：`uiScale`、`open`、`collapsed`、工具选中和可 JSON 化的 dockview layout 收敛到一个 state 对象；当前 localStorage adapter 同步旧 `gpen.uiScale`，并已提供 `createKvGpenWorkspaceStateStorage()` 适配 `createRuntimeStorage()` / `createKvStorage()`。后续只需注入 KV adapter，尚未切换默认 backend。
+
 **A. 宿主与页面形态**
+
 - [ ] 网页 DOM 操作：拖/缩/旋用 Moveable，与 gpen overlay 的 pointer capture / z-index / 事件透传边界明确（避免两套拖动系统抢同一手势）。
 - [ ] 中央网页视口细节：滚动、缩放、坐标系、`visual viewport` / safe-area / 软键盘 / iframe / webview 裁切。
 
 **B. 图层模型（协议 + UI，需 `type` 字段）**
+
 - [ ] 协议给图层加 `type`：`html`（网页层）/ `gpen`（绘制层，canonical）。`svg` 作为视图/导出格式（后期），不作 `type`。
 - [ ] `backend`（渲染后端 `svg|wgpu`）与语义 `type` 分开；未来 gpen-zig 用 `wgpu` 时放 `backend`。
 - [ ] 默认网页层：进入即存在 `type=html` 层，层名=完整 URL（含前缀），默认选中，**不可直接绘制**。
@@ -49,20 +62,31 @@
 - [ ] 渲染器：document-anchored，随网页滚动；z-index band 低于 Dockview fixed workspace。
 
 **C. bpy API 对齐（命名 + vendor 再同步）**
+
 - [ ] 图层操作命名贴近 bpy：`createLayer`（= `layer_add`，唯一参数 layer 名，内部移动+set active+插 keyframe）、`layer_remove` / `layer_select` / `layer_rename` / `layer_move`（重排/重父级）/ `layer_duplicate`。
 - [ ] 图层属性对齐 bpy：`hide` / `lock` / `opacity` / `blend_mode` / `show_in_front` / `color` / `active` / `frame`；group 与 tree node、父级结构。
 - [ ] 从 vendor/blender-upbge 再同步一次字段：以 `DNA_grease_pencil_types.h`、`rna_grease_pencil.cc/api.cc`、`BKE_grease_pencil.hh` 为准（先改 `.tsp` 仅追加，再重生成）。
 
 **D. 工具与交互（落到可编辑）**
-- [ ] [鼠标] 交互模式：选中时事件交给网页（释放控制权）。
-- [ ] [画笔] 拦截事件，stroke 附着网页、随滚动；坐标模型统一 viewport/document/CSS pixel；稳定 id、增量渲染、undo/redo、序列化；防误触（笔>触摸>鼠标，pointerId/pointerType 仲裁）。
+
+- [x] [鼠标] 交互模式：选中时收起 workspace，保留恢复入口并把事件控制权交给网页。
+- [ ] [画笔] 拦截事件，stroke 附着网页、随滚动；坐标模型统一 viewport/document/CSS pixel；稳定 id、增量渲染、undo/redo、序列化；防误触（笔>触摸>鼠标，pointerId/pointerType 仲裁）。**T2 占位：当前仅有选中态与共享工具 ID，绘制捕获尚未实现。**
 - [ ] [橡皮] stroke/point 命中，容差/变换/隐藏锁定/z-order；`disolve` 保持 disabled。
 - [ ] [套索] 暂 disabled（保留协议身份）。
 - [ ] [图层] 图层面板：增删改排/重命名/复制/重父级；active/flags/blend/opacity/masks/transform/parent/树顺序状态机；空与不可编辑态也要 UI。
 - [ ] 切换粗细与颜色（颜色格式、min/max 粗细、单位、压力映射与预设）。
 
 **E. 界面缩放微调**
+
 - [ ] 只提供 UI 设置入口（放大/缩小/重置 + 数字输入），持久化 `uiScale`（默认 1.0）。
+
+F. 09-11 (用户手动增加)
+
+- [ ] 智能选择一个<html>内innerHTML或innerText最多的一个DOM，作为默认的 第0个图层
+      其图层类型为 html 图层(相对的，有 gpen 类型的图层)
+- [ ] pc/mobile 旋转该网页图册.
+      pc 需要计算鼠标落点 为旋转中心
+      mobile 需要计算 snap 2指的中心 为旋转中心， 也可能涉及 viewport 的计算
 
 ---
 
@@ -96,11 +120,13 @@
 ```
 
 **并行点（同意：主线需串行，这几处可并行）**
+
 - [2a] 编码/解码链路验收（FBS-005 已就绪）。
 - [2b] 文档 id 分配策略（可与 [3] 并行设计）。
 - [4] 纯 UI 展示（LayerPanel 读已给 layerTree）可与 [5] 并行，但“接真实会话”须先有 [3]。
 
 **当前待办（下一步抓手）**
+
 - [ ] 确定 origin 接入方式：改全局 `DEFAULT_BLOB_TARGET_DOMAIN` vs demo 页传参（推荐先后者，隔离）。
 - [ ] 验证 `blog.nolca.workers.dev/storage-broker` 部署就绪（返回 `{status:"ready"}`；parentOrigin/channel/timeout 参数符合契约）。
 - [ ] 搭 `/demo/doc-editor` 或复用 GpenOverlay 假界面接真实 session（[3]+[4] 落地验证）。
@@ -112,13 +138,16 @@
 > 来自早期零散笔记（09-04 的 cf pages / 单标签 / 多标签 / 反向缩放），归位到这里。
 
 **A. 部署策略**
+
 - [ ] CF Pages 作为**中转 cache**，不存敏感数据；持久性数据优先落到各 origin（可信域名实例）。
 - [ ] 明确各 origin 的信任关系与存储归属（跨 origin 数据的「家」在哪）。
 
 **B. 单标签页模式**
+
 - [ ] 单标签页：gpen 界面反向缩放背景网页（viewport 用 `zoom: 1/Z` 抵消浏览器缩放，见 `demo/zoom`）。
 
 **C. 多标签页 / 防崩溃 / 事件转发**
+
 - [ ] 多标签页协同：同 session 多 tab 打开、编辑事件转发（crossTabBus）。
 - [ ] 防崩溃：策略性 page lifecycle / 编辑基线稳定（万一崩溃可恢复）。
 - [ ] 跨 origin 持久化与同步：`storage-broker` 跨 origin 读写一致性（docs/storage.md 契约为准）。

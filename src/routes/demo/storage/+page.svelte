@@ -290,14 +290,14 @@
 
 <style>
 	main {
-		max-width: 58rem;
+		max-width: 110ch;
 		margin: 0 auto;
-		padding: 1.5rem;
+		padding: 1.5lh 3.5ch;
 		color: #1d2833;
 	}
 
 	header {
-		padding: 3rem 0 2rem;
+		padding: 3lh 0 2lh;
 		border-bottom: 1px solid #ccd5dc;
 	}
 
@@ -309,7 +309,7 @@
 	}
 
 	h1 {
-		margin-bottom: 0.75rem;
+		margin-bottom: 0.75lh;
 		font-size: 2.25rem;
 		letter-spacing: 0;
 	}
@@ -327,7 +327,7 @@
 	}
 
 	.eyebrow {
-		margin-bottom: 0.5rem;
+		margin-bottom: 0.5lh;
 		color: #63717c;
 		font-size: 0.75rem;
 		font-weight: 700;
@@ -336,8 +336,8 @@
 	}
 
 	.status {
-		min-height: 1.5rem;
-		margin: 1rem 0 0;
+		min-height: 1.5lh;
+		margin: 1lh 0 0;
 		color: #36566b;
 	}
 
@@ -346,7 +346,7 @@
 	}
 
 	section {
-		padding: 2rem 0;
+		padding: 2lh 0;
 		border-bottom: 1px solid #ccd5dc;
 	}
 
@@ -354,13 +354,13 @@
 		display: flex;
 		align-items: end;
 		justify-content: space-between;
-		gap: 1rem;
-		margin-bottom: 1.25rem;
+		gap: 2.5ch;
+		margin-bottom: 1.25lh;
 	}
 
 	.section-heading.compact {
 		align-items: center;
-		margin-bottom: 0.75rem;
+		margin-bottom: 0.75lh;
 	}
 
 	.section-heading code {
@@ -370,14 +370,14 @@
 
 	.grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
-		gap: 1rem 2rem;
+		grid-template-columns: repeat(auto-fit, minmax(40ch, 1fr));
+		gap: 1lh 5ch;
 	}
 
 	.field {
 		display: grid;
 		align-content: start;
-		gap: 0.6rem;
+		gap: 0.6lh;
 		min-width: 0;
 	}
 
@@ -397,21 +397,21 @@
 		width: 100%;
 		border: 1px solid #aebbc4;
 		border-radius: 4px;
-		padding: 0.65rem 0.75rem;
-		background: #fff;
+		padding: 0.65lh 2ch;
+		background: var(--gpen-panel-background);
 		color: inherit;
 		font: inherit;
 	}
 
 	input[type='file'] {
-		padding: 0.45rem;
+		padding: 0.5lh 1ch;
 	}
 
 	button {
 		width: fit-content;
 		border: 1px solid #315a70;
 		border-radius: 4px;
-		padding: 0.55rem 0.8rem;
+		padding: 0.55lh 2ch;
 		background: #315a70;
 		color: #fff;
 		font: inherit;
@@ -426,7 +426,7 @@
 	.actions {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.5rem;
+		gap: 1.25ch;
 		align-items: center;
 	}
 
@@ -438,13 +438,13 @@
 	}
 
 	.keys {
-		margin-top: 2rem;
+		margin-top: 2lh;
 	}
 
 	ul {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.5rem;
+		gap: 1.25ch;
 		padding: 0;
 		list-style: none;
 	}
@@ -453,7 +453,7 @@
 		display: inline-block;
 		border: 1px solid #ccd5dc;
 		border-radius: 4px;
-		padding: 0.35rem 0.5rem;
+		padding: 0.35lh 1.25ch;
 		background: #f3f6f8;
 	}
 
@@ -463,19 +463,19 @@
 
 	.result {
 		border-left: 1px solid #ccd5dc;
-		padding-left: 1.25rem;
+		padding-left: 3ch;
 	}
 
 	dl {
 		display: grid;
-		gap: 0.4rem;
+		gap: 0.4lh;
 		margin: 0;
 	}
 
 	dl > div {
 		display: flex;
 		justify-content: space-between;
-		gap: 1rem;
+		gap: 2.5ch;
 	}
 
 	dt,
@@ -494,18 +494,18 @@
 
 	img {
 		max-width: 100%;
-		max-height: 16rem;
+		max-height: 16lh;
 		object-fit: contain;
 		border: 1px solid #ccd5dc;
 	}
 
-	@media (max-width: 34rem) {
+	@media (max-width: 68ch) {
 		main {
-			padding: 1rem;
+			padding: 1lh 2.5ch;
 		}
 
 		header {
-			padding-top: 2rem;
+			padding-top: 2lh;
 		}
 
 		.section-heading {
@@ -516,7 +516,7 @@
 		.result {
 			border-top: 1px solid #ccd5dc;
 			border-left: 0;
-			padding-top: 1rem;
+			padding-top: 1lh;
 			padding-left: 0;
 		}
 	}

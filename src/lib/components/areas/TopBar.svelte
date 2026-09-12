@@ -31,7 +31,7 @@
 		height: 100%;
 		min-width: 0;
 		min-height: 0;
-		font: 12px/1.2 system-ui, sans-serif;
+		font: 12px/1.2 var(--gpen-font-sans);
 	}
 
 	.blender-panel-menu {
@@ -50,8 +50,8 @@
 	}
 
 	.menu-row {
-		height: 27px;
-		padding: 0 6px;
+		height: 1.75lh;
+		padding: 0 1ch;
 		background: #303030;
 	}
 
@@ -77,7 +77,7 @@
 
 	.menu-items button,
 	.workspace-switcher {
-		padding: 0 8px;
+		padding: 0 1.25ch;
 	}
 
 	.menu-items button:hover,
@@ -97,9 +97,9 @@
 	}
 
 	.tool-settings {
-		gap: 4px;
-		height: 31px;
-		padding: 0 6px;
+		gap: 0.75ch;
+		height: 2lh;
+		padding: 0 1ch;
 		background: #454545;
 		box-shadow: inset 0 1px rgb(255 255 255 / 0.06);
 	}
@@ -107,9 +107,9 @@
 	.setting-control {
 		display: inline-flex;
 		align-items: center;
-		gap: 5px;
-		height: 23px;
-		padding: 0 7px;
+		gap: 0.75ch;
+		height: 1.5lh;
+		padding: 0 1ch;
 		background: #373737;
 		color: #ededed;
 	}
@@ -136,7 +136,7 @@
 	}
 
 	.setting-icon-only {
-		width: 28px;
+		width: 4.5ch;
 		justify-content: center;
 		padding: 0;
 	}

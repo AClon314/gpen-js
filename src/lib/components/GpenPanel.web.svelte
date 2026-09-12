@@ -80,11 +80,11 @@
 <style>
 	:host {
 		display: block;
-		font: 14px/1.45 system-ui, sans-serif;
+		font: 14px/1.45 var(--gpen-font-sans);
 		color: var(--gpen-panel-foreground, #172033);
-		--gpen-panel-background: #fff;
+		/* background / accent 与 app.css :root 的全局 token 值一致，不再重复定义；
+		 * border / shadow 是本组件的本地设计值，继续局部覆盖。 */
 		--gpen-panel-border: #d9dfeb;
-		--gpen-panel-accent: #4f46e5;
 		--gpen-panel-shadow: 0 12px 32px rgb(23 32 51 / 0.16);
 	}
 
@@ -93,8 +93,8 @@
 	}
 
 	.panel {
-		min-width: 14rem;
-		max-width: min(26rem, calc(100vw - 2rem));
+		min-width: 32ch;
+		max-width: min(60ch, calc(100vw - 4.5ch));
 		overflow: hidden;
 		border: 1px solid var(--gpen-panel-border);
 		border-radius: 0.75rem;
@@ -106,8 +106,8 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 0.75rem;
-		padding: 0.65rem 0.75rem 0.65rem 1rem;
+		gap: 1.75ch;
+		padding: 0.5lh 1.75ch 0.5lh 2.25ch;
 		border-bottom: 1px solid var(--gpen-panel-border);
 		background: color-mix(in srgb, var(--gpen-panel-accent) 7%, var(--gpen-panel-background));
 	}
@@ -119,7 +119,7 @@
 	}
 
 	.content {
-		padding: 1rem;
+		padding: 0.75lh 2.25ch;
 	}
 
 	:where(.icon-button, .collapse-button) {
@@ -138,9 +138,10 @@
 		outline-offset: 2px;
 	}
 
+	/* 方形控件两个方向用同一个单位（lh），避免 ch/lh 比例不同导致变形 */
 	.collapse-button {
-		width: 1.75rem;
-		height: 1.75rem;
+		width: 1.1lh;
+		height: 1.1lh;
 		border-radius: 0.4rem;
 		font-size: 1.1rem;
 	}
@@ -150,8 +151,8 @@
 	}
 
 	.icon-button {
-		width: 2.75rem;
-		height: 2.75rem;
+		width: 1.65lh;
+		height: 1.65lh;
 		border: 1px solid var(--gpen-panel-border);
 		border-radius: 0.75rem;
 		background: var(--gpen-panel-background);

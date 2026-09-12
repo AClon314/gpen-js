@@ -3,14 +3,17 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { locales, localizeHref } from '#lib/paraglide/runtime';
-	import './layout.css';
+	import '../app.css';
 	import favicon from '#lib/assets/favicon.svg';
+	import ContextMenu from '#lib/components/contextMenu/ContextMenu.svelte';
+	import '#lib/components/contextMenu/contextMenu.svelte';
 
 	let { children } = $props();
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
 {@render children()}
+<ContextMenu />
 
 <div style="display:none">
 	{#each locales as locale (locale)}

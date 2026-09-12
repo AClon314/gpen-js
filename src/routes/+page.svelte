@@ -16,7 +16,7 @@
 
 <style>
 	main {
-		max-width: 40rem;
-		padding: 1.5rem;
+		max-width: 80ch;
+		padding: 1.5lh 3.6ch;
 	}
 </style>

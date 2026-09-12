@@ -18,12 +18,12 @@
 		height: 100%;
 		min-width: 0;
 		min-height: 0;
-		font: 13px/1.35 system-ui, sans-serif;
+		font: 13px/1.35 var(--gpen-font-sans);
 	}
 
 	.blender-panel-properties {
 		overflow: auto;
-		padding: 9px;
+		padding: 0.6lh 1.4ch;
 		background: #292929;
 		color: #e5e5e5;
 	}
@@ -31,8 +31,8 @@
 	.properties-heading {
 		display: flex;
 		align-items: center;
-		gap: 8px;
-		margin-bottom: 10px;
+		gap: 1.25ch;
+		margin-bottom: 0.6lh;
 		color: #ededed;
 		font-weight: 600;
 	}
@@ -43,15 +43,15 @@
 	}
 
 	.property-card {
-		margin-bottom: 7px;
-		padding: 8px;
+		margin-bottom: 0.5lh;
+		padding: 0.5lh 1.25ch;
 		border: 1px solid #444;
 		border-radius: 3px;
 		background: #343434;
 	}
 
 	.property-card h2 {
-		margin: 0 0 8px;
+		margin: 0 0 0.5lh;
 		font-size: 12px;
 		font-weight: 600;
 	}
@@ -59,7 +59,7 @@
 	.property-row {
 		display: flex;
 		justify-content: space-between;
-		padding: 4px 0;
+		padding: 0.25lh 0;
 		border-top: 1px solid #444;
 		color: #b9b9b9;
 	}
@@ -73,7 +73,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding: 9px 8px;
+		padding: 0.6lh 1.25ch;
 	}
 
 	.property-card.collapsed h2 {
@@ -81,7 +81,7 @@
 	}
 
 	.placeholder-note {
-		margin: 12px 2px;
+		margin: 0.75lh 0.25ch;
 		color: #929292;
 		font-size: 11px;
 	}

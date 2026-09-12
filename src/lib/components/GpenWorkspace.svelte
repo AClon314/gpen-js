@@ -4,12 +4,30 @@
 	import {
 		createDockview,
 		type CreateComponentOptions,
-		type IContentRenderer
+		type IContentRenderer,
+		type SerializedDockview
 	} from 'dockview';
-	import { MimeType, type GpenT } from 'gpen-protocol/flatbuffers';
+	import { MimeType } from 'gpen-protocol/flatbuffers';
 	import { createDefaultGpen } from '../bindings/flatbuffers/defaults';
 	import { buildLayerTree } from '../bindings/layers/layerAdapter';
 	import type { UiLayerTree } from '../bindings/layers/types';
+	import {
+		cloneGpenPanelLayout,
+		createDefaultGpenWorkspaceState,
+		normalizeUiScale,
+		UI_SCALE_DEFAULT,
+		UI_SCALE_MAX,
+		UI_SCALE_MIN,
+		UI_SCALE_STEP,
+		type GpenToolId,
+		type GpenWorkspaceState
+	} from './gpenWorkspaceState';
+	import { readGpenViewportZoomFactor } from './gpenViewport';
+	import {
+		open as openMenu,
+		registerMenuItems,
+		type MenuItem
+	} from './contextMenu/contextMenu.svelte';
 	import BlenderOutliner from './areas/Outliner.svelte';
 	import BlenderProperties from './areas/Properties.svelte';
 	import BlenderStatusBar from './areas/StatusBar.svelte';
@@ -18,46 +36,115 @@
 	import BlenderTopBar from './areas/TopBar.svelte';
 	import BlenderViewport from './areas/Viewport.svelte';
 
+	let { state: providedState }: { state?: GpenWorkspaceState } = $props();
+	let localState = $state(createDefaultGpenWorkspaceState());
+	const workspaceState = $derived(providedState ?? localState);
+
 	// oxlint-disable-next-line no-unassigned-vars
 	let container: HTMLDivElement;
 	let dockview: ReturnType<typeof createDockview> | undefined;
 	let layerTree: UiLayerTree | undefined;
-	let contextMenu: HTMLDivElement | undefined;
+	let tabMenuPanelId: string | undefined;
+	let disposeTabMenu: (() => void) | undefined;
+	let layoutSubscription: { dispose(): void } | undefined;
+	let viewportResizeObserver: ResizeObserver | undefined;
+	let removeViewportListeners: (() => void) | undefined;
+	let layoutFrame: number | undefined;
+	let mounted = false;
 
-	const UI_SCALE_KEY = 'gpen.uiScale';
-	const UI_SCALE_MIN = 0.5;
-	const UI_SCALE_MAX = 2;
-	const UI_SCALE_STEP = 0.25;
-	const UI_SCALE_DEFAULT = 1;
-
-	let uiScale = $state(UI_SCALE_DEFAULT);
-	let storageReady = $state(false);
-
-	function normalizeUiScale(value: number): number {
-		const stepped = Math.round(value / UI_SCALE_STEP) * UI_SCALE_STEP;
-		return Number(Math.min(UI_SCALE_MAX, Math.max(UI_SCALE_MIN, stepped)).toFixed(2));
-	}
+	let viewportWidth = $state(0);
+	let viewportHeight = $state(0);
+	let externalZoomFactor = $state(1);
+	const workspaceZoom = $derived(
+		normalizeUiScale(workspaceState.uiScale) / externalZoomFactor
+	);
+	const layoutWidth = $derived(
+		viewportWidth > 0 ? Math.max(1, Math.round(viewportWidth / workspaceZoom)) : undefined
+	);
+	const layoutHeight = $derived(
+		viewportHeight > 0 ? Math.max(1, Math.round(viewportHeight / workspaceZoom)) : undefined
+	);
+	const containerWidth = $derived(layoutWidth === undefined ? '100%' : `${layoutWidth}px`);
+	const containerHeight = $derived(layoutHeight === undefined ? '100%' : `${layoutHeight}px`);
 
 	function changeUiScale(delta: number) {
-		uiScale = normalizeUiScale(uiScale + delta);
+		workspaceState.uiScale = normalizeUiScale(workspaceState.uiScale + delta);
 	}
 
 	function resetUiScale() {
-		uiScale = UI_SCALE_DEFAULT;
+		workspaceState.uiScale = UI_SCALE_DEFAULT;
 	}
 
-	// CSS `zoom` can differ or be unavailable in older browsers. It is scoped
-	// to this document and is not synchronized between tabs; popout windows are
-	// separate documents, so they are not affected by this workspace zoom.
-	$effect(() => {
-		if (!storageReady) return;
-		try {
-			localStorage.setItem(UI_SCALE_KEY, String(uiScale));
-		} catch (e) {
-			// localStorage may be unavailable in privacy-restricted contexts.
-			console.debug("[gpen] ignored rejection: GpenWorkspace uiScale persist", e);
-			return;
+	function selectTool(tool: GpenToolId) {
+		workspaceState.activeTool = tool;
+		if (tool === 'mouse') {
+			// Removing the workspace from hit testing is what gives the webpage
+			// pointer, touch, and keyboard control. Blur avoids leaving a toolbar
+			// button as the soft-keyboard/focus owner.
+			workspaceState.collapsed = true;
+			const active = document.activeElement;
+			if (active instanceof HTMLElement) active.blur();
+		} else {
+			workspaceState.collapsed = false;
 		}
+	}
+
+	function updateExternalZoom() {
+		externalZoomFactor = readGpenViewportZoomFactor();
+	}
+
+	function measureViewport() {
+		const parent = container.parentElement;
+		const width = parent?.clientWidth ?? window.innerWidth;
+		const height = parent?.clientHeight ?? window.innerHeight;
+		viewportWidth = Math.max(0, width);
+		viewportHeight = Math.max(0, height);
+	}
+
+	function layoutDockview() {
+		if (!dockview) return;
+		const width = layoutWidth ?? container.clientWidth;
+		const height = layoutHeight ?? container.clientHeight;
+		if (width <= 0 || height <= 0) return;
+		dockview.layout(width, height);
+	}
+
+	function scheduleLayout() {
+		if (layoutFrame !== undefined) cancelAnimationFrame(layoutFrame);
+		layoutFrame = requestAnimationFrame(() => {
+			layoutFrame = undefined;
+			measureViewport();
+			layoutDockview();
+		});
+	}
+
+	function captureDockviewLayout() {
+		const layout = cloneGpenPanelLayout(dockview?.toJSON());
+		if (layout) workspaceState.panelLayout = layout;
+	}
+
+	function restoreDockviewLayout(): boolean {
+		if (!dockview || !workspaceState.panelLayout) return false;
+		try {
+			dockview.fromJSON(workspaceState.panelLayout as unknown as SerializedDockview);
+			return true;
+		} catch (error) {
+			console.debug('[gpen] ignored rejection: GpenWorkspace layout restore', error);
+			workspaceState.panelLayout = null;
+			return false;
+		}
+	}
+
+	// CSS `zoom` has to counteract the external browser/pinch factor before the
+	// user's uiScale is applied. The resulting formula is:
+	//   effective workspace zoom = uiScale / (browser zoom × pinch zoom)
+	// The container's unzoomed px box is enlarged by 1/effectiveZoom so its
+	// visual box still exactly fills the absolute visual-viewport overlay.
+	$effect(() => {
+		const _zoom = workspaceZoom;
+		if (!mounted) return;
+		measureViewport();
+		scheduleLayout();
 	});
 
 	const panelLabels: Record<string, string> = {
@@ -67,7 +154,7 @@
 		timeline: 'timeline'
 	};
 
-	const panelComponents: Record<string, Component> = {
+	const panelComponents: Record<string, Component<any>> = {
 		menu: BlenderTopBar,
 		tools: BlenderToolStrip,
 		viewport: BlenderViewport,
@@ -94,77 +181,50 @@
 	}
 
 
-	function hideContextMenu() {
-		contextMenu?.remove();
-		contextMenu = undefined;
-	}
+	const WORKSPACE_TAB_MENU_ID = 'gpen-workspace-tab';
 
-	function addContextMenuItem(menu: HTMLDivElement, label: string, action: () => void) {
-		const item = document.createElement('button');
-		item.type = 'button';
-		item.className = 'gpen-context-menu-item';
-		item.setAttribute('role', 'menuitem');
-		item.textContent = label;
-		item.addEventListener('click', () => {
-			hideContextMenu();
-			action();
-		});
-		menu.appendChild(item);
-	}
-
-	function addContextMenuSeparator(menu: HTMLDivElement) {
-		const separator = document.createElement('div');
-		separator.className = 'gpen-context-menu-separator';
-		separator.setAttribute('role', 'separator');
-		menu.appendChild(separator);
-	}
-
-	function showContextMenu(panelId: string, event: MouseEvent) {
-		hideContextMenu();
-
-		const menu = document.createElement('div');
-		menu.className = 'gpen-context-menu';
-		menu.setAttribute('role', 'menu');
-		menu.setAttribute('aria-label', '面板操作');
-
-		addContextMenuSeparator(menu);
-		addContextMenuItem(menu, '在新窗口打开', () => popoutPanel(panelId));
-		addContextMenuItem(menu, '关闭', () => {
-			const panel = dockview?.getPanel(panelId);
-			if (panel) dockview?.removePanel(panel);
-		});
-		addContextMenuSeparator(menu);
-		addContextMenuItem(menu, '浮动', () => {
-			const panel = dockview?.getPanel(panelId);
-			if (panel) dockview?.addFloatingGroup(panel);
-		});
-
-		contextMenu = menu;
-		document.body.appendChild(menu);
-		const margin = 8;
-		const rect = menu.getBoundingClientRect();
-		menu.style.left = `${Math.max(margin, Math.min(event.clientX, window.innerWidth - rect.width - margin))}px`;
-		menu.style.top = `${Math.max(margin, Math.min(event.clientY, window.innerHeight - rect.height - margin))}px`;
+	/**
+	 * The tab DOM belongs to dockview, so it cannot use the Svelte action. The
+	 * delegated `contextmenu` listener resolves the tab's panel id and opens this
+	 * named registry entry programmatically instead.
+	 */
+	function tabMenuItems(): MenuItem[] {
+		const panelId = tabMenuPanelId;
+		if (panelId === undefined) return [];
+		return [
+			{ label: '在新窗口打开', order: 10, action: () => popoutPanel(panelId) },
+			{
+				label: '关闭',
+				order: 20,
+				action: () => {
+					const panel = dockview?.getPanel(panelId);
+					if (panel) dockview?.removePanel(panel);
+				}
+			},
+			{ separator: true, order: 30 },
+			{
+				label: '浮动',
+				order: 40,
+				action: () => {
+					const panel = dockview?.getPanel(panelId);
+					if (panel) dockview?.addFloatingGroup(panel);
+				}
+			}
+		];
 	}
 
 	function handleTabContextMenu(event: MouseEvent) {
 		const target = event.target;
 		if (!(target instanceof Element)) return;
 		const tab = target.closest<HTMLElement>('.dv-tab');
-		if (!tab || !container.contains(tab)) {
-			hideContextMenu();
-			return;
-		}
+		if (!tab || !container.contains(tab)) return;
 
 		const panelId = tab.dataset.tabPanelId;
 		if (!panelId) return;
 		event.preventDefault();
 		event.stopPropagation();
-		showContextMenu(panelId, event);
-	}
-
-	function handleContextMenuKeydown(event: KeyboardEvent) {
-		if (event.key === 'Escape') hideContextMenu();
+		tabMenuPanelId = panelId;
+		openMenu(WORKSPACE_TAB_MENU_ID, event.clientX, event.clientY);
 	}
 
 	function createLayerList(): HTMLUListElement {
@@ -218,7 +278,11 @@
 				element,
 				init() {
 					if (!mountedComponent) {
-						mountedComponent = mount(Component, { target: element });
+						const props =
+							name === 'tools'
+								? { state: workspaceState, onSelectTool: selectTool }
+								: undefined;
+						mountedComponent = mount(Component, { target: element, props });
 					}
 				},
 				dispose() {
@@ -253,19 +317,9 @@
 	}
 
 	onMount(() => {
-		try {
-			const storedValue = localStorage.getItem(UI_SCALE_KEY);
-			if (storedValue !== null) {
-				const storedScale = Number(storedValue);
-				if (Number.isFinite(storedScale)) {
-					uiScale = normalizeUiScale(storedScale);
-				}
-			}
-			// oxlint-disable-next-line catch/must-return-or-throw -- 保留默认值并继续初始化
-		} catch {
-			// Keep the default when localStorage is unavailable or unreadable.
-		}
-		storageReady = true;
+		mounted = true;
+		updateExternalZoom();
+		measureViewport();
 
 		// Build a default document (webpage layer selected, tool/session + workspace
 		// context) so the timeline/layer views have real data to render. Later the
@@ -290,67 +344,72 @@
 				tabGroupIndicator: 'none'
 			}
 		});
-		dockview.layout(container.clientWidth, container.clientHeight);
+		layoutSubscription = dockview.onDidMutateLayout(() => captureDockviewLayout());
+		measureViewport();
+		layoutDockview();
 
-		// Build outward from the viewport so every surrounding panel occupies its
-		// own dockview group and remains resizable by the user.
-		// Panels resize freely like Blender. dockview still needs a small
-		// non-zero minimum so the grid never collapses to a zero-size panel on
-		// first layout; the values are small enough to keep resizing unconstrained.
-		dockview.addPanel({
-			id: 'viewport',
-			component: 'viewport',
-			title: 'viewport',
-			minimumWidth: 240,
-			minimumHeight: 160
-		});
-		dockview.addPanel({
-			id: 'menu',
-			component: 'menu',
-			title: 'menu',
-			position: { referencePanel: 'viewport', direction: 'above' },
-			initialHeight: 42,
-			minimumHeight: 28
-		});
-		dockview.addPanel({
-			id: 'tools',
-			component: 'tools',
-			title: 'tools',
-			position: { referencePanel: 'viewport', direction: 'left' },
-			initialWidth: 208,
-			minimumWidth: 96
-		});
-		dockview.addPanel({
-			id: 'timeline',
-			component: 'timeline',
-			title: 'timeline',
-			position: { referencePanel: 'viewport', direction: 'below' },
-			initialHeight: 180,
-			minimumHeight: 48
-		});
-		dockview.addPanel({
-			id: 'outliner',
-			component: 'outliner',
-			title: 'outliner',
-			position: { referencePanel: 'viewport', direction: 'right' },
-			initialWidth: 280,
-			minimumWidth: 160
-		});
-		dockview.addPanel({
-			id: 'properties',
-			component: 'properties',
-			title: 'properties',
-			position: { referencePanel: 'outliner', direction: 'below' },
-			initialHeight: 300
-		});
-		dockview.addPanel({
-			id: 'statusbar',
-			component: 'statusbar',
-			title: 'statusbar',
-			position: { referencePanel: 'timeline', direction: 'below' },
-			initialHeight: 26,
-			minimumHeight: 22
-		});
+		const restoredLayout = restoreDockviewLayout();
+		if (!restoredLayout) {
+				// Build outward from the viewport so every surrounding panel occupies its
+			// own dockview group and remains resizable by the user.
+			// Panels resize freely like Blender. dockview still needs a small
+			// non-zero minimum so the grid never collapses to a zero-size panel on
+			// first layout; the values are small enough to keep resizing unconstrained.
+			dockview.addPanel({
+				id: 'viewport',
+				component: 'viewport',
+				title: 'viewport',
+				minimumWidth: 240,
+				minimumHeight: 160
+			});
+			dockview.addPanel({
+				id: 'menu',
+				component: 'menu',
+				title: 'menu',
+				position: { referencePanel: 'viewport', direction: 'above' },
+				initialHeight: 42,
+				minimumHeight: 28
+			});
+			dockview.addPanel({
+				id: 'tools',
+				component: 'tools',
+				title: 'tools',
+				position: { referencePanel: 'viewport', direction: 'left' },
+				initialWidth: 208,
+				minimumWidth: 96
+			});
+			dockview.addPanel({
+				id: 'timeline',
+				component: 'timeline',
+				title: 'timeline',
+				position: { referencePanel: 'viewport', direction: 'below' },
+				initialHeight: 180,
+				minimumHeight: 48
+			});
+			dockview.addPanel({
+				id: 'outliner',
+				component: 'outliner',
+				title: 'outliner',
+				position: { referencePanel: 'viewport', direction: 'right' },
+				initialWidth: 280,
+				minimumWidth: 160
+			});
+			dockview.addPanel({
+				id: 'properties',
+				component: 'properties',
+				title: 'properties',
+				position: { referencePanel: 'outliner', direction: 'below' },
+				initialHeight: 300
+			});
+			dockview.addPanel({
+				id: 'statusbar',
+				component: 'statusbar',
+				title: 'statusbar',
+				position: { referencePanel: 'timeline', direction: 'below' },
+				initialHeight: 26,
+				minimumHeight: 22
+			});
+		}
 
 		// Dockview groups have a 100px default minimum of their own. Relax only
 		// the compact Blender chrome groups so the requested initial heights can
@@ -361,17 +420,47 @@
 		dockview.getPanel('menu')?.group.api.setSize({ height: 58 });
 		dockview.getPanel('timeline')?.group.api.setSize({ height: 180 });
 		dockview.getPanel('statusbar')?.group.api.setSize({ height: 26 });
+		captureDockviewLayout();
 
+		disposeTabMenu = registerMenuItems(WORKSPACE_TAB_MENU_ID, tabMenuItems);
 		container.addEventListener('contextmenu', handleTabContextMenu);
-		document.addEventListener('click', hideContextMenu);
-		document.addEventListener('keydown', handleContextMenuKeydown);
+
+		const onViewportChange = () => {
+			updateExternalZoom();
+			measureViewport();
+			scheduleLayout();
+		};
+		window.addEventListener('resize', onViewportChange, { passive: true });
+		window.addEventListener('scroll', onViewportChange, { passive: true });
+		window.visualViewport?.addEventListener('resize', onViewportChange, { passive: true });
+		window.visualViewport?.addEventListener('scroll', onViewportChange, { passive: true });
+		removeViewportListeners = () => {
+			window.removeEventListener('resize', onViewportChange);
+			window.removeEventListener('scroll', onViewportChange);
+			window.visualViewport?.removeEventListener('resize', onViewportChange);
+			window.visualViewport?.removeEventListener('scroll', onViewportChange);
+		};
+
+		const parent = container.parentElement;
+		if (typeof ResizeObserver !== 'undefined' && parent) {
+			viewportResizeObserver = new ResizeObserver(() => onViewportChange());
+			viewportResizeObserver.observe(parent);
+		}
+		scheduleLayout();
 	});
 
 	onDestroy(() => {
+		mounted = false;
+		if (layoutFrame !== undefined) cancelAnimationFrame(layoutFrame);
+		removeViewportListeners?.();
+		removeViewportListeners = undefined;
+		viewportResizeObserver?.disconnect();
+		viewportResizeObserver = undefined;
+		layoutSubscription?.dispose();
+		layoutSubscription = undefined;
 		container.removeEventListener('contextmenu', handleTabContextMenu);
-		document.removeEventListener('click', hideContextMenu);
-		document.removeEventListener('keydown', handleContextMenuKeydown);
-		hideContextMenu();
+		disposeTabMenu?.();
+		disposeTabMenu = undefined;
 		dockview?.dispose();
 		dockview = undefined;
 	});
@@ -380,21 +469,22 @@
 <div
 	bind:this={container}
 	class="dockview-container"
-	style="position: fixed; inset: 0;"
-	style:zoom={uiScale}
+	style:width={containerWidth}
+	style:height={containerHeight}
+	style:zoom={workspaceZoom}
 >
 	<div class="ui-scale-control" role="group" aria-label="界面缩放">
 		<button
 			type="button"
 			aria-label="缩小界面"
-			disabled={uiScale <= UI_SCALE_MIN}
+			disabled={workspaceState.uiScale <= UI_SCALE_MIN}
 			onclick={() => changeUiScale(-UI_SCALE_STEP)}
 		>−</button>
-		<output aria-label="当前界面缩放" aria-live="polite">{uiScale.toFixed(2)}×</output>
+		<output aria-label="当前界面缩放" aria-live="polite">{workspaceState.uiScale.toFixed(2)}×</output>
 		<button
 			type="button"
 			aria-label="放大界面"
-			disabled={uiScale >= UI_SCALE_MAX}
+			disabled={workspaceState.uiScale >= UI_SCALE_MAX}
 			onclick={() => changeUiScale(UI_SCALE_STEP)}
 		>+</button>
 		<button type="button" aria-label="重置界面缩放" onclick={resetUiScale}>重置</button>
@@ -410,26 +500,34 @@
 	}
 
 	.dockview-container {
-		--gpen-workspace-background: transparent;
-		--gpen-panel-background: #ffffff;
-		--gpen-panel-border: #cbd5e1;
-		--gpen-panel-foreground: #1e293b;
+		/* The parent overlay is an unzoomed visual-viewport box. This child is
+		 * absolute instead of fixed so its size remains tied to that box. */
+		position: absolute;
+		top: 0;
+		left: 0;
+		box-sizing: border-box;
+		/* 这四个变量与 app.css :root 的全局 token 值一致，直接用全局值。 */
 		z-index: 0;
 		overflow: hidden;
 		background: var(--gpen-workspace-background);
 		color: var(--gpen-panel-foreground);
-		font: 13px/1.4 system-ui, sans-serif;
+		font-family: var(--gpen-font-sans);
+		font-size: var(--gpen-font-size);
+		line-height: var(--gpen-line-height);
+		/* Leave the transparent viewport as a hit-test hole. Individual dockview
+		 * chrome groups opt back in below, as do sashes and our scale controls. */
+		pointer-events: none;
 	}
 
 	.ui-scale-control {
 		position: absolute;
-		top: 0.5rem;
-		right: 0.5rem;
+		top: 0.5lh;
+		right: 1.25ch;
 		z-index: 20;
 		display: flex;
 		align-items: center;
-		gap: 0.25rem;
-		padding: 0.25rem;
+		gap: 0.5ch;
+		padding: 0.25lh 0.5ch;
 		border: 1px solid var(--gpen-panel-border);
 		border-radius: 0.35rem;
 		background: rgb(255 255 255 / 0.94);
@@ -438,12 +536,12 @@
 	}
 
 	.ui-scale-control button {
-		min-width: 1.75rem;
-		height: 1.75rem;
-		padding: 0 0.35rem;
+		min-width: 4.25ch;
+		height: 1.5lh;
+		padding: 0 1ch;
 		border: 1px solid var(--gpen-panel-border);
-		border-radius: 0.25rem;
-		background: #fff;
+		border-radius: var(--gpen-radius);
+		background: var(--gpen-panel-background);
 		color: inherit;
 		font: inherit;
 		cursor: pointer;
@@ -459,7 +557,7 @@
 	}
 
 	.ui-scale-control output {
-		min-width: 3.5rem;
+		min-width: 8.5ch;
 		font-variant-numeric: tabular-nums;
 		text-align: center;
 	}
@@ -471,6 +569,28 @@
 	:global(.dockview-container .dv-groupview),
 	:global(.dockview-container .dv-content-container) {
 		background-color: transparent;
+	}
+
+	/* T3: the overlay and workspace shell opt out of hit testing. Non-viewport
+	 * groups, tabs, sashes, and controls opt back in, leaving the transparent
+	 * viewport content available to the webpage for click/wheel/touch events.
+	 * A child such as the axis gizmo may opt in without making the whole hole
+	 * opaque. */
+	:global(.dockview-container .dv-groupview) {
+		pointer-events: auto;
+	}
+
+	:global(.dockview-container .dv-groupview:has(.blender-panel-viewport)) {
+		pointer-events: none;
+	}
+
+	:global(.dockview-container .dv-groupview:has(.blender-panel-viewport) > .dv-tabs-and-actions-container),
+	:global(.dockview-container .dv-groupview:has(.blender-panel-viewport) .axis-gizmo),
+	:global(.dockview-container .dv-sash),
+	:global(.dockview-container .dv-resize-handle),
+	:global(.dockview-container .dv-drop-target-container),
+	.ui-scale-control {
+		pointer-events: auto;
 	}
 
 	/* The menu and status bar are chrome rather than dockable work areas. Keep
@@ -491,44 +611,6 @@
 		overflow: hidden;
 	}
 
-	:global(.gpen-context-menu) {
-		position: fixed;
-		z-index: 10000;
-		min-width: 156px;
-		padding: 4px;
-		border: 1px solid #b9c3d0;
-		border-radius: 4px;
-		background: #fff;
-		box-shadow: 0 6px 18px rgb(15 23 42 / 0.22);
-		color: #1e293b;
-		font: 13px/1.35 system-ui, sans-serif;
-	}
-
-	:global(.gpen-context-menu-item) {
-		display: block;
-		width: 100%;
-		padding: 0.4rem 0.65rem;
-		border: 0;
-		border-radius: 3px;
-		background: transparent;
-		color: inherit;
-		font: inherit;
-		text-align: left;
-		cursor: pointer;
-	}
-
-	:global(.gpen-context-menu-item:hover),
-	:global(.gpen-context-menu-item:focus-visible) {
-		background: #e9eef5;
-		outline: none;
-	}
-
-	:global(.gpen-context-menu-separator) {
-		height: 1px;
-		margin: 4px 2px;
-		background: #d7dde6;
-	}
-
 	/* --- panel content --- */
 	/* These classes are applied to elements created imperatively by dockview's
 	 * createComponent (not Svelte-managed DOM), so they must be :global to
@@ -538,8 +620,8 @@
 		box-sizing: border-box;
 		width: 100%;
 		height: 100%;
-		min-height: 2rem;
-		padding: 0.5rem 0.75rem 0.75rem;
+		min-height: 1.75lh;
+		padding: 0.5lh 2ch 0.75lh;
 		color: #475569;
 		background: var(--gpen-panel-background);
 		overflow: auto;
@@ -549,12 +631,12 @@
 		display: grid;
 		place-items: center;
 		height: 100%;
-		color: #64748b;
+		color: var(--gpen-panel-muted);
 	}
 
 
 	:global(.gpen-timeline-header) {
-		margin-bottom: 0.5rem;
+		margin-bottom: 0.5lh;
 		font-weight: 600;
 		color: #334155;
 	}
@@ -562,7 +644,7 @@
 	:global(.gpen-layer-list) {
 		display: flex;
 		flex-direction: column;
-		gap: 0.15rem;
+		gap: 0.15lh;
 		margin: 0;
 		padding: 0;
 		list-style: none;
@@ -571,10 +653,10 @@
 	:global(.gpen-layer-row) {
 		display: flex;
 		align-items: center;
-		gap: 0.4rem;
-		padding: 0.2rem 0.4rem;
+		gap: 1ch;
+		padding: 0.2lh 1ch;
 		border: 1px solid transparent;
-		border-radius: 0.25rem;
+		border-radius: var(--gpen-radius);
 		color: var(--gpen-panel-foreground);
 	}
 
@@ -585,8 +667,8 @@
 
 	:global(.gpen-layer-kind) {
 		margin-left: auto;
-		padding: 0 0.35rem;
-		border-radius: 0.25rem;
+		padding: 0 0.5ch;
+		border-radius: var(--gpen-radius);
 		font-size: 0.7rem;
 		text-transform: uppercase;
 		letter-spacing: 0.03em;
@@ -603,7 +685,7 @@
 
 	:global(.gpen-layer-active) {
 		font-size: 0.6rem;
-		color: #4f46e5;
+		color: var(--gpen-panel-accent);
 	}
 
 	:global(.gpen-layer-empty) {

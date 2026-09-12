@@ -35,13 +35,13 @@
 	button {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.5rem;
-		padding: 0.5rem 0.9rem;
+		gap: 1.25ch;
+		padding: 0.5lh 2ch;
 		border: 0;
 		border-radius: 999px;
-		background: linear-gradient(135deg, #4f46e5, #7c3aed);
+		background: linear-gradient(135deg, var(--gpen-panel-accent), #7c3aed);
 		color: #fff;
-		font: 600 14px/1.2 system-ui, sans-serif;
+		font: 600 14px/1.2 var(--gpen-font-sans);
 		cursor: pointer;
 		box-shadow: 0 8px 20px rgb(79 70 229 / 0.28);
 	}
@@ -53,8 +53,8 @@
 		cursor: not-allowed;
 	}
 	.badge {
-		min-width: 1.4rem;
-		padding: 0.15rem 0.4rem;
+		min-width: 3.25ch;
+		padding: 0.15lh 1ch;
 		border-radius: 999px;
 		background: rgb(255 255 255 / 0.2);
 		font-variant-numeric: tabular-nums;

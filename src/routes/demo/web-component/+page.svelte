@@ -37,9 +37,9 @@
 <style>
 	div {
 		display: flex;
-		gap: 0.75rem;
+		gap: 2ch;
 		align-items: center;
 		flex-wrap: wrap;
-		margin: 1rem 0;
+		margin: 1lh 0;
 	}
 </style>

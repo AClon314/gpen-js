@@ -21,18 +21,18 @@
 
 	.back-link {
 		position: fixed;
-		top: 0.5rem;
-		left: 0.75rem;
+		top: 0.5lh;
+		left: 1.75ch;
 		z-index: 20;
-		padding: 0.25rem 0.5rem;
-		border-radius: 0.25rem;
+		padding: 0.25lh 1ch;
+		border-radius: var(--gpen-radius);
 		color: #334155;
 		background: rgb(255 255 255 / 0.85);
-		font: 12px/1.4 system-ui, sans-serif;
+		font: 12px/var(--gpen-line-height) var(--gpen-font-sans);
 		text-decoration: none;
 	}
 
 	.back-link:hover {
-		background: #ffffff;
+		background: var(--gpen-panel-background);
 	}
 </style>

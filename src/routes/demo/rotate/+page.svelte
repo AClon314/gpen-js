@@ -256,13 +256,13 @@
 	}
 
 	main {
-		max-width: 70rem;
+		max-width: 168ch;
 		margin: 0 auto;
-		padding: 1rem 1.5rem 4rem;
+		padding: 1lh 3.6ch 4lh;
 	}
 
 	.back-link {
-		margin: 0 0 1.5rem;
+		margin: 0 0 1.5lh;
 	}
 
 	a {
@@ -271,23 +271,23 @@
 
 	h1 {
 		margin: 0;
-		font: 700 clamp(1.6rem, 4vw, 2.25rem) / 1.2 system-ui, sans-serif;
+		font: 700 clamp(1.6rem, 4vw, 2.25rem) / 1.2 var(--gpen-font-sans);
 		letter-spacing: -0.02em;
 	}
 
 	h2 {
 		margin: 0;
-		font: 700 1.05rem / 1.3 system-ui, sans-serif;
+		font: 700 1.05rem / 1.3 var(--gpen-font-sans);
 	}
 
 	p {
 		color: #526078;
-		font: 14px / 1.65 system-ui, sans-serif;
+		font: 14px / 1.65 var(--gpen-font-sans);
 	}
 
 	.intro {
-		max-width: 52rem;
-		margin: 0.75rem 0 1.5rem;
+		max-width: 124ch;
+		margin: 0.75lh 0 1.5lh;
 	}
 
 	.controls,
@@ -299,7 +299,7 @@
 	}
 
 	.controls {
-		padding: 1rem 1.1rem 1.1rem;
+		padding: 1lh 2.6ch 1.1lh;
 	}
 
 	.control-heading,
@@ -307,18 +307,18 @@
 		display: flex;
 		align-items: flex-start;
 		justify-content: space-between;
-		gap: 1rem;
+		gap: 2.4ch;
 	}
 
 	.control-heading p {
-		margin: 0.35rem 0 0;
+		margin: 0.35lh 0 0;
 		font-size: 12px;
 	}
 
 	.angle-readout {
 		flex: 0 0 auto;
 		color: #3528a8;
-		font: 700 clamp(1.5rem, 5vw, 2.1rem) / 1 ui-monospace, monospace;
+		font: 700 clamp(1.5rem, 5vw, 2.1rem) / 1 var(--gpen-font-mono);
 		letter-spacing: -0.05em;
 	}
 
@@ -326,10 +326,10 @@
 		display: grid;
 		grid-template-columns: auto minmax(0, 1fr) auto;
 		align-items: center;
-		gap: 0.7rem;
-		margin-top: 1.1rem;
+		gap: 1.7ch;
+		margin-top: 1.1lh;
 		color: #334155;
-		font: 600 12px / 1 system-ui, sans-serif;
+		font: 600 12px / 1 var(--gpen-font-sans);
 	}
 
 	.slider-row input {
@@ -340,24 +340,24 @@
 
 	.range-end {
 		color: #8792a6;
-		font: 11px / 1 ui-monospace, monospace;
+		font: 11px / 1 var(--gpen-font-mono);
 	}
 
 	.quick-actions {
 		display: flex;
-		gap: 0.5rem;
+		gap: 1.2ch;
 		flex-wrap: wrap;
-		margin-top: 0.9rem;
+		margin-top: 0.9lh;
 	}
 
 	button {
-		min-width: 3.5rem;
-		padding: 0.45rem 0.7rem;
-		border: 1px solid #cbd5e1;
+		min-width: 8.4ch;
+		padding: 0.45lh 1.7ch;
+		border: 1px solid var(--gpen-panel-border);
 		border-radius: 0.45rem;
-		background: #fff;
+		background: var(--gpen-panel-background);
 		color: #334155;
-		font: 600 12px / 1 system-ui, sans-serif;
+		font: 600 12px / 1 var(--gpen-font-sans);
 		cursor: pointer;
 		transition:
 			border-color 120ms ease,
@@ -396,21 +396,21 @@
 	}
 
 	.demo-section {
-		margin-top: 1.5rem;
+		margin-top: 1.5lh;
 	}
 
 	.demo-heading {
 		align-items: center;
-		margin-bottom: 0.7rem;
+		margin-bottom: 0.7lh;
 	}
 
 	.demo-heading code {
-		padding: 0.3rem 0.5rem;
+		padding: 0.3lh 1.2ch;
 		border: 1px solid #d8def0;
 		border-radius: 0.35rem;
 		background: #f3f1ff;
 		color: #5146a9;
-		font: 11px / 1.2 ui-monospace, monospace;
+		font: 11px / 1.2 var(--gpen-font-mono);
 		white-space: nowrap;
 	}
 
@@ -419,8 +419,8 @@
 		display: grid;
 		place-items: center;
 		box-sizing: border-box;
-		min-height: clamp(28rem, 75vw, 42rem);
-		padding: clamp(2.5rem, 8vw, 5rem);
+		min-height: clamp(28lh, 75vw, 42lh);
+		padding: clamp(2.5lh, 8vw, 5lh);
 		overflow: hidden;
 		border: 1px solid #cdd7e6;
 		border-radius: 1rem;
@@ -438,7 +438,7 @@
 		z-index: 3;
 		pointer-events: none;
 		color: #53627a;
-		font: 700 11px / 1 ui-monospace, monospace;
+		font: 700 11px / 1 var(--gpen-font-mono);
 		letter-spacing: 0.08em;
 	}
 
@@ -446,8 +446,8 @@
 		position: absolute;
 		display: grid;
 		place-items: center;
-		width: 1.7rem;
-		height: 1.7rem;
+		width: 4.1ch;
+		height: 1.7lh;
 		border: 1px solid #aebbd0;
 		border-radius: 50%;
 		background: rgb(248 250 252 / 0.9);
@@ -455,33 +455,33 @@
 	}
 
 	.direction-n {
-		top: 0.8rem;
+		top: 0.8lh;
 		left: 50%;
 		transform: translateX(-50%);
 	}
 
 	.direction-e {
 		top: 50%;
-		right: 0.8rem;
+		right: 1.9ch;
 		transform: translateY(-50%);
 	}
 
 	.direction-s {
-		bottom: 0.8rem;
+		bottom: 0.8lh;
 		left: 50%;
 		transform: translateX(-50%);
 	}
 
 	.direction-w {
 		top: 50%;
-		left: 0.8rem;
+		left: 1.9ch;
 		transform: translateY(-50%);
 	}
 
 	.reference-label {
 		position: absolute;
-		right: 1rem;
-		bottom: 0.8rem;
+		right: 2.4ch;
+		bottom: 0.8lh;
 		text-align: right;
 		color: #8090a8;
 		font-size: 9px;
@@ -491,7 +491,7 @@
 	.artboard {
 		position: relative;
 		z-index: 1;
-		width: min(58%, 31rem);
+		width: min(58%, 74ch);
 		aspect-ratio: 4 / 3;
 		box-sizing: border-box;
 		border: 2px solid #667493;
@@ -513,15 +513,15 @@
 		position: absolute;
 		z-index: 2;
 		color: #59677f;
-		font: 10px / 1 ui-monospace, monospace;
+		font: 10px / 1 var(--gpen-font-mono);
 	}
 
 	.canvas-tag {
-		top: 0.75rem;
-		left: 0.85rem;
-		padding: 0.25rem 0.35rem;
+		top: 0.75lh;
+		left: 2ch;
+		padding: 0.25lh 0.8ch;
 		border: 1px solid rgb(89 103 127 / 0.35);
-		border-radius: 0.2rem;
+		border-radius: var(--gpen-radius-sm);
 		background: rgb(248 250 252 / 0.72);
 		letter-spacing: 0.08em;
 	}
@@ -532,18 +532,18 @@
 	}
 
 	.axis-x {
-		right: 0.8rem;
-		bottom: calc(50% - 1.1rem);
+		right: 1.9ch;
+		bottom: calc(50% - 1.1lh);
 	}
 
 	.axis-y {
-		top: 0.8rem;
-		left: calc(50% + 0.65rem);
+		top: 0.8lh;
+		left: calc(50% + 1.6ch);
 	}
 
 	.coordinate {
-		padding: 0.2rem 0.3rem;
-		border-radius: 0.2rem;
+		padding: 0.2lh 0.7ch;
+		border-radius: var(--gpen-radius-sm);
 		background: rgb(255 255 255 / 0.65);
 	}
 
@@ -582,8 +582,8 @@
 		top: 50%;
 		left: 50%;
 		z-index: 1;
-		width: 2.4rem;
-		height: 2.4rem;
+		width: 5.7ch;
+		height: 2.4lh;
 		border: 1px solid #5146a9;
 		border-radius: 50%;
 		box-shadow: 0 0 0 0.3rem rgb(255 255 255 / 0.55);
@@ -599,16 +599,16 @@
 
 	.crosshair::before {
 		top: calc(50% - 0.5px);
-		left: -0.6rem;
-		width: calc(100% + 1.2rem);
+		left: -1.4ch;
+		width: calc(100% + 2.9ch);
 		height: 1px;
 	}
 
 	.crosshair::after {
-		top: -0.6rem;
+		top: -0.6lh;
 		left: calc(50% - 0.5px);
 		width: 1px;
-		height: calc(100% + 1.2rem);
+		height: calc(100% + 1.2lh);
 	}
 
 	.shape {
@@ -617,14 +617,14 @@
 		display: grid;
 		place-items: center;
 		box-sizing: border-box;
-		font: 700 12px / 1 system-ui, sans-serif;
+		font: 700 12px / 1 var(--gpen-font-sans);
 	}
 
 	.shape-circle {
 		top: 20%;
 		left: 20%;
-		width: 4.5rem;
-		height: 4.5rem;
+		width: 10.7ch;
+		height: 4.5lh;
 		border: 3px solid #e05d74;
 		border-radius: 50%;
 		background: rgb(251 113 133 / 0.2);
@@ -634,8 +634,8 @@
 	.shape-square {
 		right: 17%;
 		bottom: 20%;
-		width: 4.25rem;
-		height: 4.25rem;
+		width: 10.1ch;
+		height: 4.25lh;
 		border: 3px solid #249c88;
 		border-radius: 0.35rem;
 		background: rgb(45 212 191 / 0.2);
@@ -645,8 +645,8 @@
 	.shape-diamond {
 		top: 19%;
 		right: 26%;
-		width: 2.5rem;
-		height: 2.5rem;
+		width: 6ch;
+		height: 2.5lh;
 		border: 3px solid #d38b22;
 		background: rgb(251 191 36 / 0.28);
 		transform: rotate(45deg);
@@ -666,8 +666,8 @@
 	.shape-orbit {
 		top: 24%;
 		left: 48%;
-		width: 1.25rem;
-		height: 1.25rem;
+		width: 3ch;
+		height: 1.25lh;
 		border: 2px solid #8655c9;
 		border-radius: 50%;
 		box-shadow: 0 0 0 0.35rem rgb(134 85 201 / 0.12);
@@ -676,52 +676,52 @@
 	.explanation {
 		display: grid;
 		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 0.8rem 1.2rem;
-		margin-top: 1.2rem;
-		padding: 1rem 1.1rem;
+		gap: 0.8lh 2.9ch;
+		margin-top: 1.2lh;
+		padding: 1lh 2.6ch;
 	}
 
 	.explanation > div {
 		display: grid;
-		gap: 0.25rem;
+		gap: 0.25lh;
 	}
 
 	.explanation-label {
 		color: #758197;
-		font: 11px / 1 system-ui, sans-serif;
+		font: 11px / 1 var(--gpen-font-sans);
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
 	}
 
 	.explanation strong {
 		color: #29344a;
-		font: 600 13px / 1.3 ui-monospace, monospace;
+		font: 600 13px / 1.3 var(--gpen-font-mono);
 	}
 
 	.explanation p {
 		grid-column: 1 / -1;
-		margin: 0.1rem 0 0;
-		padding-top: 0.75rem;
+		margin: 0.1lh 0 0;
+		padding-top: 0.75lh;
 		border-top: 1px dashed #d7deea;
 		font-size: 12px;
 	}
 
 	@media (max-width: 38rem) {
 		main {
-			padding-right: 1rem;
-			padding-left: 1rem;
+			padding-right: 2.4ch;
+			padding-left: 2.4ch;
 		}
 
 		.control-heading,
 		.demo-heading {
 			align-items: flex-start;
 			flex-direction: column;
-			gap: 0.65rem;
+			gap: 0.65lh;
 		}
 
 		.angle-readout {
 			align-self: flex-end;
-			margin-top: -2.5rem;
+			margin-top: -2.5lh;
 		}
 
 		.demo-heading code {
@@ -731,18 +731,18 @@
 		}
 
 		.stage {
-			min-height: 28rem;
-			padding: 2.5rem 1rem;
+			min-height: 28lh;
+			padding: 2.5lh 2.4ch;
 		}
 
 		.artboard {
-			width: min(68%, 21rem);
+			width: min(68%, 50ch);
 		}
 
 		.shape-circle,
 		.shape-square {
-			width: 3.4rem;
-			height: 3.4rem;
+			width: 8.1ch;
+			height: 3.4lh;
 		}
 
 		.shape-triangle {

@@ -30,7 +30,7 @@
 		height: 100%;
 		min-width: 0;
 		min-height: 0;
-		font: 12px/1.2 system-ui, sans-serif;
+		font: 12px/1.2 var(--gpen-font-sans);
 	}
 
 	.blender-panel-timeline {
@@ -45,9 +45,9 @@
 	.timeline-footer {
 		display: flex;
 		align-items: center;
-		gap: 16px;
-		min-height: 28px;
-		padding: 0 9px;
+		gap: 2.5ch;
+		min-height: 1.75lh;
+		padding: 0 1.4ch;
 		background: #303030;
 		color: #bdbdbd;
 	}
@@ -69,7 +69,7 @@
 	}
 
 	.layer-list {
-		width: clamp(145px, 24%, 270px);
+		width: clamp(24ch, 24%, 45ch);
 		flex: 0 0 auto;
 		border-right: 1px solid #444;
 		background: #292929;
@@ -79,9 +79,9 @@
 	.layer-row {
 		display: flex;
 		align-items: center;
-		gap: 8px;
-		min-height: 25px;
-		padding: 0 9px;
+		gap: 1.25ch;
+		min-height: 1.5lh;
+		padding: 0 1.5ch;
 	}
 
 	.layer-summary {
@@ -109,19 +109,19 @@
 	.frame-ruler {
 		display: flex;
 		justify-content: space-around;
-		min-height: 25px;
+		min-height: 1.5lh;
 		border-bottom: 1px solid #444;
 		color: #999;
 		font-variant-numeric: tabular-nums;
 	}
 
 	.frame-ruler span {
-		padding-top: 6px;
+		padding-top: 0.5lh;
 	}
 
 	.frame-grid {
 		position: relative;
-		height: calc(100% - 25px);
+		height: calc(100% - 1.5lh);
 		background: repeating-linear-gradient(90deg, transparent 0 47px, rgb(255 255 255 / 0.07) 48px 49px), repeating-linear-gradient(0deg, transparent 0 24px, rgb(255 255 255 / 0.05) 25px 26px);
 	}
 
@@ -130,16 +130,16 @@
 		top: 0;
 		bottom: 0;
 		left: 4%;
-		width: 2px;
+		width: 0.25ch;
 		background: #5ca9ef;
 	}
 
 	.keyframe {
 		position: absolute;
-		left: calc(4% - 4px);
-		top: 16px;
-		width: 9px;
-		height: 9px;
+		left: calc(4% - 0.75ch);
+		top: 1lh;
+		width: 1.5ch;
+		height: 0.5lh;
 		transform: rotate(45deg);
 		background: #f1bf50;
 	}

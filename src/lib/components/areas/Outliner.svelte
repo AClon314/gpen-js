@@ -14,12 +14,12 @@
 		height: 100%;
 		min-width: 0;
 		min-height: 0;
-		font: 13px/1.35 system-ui, sans-serif;
+		font: 13px/1.35 var(--gpen-font-sans);
 	}
 
 	.blender-panel-outliner {
 		overflow: auto;
-		padding: 8px;
+		padding: 0.5lh 1.25ch;
 		background: #292929;
 		color: #e5e5e5;
 	}
@@ -28,8 +28,8 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		margin-bottom: 8px;
-		padding: 4px 5px;
+		margin-bottom: 0.5lh;
+		padding: 0.25lh 0.75ch;
 		border-bottom: 1px solid #444;
 		color: #f0f0f0;
 		font-weight: 600;
@@ -44,9 +44,9 @@
 	.scene-row {
 		display: flex;
 		align-items: center;
-		gap: 7px;
-		min-height: 26px;
-		padding: 0 6px;
+		gap: 1ch;
+		min-height: 1.75lh;
+		padding: 0 1ch;
 		border-radius: 3px;
 	}
 
@@ -55,7 +55,7 @@
 	}
 
 	.scene-row {
-		margin-left: 22px;
+		margin-left: 3.5ch;
 		color: #f3b35c;
 	}
 
@@ -75,7 +75,7 @@
 	}
 
 	.placeholder-note {
-		margin: 14px 5px 0;
+		margin: 1lh 0.75ch 0;
 		color: #929292;
 		font-size: 11px;
 	}
