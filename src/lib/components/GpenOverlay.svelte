@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import Moveable from 'moveable';
+	import { draggable, type DragPosition } from '#lib/gestures/index';
 	import GpenWorkspace from './GpenWorkspace.svelte';
 	import {
 		createDefaultGpenWorkspaceState,
@@ -12,17 +12,20 @@
 
 	let workspaceState = $state(createDefaultGpenWorkspaceState());
 	let overlayEl = $state<HTMLDivElement | undefined>(undefined);
-	let ballEl = $state<HTMLButtonElement | undefined>(undefined);
 	let storageReady = $state(false);
-	let moveable: Moveable | undefined;
 
 	const workspaceStorage = createLocalStorageGpenWorkspaceStateStorage();
 	const BALL_SIZE = 3.25; // rem, matches .floating-button
 	const EDGE_MARGIN = 0.75; // rem gap from the viewport edges
+	const BALL_DRAG_THRESHOLD = 8; // CSS px, filters touch/mouse jitter from drags
 
 	function openWorkspace() {
 		workspaceState.open = true;
 		workspaceState.collapsed = false;
+	}
+
+	function persistBallPosition(position: DragPosition) {
+		workspaceState.ballPosition = { x: Math.round(position.x), y: Math.round(position.y) };
 	}
 
 	function closeWorkspace() {
@@ -113,65 +116,6 @@
 		};
 	});
 
-	// Moveable moves the floating ball (move-only, resize/rotate handles off)
-	// and snaps it to the viewport edges. It is active only while the ball is
-	// shown; the workspace uses the same Moveable-free modes.
-	$effect(() => {
-		if (workspaceState.open) {
-			moveable?.destroy();
-			moveable = undefined;
-			return;
-		}
-		const el = ballEl;
-		if (!el) return;
-
-		const viewport = el.ownerDocument.defaultView;
-		const rootEl = el.ownerDocument.documentElement;
-		const bounds = {
-			left: EDGE_MARGIN * 16,
-			top: EDGE_MARGIN * 16,
-			right: (viewport?.innerWidth ?? rootEl.clientWidth) - BALL_SIZE * 16 - EDGE_MARGIN * 16,
-			bottom:
-				(viewport?.innerHeight ?? rootEl.clientHeight) - BALL_SIZE * 16 - EDGE_MARGIN * 16
-		};
-
-		moveable = new Moveable(el.ownerDocument.body, {
-			target: el,
-			// Move only. All resize/rotate/scale/pinch handles are disabled so
-			// the ball stays an opaque round button while still being draggable.
-			draggable: true,
-			throttleDrag: 0,
-			edge: true,
-			snappable: true,
-			snapDirections: { left: true, right: true, top: true, bottom: true },
-			elementGuidelines: [rootEl],
-			resizable: false,
-			rotatable: false,
-			scalable: false,
-			warpable: false,
-			pinchable: false,
-			origin: false,
-			groupable: false,
-			clippable: false,
-			zoom: 1,
-			bounds
-		});
-
-		moveable.on('drag', ({ target, left, top }) => {
-			const node = target as HTMLElement;
-			if (typeof left === 'number' && typeof top === 'number') {
-				node.style.left = `${Math.round(left)}px`;
-				node.style.top = `${Math.round(top)}px`;
-				node.style.right = 'auto';
-				node.style.bottom = 'auto';
-			}
-		});
-
-		return () => {
-			moveable?.destroy();
-			moveable = undefined;
-		};
-	});
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
@@ -179,7 +123,8 @@
 {#if workspaceState.open}
 	<div
 		bind:this={overlayEl}
-		class="overlay"
+		class="overlay gpen-overlay"
+		data-version={__GPEN_VERSION__}
 		class:workspace-collapsed={workspaceState.collapsed}
 		role="dialog"
 		aria-label="gpen 工作区"
@@ -210,13 +155,19 @@
 	</div>
 {:else}
 	<button
-		bind:this={ballEl}
-		class="floating-button"
+		use:draggable={{
+			position: workspaceState.ballPosition,
+			onTap: openWorkspace,
+			threshold: BALL_DRAG_THRESHOLD,
+			margin: EDGE_MARGIN * 16,
+			onPositionChange: persistBallPosition
+		}}
+		class="floating-button gpen-overlay"
+		data-version={__GPEN_VERSION__}
 		style="left: calc(100% - {BALL_SIZE + 1}rem); top: calc(100% - {BALL_SIZE + 1.75}rem); right: auto; bottom: auto;"
 		type="button"
 		aria-label="打开 gpen"
 		title="打开 gpen（可拖动，吸附边缘）"
-		onclick={openWorkspace}
 	>
 		<span aria-hidden="true">✦</span>
 	</button>
@@ -262,7 +213,7 @@
 		box-shadow: 0 8px 20px rgb(79 70 229 / 0.3);
 		color: #fff;
 		font-size: 1.35rem;
-		touch-action: none; /* let Moveable handle pointer drags */
+		touch-action: none; /* let the draggable action handle pointer drags */
 		user-select: none;
 	}
 

@@ -25,6 +25,9 @@ export type GpenToolId = (typeof TOOL_IDS)[number];
 /** The JSON-safe layout returned by dockview.toJSON(). */
 export type GpenPanelLayout = Record<string, JsonValue>;
 
+/** Persisted top-left of the floating ball (CSS px, viewport coordinates). */
+export type GpenBallPosition = { x: number; y: number };
+
 /**
  * All UI state that belongs to one workspace instance.
  *
@@ -39,6 +42,7 @@ export interface GpenWorkspaceState {
   collapsed: boolean;
   activeTool: GpenToolId;
   panelLayout: GpenPanelLayout | null;
+  ballPosition: GpenBallPosition | null;
 }
 
 export type GpenWorkspaceStateSnapshot = GpenWorkspaceState;
@@ -67,6 +71,7 @@ export function createDefaultGpenWorkspaceState(): GpenWorkspaceState {
     collapsed: false,
     activeTool: "brush",
     panelLayout: null,
+    ballPosition: null,
   };
 }
 
@@ -95,6 +100,14 @@ function normalizePanelLayout(value: unknown): GpenPanelLayout | null {
   return isRecord(cloned) ? (cloned as GpenPanelLayout) : null;
 }
 
+function normalizeBallPosition(value: unknown): GpenBallPosition | null {
+  if (!isRecord(value)) return null;
+  const { x, y } = value;
+  if (typeof x !== "number" || !Number.isFinite(x)) return null;
+  if (typeof y !== "number" || !Number.isFinite(y)) return null;
+  return { x: Math.round(x), y: Math.round(y) };
+}
+
 export function normalizeGpenWorkspaceState(
   value: unknown,
   fallback: GpenWorkspaceState = createDefaultGpenWorkspaceState(),
@@ -103,6 +116,9 @@ export function normalizeGpenWorkspaceState(
   const panelLayout = Object.prototype.hasOwnProperty.call(source, "panelLayout")
     ? normalizePanelLayout(source.panelLayout)
     : fallback.panelLayout;
+  const ballPosition = Object.prototype.hasOwnProperty.call(source, "ballPosition")
+    ? normalizeBallPosition(source.ballPosition)
+    : fallback.ballPosition;
 
   return {
     version: 1,
@@ -114,6 +130,7 @@ export function normalizeGpenWorkspaceState(
     collapsed: typeof source.collapsed === "boolean" ? source.collapsed : fallback.collapsed,
     activeTool: isToolId(source.activeTool) ? source.activeTool : fallback.activeTool,
     panelLayout,
+    ballPosition,
   };
 }
 
@@ -125,6 +142,7 @@ export function serializeGpenWorkspaceState(state: GpenWorkspaceState): GpenWork
     collapsed: state.collapsed,
     activeTool: state.activeTool,
     panelLayout: normalizePanelLayout(state.panelLayout),
+    ballPosition: normalizeBallPosition(state.ballPosition),
   };
 }
 
