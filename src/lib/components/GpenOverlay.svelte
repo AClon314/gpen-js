@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { draggable, type DragPosition } from '#lib/gestures/index';
+	import { createInstanceId } from '#lib/instanceId';
 	import GpenWorkspace from './GpenWorkspace.svelte';
 	import {
 		createDefaultGpenWorkspaceState,
@@ -18,6 +19,7 @@
 	const BALL_SIZE = 3.25; // rem, matches .floating-button
 	const EDGE_MARGIN = 0.75; // rem gap from the viewport edges
 	const BALL_DRAG_THRESHOLD = 8; // CSS px, filters touch/mouse jitter from drags
+	const instanceId = createInstanceId();
 
 	function openWorkspace() {
 		workspaceState.open = true;
@@ -125,6 +127,7 @@
 		bind:this={overlayEl}
 		class="overlay gpen-overlay"
 		data-version={__GPEN_VERSION__}
+		data-instance={instanceId}
 		class:workspace-collapsed={workspaceState.collapsed}
 		role="dialog"
 		aria-label="gpen 工作区"
@@ -164,6 +167,7 @@
 		}}
 		class="floating-button gpen-overlay"
 		data-version={__GPEN_VERSION__}
+		data-instance={instanceId}
 		style="left: calc(100% - {BALL_SIZE + 1}rem); top: calc(100% - {BALL_SIZE + 1.75}rem); right: auto; bottom: auto;"
 		type="button"
 		aria-label="打开 gpen"
