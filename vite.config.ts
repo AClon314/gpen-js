@@ -6,6 +6,8 @@ import adapter from "@sveltejs/adapter-static";
 import { sveltekit } from "@sveltejs/kit/vite";
 import { existsSync, readFileSync } from "node:fs";
 
+const pkg = JSON.parse(readFileSync("package.json", "utf8"));
+
 export default defineConfig(({ mode }) => {
   const { allowedHost, httpsCert, httpsKey } = loadEnv(mode, process.cwd(), "");
   const https =
@@ -13,6 +15,9 @@ export default defineConfig(({ mode }) => {
       ? { cert: readFileSync(httpsCert), key: readFileSync(httpsKey) }
       : undefined;
   return {
+    define: {
+      __GPEN_VERSION__: JSON.stringify(pkg.version),
+    },
     server: {
       ...(allowedHost ? { allowedHosts: [allowedHost] } : {}),
       ...(https ? { https } : {}),
