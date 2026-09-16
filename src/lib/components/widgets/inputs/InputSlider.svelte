@@ -13,7 +13,6 @@
 		value = $bindable<InputValue>(0),
 		orientation = 'horizontal',
 		unit = '',
-		slider: _slider,
 		...rest
 	}: InputProps = $props();
 
@@ -222,6 +221,7 @@
 		&.vertical {
 			touch-action: pan-x;
 			width: 2ch;
+			height: 100%;
 
 			.slider-fill { inset-block: auto; inset-inline: 1px; bottom: 1px; }
 			&.scrubbing { cursor: ns-resize; }

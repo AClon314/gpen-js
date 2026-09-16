@@ -27,7 +27,7 @@
 
 ## 样式与 token
 
-- 全局设计 token（`--gpen-*`）定义在 `src/lib/themes/day-night.css`：`:root` / `:host` 给白天，`@media (prefers-color-scheme: dark)` 覆盖夜间。`src/app.css` 是 Tailwind 入口 + `@import` 该文件，由 `+layout.svelte` 引入。
+- 全局设计 token（`--gpen-*`）定义在 `src/lib/themes/day-night.css`（`:root` / `:host` 白天 + `@media (prefers-color-scheme: dark)` 夜间，静态兜底）；JS 层 `theme.svelte.ts` 读一次后接管（source of truth），见 `docs/theme.md`。`src/app.css` 是 Tailwind 入口 + `@import` 该文件，由 `+layout.svelte` 引入。
 - 组件用 `var(--gpen-*)` 消费；需要局部变体时**覆盖变量本身**，不要新增「传具体值」的 props。
 - 长度单位见下「CSS 长度单位」。
 

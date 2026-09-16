@@ -6,13 +6,14 @@
 
 ```text
 src/lib/components/widgets/inputs/
-├── Input.svelte        # 分发：number+slider → InputSlider，number → InputNumber，其余 → 原生 <input>
+├── Input.svelte        # 分发：number → InputSlider，其余 → 原生 <input>
 ├── InputNumber.svelte  # 数值：type="text" + inputmode="decimal"，自管数值语义
 ├── InputSlider.svelte  # 数值 + 浮层：Blender 风拖拽滑条（内嵌 InputNumber）
 └── types.ts
 ```
 
-分发依据 `type === 'number' || (type === undefined && typeof value === 'number')`，再按 `slider` 分流。
+分发依据 `type === 'number' || (type === undefined && typeof value === 'number')`：数值一律走
+InputSlider（滑条 + 直接输入，大多数人要的形态）；要纯数值框时直接 import `InputNumber.svelte`。
 字符串走裸 `<input bind:value {...rest}>`。
 
 ## 原生优先
@@ -44,7 +45,7 @@ div.input-widget[data-input-widget][data-orientation][role="group"]
 | prop | 行为 |
 | --- | --- |
 | `value` | `$bindable` 的 `number \| string` |
-| `orientation` / `unit` / `slider` | 数值分支专用 |
+| `orientation` / `unit` | 数值分支专用 |
 | `step` | 步进 UI 的推荐步长（± / 贴边 ←/→）；校验时作精度 |
 | `min` / `max` / `step` | **只做校验**：不静默改绑定值（见下） |
 | 其余 | `Omit<HTMLInputAttributes,'value'>` |
@@ -133,8 +134,7 @@ CodeMirror 6 扩展复用（方向键步进、`±` 拖拽把手），见 [`docs/
 `InputProps`（新 props 要在原生分支显式解构掉）：
 
 ```svelte
-{#if numeric && slider}<InputSlider bind:value {orientation} {unit} {...rest} />
-{:else if numeric}<InputNumber bind:value {orientation} {unit} {...rest} />
+{#if numeric}<InputSlider bind:value {orientation} {unit} {...rest} />
 {:else if type === 'color'}<InputColor bind:value {type} {...rest} />
 {:else}<input {type} bind:value {...rest} />{/if}
 ```

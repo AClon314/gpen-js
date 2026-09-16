@@ -8,12 +8,15 @@
 	import '../app.css';
 	import favicon from '#lib/assets/favicon.svg';
 	import ContextMenu from '#lib/components/contextMenu/ContextMenu.svelte';
+	import { initTheme } from '#lib/themes/theme.svelte';
 	import '#lib/components/contextMenu/contextMenu.svelte';
 
 	let { children } = $props();
 	let overlay: ReturnType<typeof mount> | undefined;
 
 	onMount(() => {
+		// JS reads the static --gpen-* tokens and takes over their control.
+		initTheme();
 		overlay = mount(GpenOverlay, { target: document.body });
 	});
 

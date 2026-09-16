@@ -134,7 +134,7 @@
 				</div>
 				<output aria-live="polite">{sliderValue}</output>
 			</div>
-			<Input bind:value={sliderValue} slider aria-label="滑条数值" min={0} max={100} step={0.01} />
+			<Input bind:value={sliderValue} aria-label="滑条数值" min={0} max={100} step={0.01} />
 		</article>
 
 		<article class="demo-card demo-card-wide">
@@ -268,7 +268,7 @@
 	}
 
 	.vertical-card {
-		min-height: 25lh;
+		height: 25lh;
 	}
 
 	.card-heading {

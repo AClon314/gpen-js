@@ -13,10 +13,8 @@ export type InputOrientation = "horizontal" | "vertical";
  */
 export interface InputProps extends Omit<HTMLInputAttributes, "value"> {
   value?: InputValue;
-  /** 仅 InputNumber：横向 / 纵向布局 */
+  /** 数值分支：横向 / 纵向布局 */
   orientation?: InputOrientation;
-  /** 仅 InputNumber：输入框旁可见的单位（% / px …），同时并入 aria-valuetext */
+  /** 数值分支：输入框旁可见的单位（% / px …），同时并入 aria-valuetext */
   unit?: string;
-  /** 仅数值分支：套一层 InputSlider（Blender 风拖拽滑条），见 Input.svelte */
-  slider?: boolean;
 }

@@ -15,6 +15,7 @@ import { mount, unmount, type Component } from "svelte";
 import GpenOverlay from "#lib/components/GpenOverlay.svelte";
 import ContextMenu from "#lib/components/contextMenu/ContextMenu.svelte";
 import { gpenEmbedCss } from "./css.js";
+import { initTheme } from "../lib/themes/theme.svelte.js";
 
 export const GPEN_HOST_ID = "gpen-host";
 
@@ -47,6 +48,8 @@ export function mountGpen(options: GpenEmbedOptions = {}): GpenHandle {
   if (current) return current;
 
   const host = options.host ?? createHost();
+  // JS takes over the `:host` tokens of the shadow root.
+  initTheme(host);
   const shadowRoot = host.shadowRoot ?? host.attachShadow({ mode: "open" });
 
   const style = document.createElement("style");
