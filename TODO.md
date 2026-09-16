@@ -25,6 +25,11 @@
   - [x] 四周布局（`GpenWorkspace.svelte` + `blender/` 各面板）
   - [x] `uiScale`（CSS `zoom` 作用于 dockview 容器，对齐 `bpy...ui_scale`，默认 1.0，范围 [0.5,2]）
   - [x] 图层树 adapter / 基础 layerOps（`layers/`）
+- [x] **多目标构建（targets）**
+  - [x] `src/embed/index.ts`：框架无关的 embed 入口（ShadowRoot 挂载，CSS 内联进单文件 JS），`bun run build:embed` 产出 `dist/embed/{gpen-embed.js,gpen-embed.iife.js}`
+  - [x] 三个壳各自在自家仓库：`gpen-userscript`（自建 Vite IIFE + GM metadata）、`gpen-browser-ext`（WXT：chrome-mv3 / firefox-mv2 / safari-mv2）、`gpen-vscode-ext`（webview + storage bridge）
+  - [x] 跨仓库统筹脚本 `gpen/scripts/targets.mjs`（`build` / `test` / `check`），各壳自带 e2e
+  - [x] 各壳测试：embed（shadow 隔离/幂等/穿透）、userscript（GM shim + 真产物）、browser-ext（Chrome 真装 MV3 + Firefox lint/注入）、vscode（webview 挂载 + bridge）
 - [x] **web-component 评估**（暂不引入 Spectrum；`gpen-panel` 折叠/恢复/slot/事件）
 
 ---
@@ -84,6 +89,7 @@ F. 09-11 (用户手动增加)
 
 - [x] 智能选择一个<html>内innerHTML或innerText最多的一个DOM，作为默认的 第0个图层
       其图层类型为 html 图层(相对的，有 gpen 类型的图层)
+- [ ] 改进UI 与 统一内存数据结构暴露
 - [ ] 允许在设置中启用 "移动画布时隐藏面板，减少眩晕" 来减少移动时因为面板移动跟不上，导致的晕眩呕吐效果。
 - [ ] pc/mobile 旋转该网页图册.
       pc 需要计算鼠标落点 为旋转中心
@@ -154,6 +160,22 @@ F. 09-11 (用户手动增加)
 - [ ] 跨 origin 持久化与同步：`storage-broker` 跨 origin 读写一致性（docs/storage.md 契约为准）。
 
 ---
+
+## 多目标构建（targets）—— 已交付与暂缓
+
+已交付（详见 `docs/build-targets.md`）：embed 核心 + userscript / browser-ext / vscode 三个壳，
+一壳一仓库，`gpen/scripts/targets.mjs` 跨仓库编排 build/test，全部本地构建、不发布。
+
+**暂缓 / 测试边界（本轮刻意不做复杂）**：
+
+- [ ] 真 Firefox 扩展安装测试（geckodriver `install_addon`，Playwright 装不了 Firefox 扩展：`about:debugging` 打不开、profile 预置 XPI 与 policies.json 都不生效）
+- [ ] 真 Tampermonkey / Violentmonkey 引擎验证（可选 job；VM 可侧载 mv3 zip，但现代 Chromium 把 `.user.js` 顶层导航当下载，需换安装通道）
+- [ ] Safari：只构建不测试；需要 macOS + Xcode 转换 + `safaridriver` 手测清单
+- [ ] 真 VS Code host 测试（`@vscode/test-web`）；当前只测 webview bundle
+- [ ] 严格 CSP 站点用例（inline `<style>` 被拦时的降级）、popup/action 行为、iframe 场景
+- [ ] 商店/包发布流程（Chrome Web Store / AMO / Marketplace / npm **均不做**）
+- [ ] **跨域同步：不做**。monkey 侧由 GM 存储天然覆盖；无 GM 场景（网站/npm）需要时**优先 SAA**（逐站授权）而不是顶层 hub（实测：hub 会先开 N 个 tab 再收敛，且 FireFox 行为待验证）
+- [ ] embed workspace 状态目前仍走 `localStorage`（userscript 壳用 GM bridge 兜住两个 key）；后续接 `createRuntimeStorage()` 统一
 
 ## 设计决策（记录）
 

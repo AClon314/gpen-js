@@ -36,3 +36,4 @@ project.inlang/cache/
 # Playwright
 /playwright-report
 /test-results
+dist/

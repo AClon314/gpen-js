@@ -187,6 +187,64 @@ VS Code host 可以提供 `workspaceState` / `globalState` 和持久化的 `blob
 则通过 VS Code 的 open-file API 打开目标文件。需要检查本地处理结果时可调用
 `uploadDetailed()`，返回值会标记 `linked` 或 `recorded`。
 
+## 第三方 iframe broker 的边界（Storage Partitioning，实测）
+
+`/storage-broker` 解决的是**同一个页面里的能力外借**；能不能跨站，取决于**是否拿到 SAA 授权**
+（Chrome 115+ 按顶层站点分区，存储与通信 API 都受影响）。实测（Chrome 154 beta，broker origin
+`http://127.0.0.1:8901`，顶层站 `127.0.0.1:8902` / `127.0.0.2:8902`）：
+
+| 能力 | 未授权 | 两个顶层站各自 SAA 授权后 |
+| --- | --- | --- |
+| IndexedDB / OPFS（broker origin） | 两份分区（对站 B 读为 `(empty)`） | **共享**：B 写 → A 读到 `shared-idb` / `shared?` ✅ |
+| BroadcastChannel（同源 broker iframe 之间） | 分区（`heard: []`） | **仍分区**（`heard: []`）——SAA 解的是 data，不是 communication APIs |
+| ServiceWorker / SharedWorker | 分区 | 未测（预期仍分区） |
+
+所以：
+
+- **要跨站共享数据**：broker 的 IDB/OPFS + **每个顶层站各自一次 `requestStorageAccess()` 授权**（需用户手势，
+  Chrome 会弹窗或按启发式自动绦予；Safari/Firefox 还需真机验证过期策略）。实时中继不能靠 BroadcastChannel，
+  得把存储当信箱（写 + 轮询/`storage` 事件），或用下面的 hub/服务端。
+- **要跨站实时中继**：顶层 hub 页（自有域名，顶层页不分区）或服务端 WebSocket。
+- **安全代价**：授权后**宿主页可以驱使 broker** 读同一份数据（见 `docs/todo-safe.md`），所以 SAA 路线天生
+  “页面可读”：只适合非敏感数据，或额外加鉴权（例如每用户密钥），而密钥本身又得存在不被宿主页读到的地方（回到 GM）。
+- **“未授权 → 分区”不算意外**：这正是当年跨站追踪被堵掉的那条路；同源 ≠ 同分区。
+
+### 顶层 hub 页（跨站中继的可选形态）
+
+自有域名上的普通页面（如 `https://gpen.app/hub`）以**顶层 tab** 打开；顶层页不分区，所以：
+站点页 `window.open(hubUrl, 'gpen-hub')` 拿到 WindowProxy → 双向 `postMessage`；hub 用
+`event.source` 就能给每个客户端回信（不需要 opener 关系），**1 个 hub tab 可服务 N 个不同域的站点 tab**。
+
+实测（Chrome 154，两个不同域的顶层 tab 各开一次）：
+
+| 观察 | 结果 |
+| --- | --- |
+| `window.open(url, 'gpen-hub')` 是否复用同一窗口 | ❌ 各开一个（命名窗口复用只在同一 browsing context group 内生效）→ 2 站点 = 2 个 hub tab |
+| 多个 hub tab 是否共享存储 | ✅ 同源顶层窗口共享同一份不分区 OPFS/IDB（第二个 hub 读到第一个写的 key） |
+| 多个 hub tab 之间能否通信 | ✅ `BroadcastChannel` 互通（实测收到对方消息） |
+
+所以要收敛成 1 个 tab：站点页用 `MessageChannel` 把 port 交给 hub；hub 启动时用
+`BroadcastChannel` 抢主，非主 hub 把 port **transfer** 给主 hub（BC 支持 transfer MessagePort）
+后自关（脚本打开的窗口允许 `window.close()`）。不收敛也不会坏数据，只是多个 tab。
+
+**monkey target 不需要 hub**：GM 存储已经跨站共享（免授权、页面不可读），
+`GM_addValueChangeListener` 就是近实时的跨站推送通道；hub 只服务没有 GM 的场景（网站版 / 纯 embed）。
+
+### 决策：无 GM 场景暂不做跨域（2026-09-13）
+
+- **monkey target（GM KV）**：跨域同步开箱即有（GM 存储全局共享 + `GM_addValueChangeListener`），0 依赖。
+- **npm / 网站 / 纯 embed（无 GM）**：**v1 不做跨域**，每个源一份数据。跨域本身是小众需求，
+  而两条实现路径的代价都落在用户身上（逐站授权/弹窗）。
+- 若将来要做，**优先 SAA，不用顶层 hub**：
+  - SAA：浏览器中介的逐站授权（可撤销、可查询、`Permissions.query('storage-access')`），无 popup / tab 生命周期；
+    实测 Chrome 154 下拿到 `storage-access` 后 broker 的 IDB/OPFS 变成跨站共享。
+  - 代价：① 每个顶层站首次都要用户点一次（浏览器最敏感的权限文案之一）；② **授权后该站任何脚本都能驱使
+    broker 读同一份数据**（broker 就在它的 DOM 里），所以"共享什么"要先定：设置/工作区可以，画稿要慎；
+    ③ **浏览器差异**：WebKit 的 SAA 语义是"第一方 cookie"，且明确"不放松同源策略"，localStorage/IndexedDB 需要
+    `requestStorageAccess({ all: true })` 的 StorageAccessHandle；Firefox 的存储解分区行为未验证。
+- 顶层 hub 作为备选保留：存储在我们自己 origin 的顶层窗口里，可按 origin 做最小权限（比 SAA 更细），
+  但需要 popup 手势 + tab 生命周期（实测 N 个站点会先开出 N 个 hub tab 再收敛）+ 自建授权 UI，Firefox 同样待验证。
+
 ## 一致性
 
 KV 的嵌套修改最终都是 root 级别的读改写。多个标签页同时提交时不会自动合并，冲突策略需要由业务层处理；KV 和 Blob 之间也没有跨 backend 事务。

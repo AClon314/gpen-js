@@ -11,6 +11,8 @@
 	<p><a href={resolve('/demo/storage')}>storage demo</a></p>
 	<p><a href={resolve('/demo/cross-tab-bus')}>cross-tab bus demo</a></p>
 	<p><a href={resolve('/demo/zoom')}>browser zoom counter demo</a></p>
+	<p><a href={resolve('/demo/widgets')}>input widgets demo</a></p>
+	<p><a href={resolve('/demo/code')}>CodeMirror number plugins demo</a></p>
 	{'测试'.repeat(9999)}
 </main>
 

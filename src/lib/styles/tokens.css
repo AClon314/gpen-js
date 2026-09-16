@@ -1,0 +1,34 @@
+/*
+ * 全局设计 token（--gpen-*）。
+ *
+ * 由 src/app.css 引入（网站/开发时用 `:root`），同一份文件也被 embed 构建复用：
+ * embed 会挂进 ShadowRoot，而 `:root` 在 shadow 树里匹配不到任何元素，
+ * 所以这里同时声明 `:host`（shadow 宿主）。自定义属性本身是继承的，两处都覆盖。
+ *
+ * 值只在这里定义一次；组件用 var(--gpen-*) 消费，需要局部变体时覆盖变量本身。
+ */
+
+:root,
+:host {
+	/* typography */
+	--gpen-font-sans: system-ui, sans-serif;
+	--gpen-font-mono: ui-monospace, monospace;
+	--gpen-font-size: 13px;
+	--gpen-line-height: 1.3;
+
+	/* workspace + panel palette */
+	--gpen-workspace-background: transparent;
+	--gpen-panel-background: #ffffff;
+	--gpen-panel-border: #cbd5e1;
+	--gpen-panel-foreground: #1e293b;
+	--gpen-panel-muted: #64748b;
+	--gpen-panel-accent: #4f46e5;
+	--gpen-panel-shadow: 0 2px 8px rgb(15 23 42 / 0.12);
+
+	/* semantic */
+	--gpen-danger: #fee2e2;
+
+	/* shape（非布局长度，保留 px） */
+	--gpen-radius: 4px;
+	--gpen-radius-sm: 3px;
+}

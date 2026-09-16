@@ -34,6 +34,7 @@ bun run dev
 - [Panel](docs/panel.md)：面板库评估、Blender / Adobe UX 要点与面板系统设计
 - [FlatBuffers](docs/flatbuffers.md)：协议与生成链路
 - [Dropzone](docs/dropzone.md)：拖放相关说明
+- [Build targets](docs/build-targets.md)：userscript / 浏览器扩展 / npm / VS Code 多目标构建与自动化测试可行性方案
 
 ## 开发入口
 

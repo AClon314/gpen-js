@@ -16,26 +16,7 @@
  * 字号 / 边框宽度 / 圆角 / 阴影等非布局长度保留 px。
  *
  * 这些 --gpen-* 名字此前散落在 GpenWorkspace/GpenOverlay 的局部 :root 里，
- * 现在提升到这里，作为全局默认；组件仍可局部覆盖变量本身。
+ * 现在集中在 src/lib/styles/tokens.css（同时声明 :root 与 :host，供 ShadowRoot 里的 embed 复用）。
  */
 
-:root {
-	/* typography */
-	--gpen-font-sans: system-ui, sans-serif;
-	--gpen-font-mono: ui-monospace, monospace;
-	--gpen-font-size: 13px;
-	--gpen-line-height: 1.4;
-
-	/* workspace + panel palette */
-	--gpen-workspace-background: transparent;
-	--gpen-panel-background: #ffffff;
-	--gpen-panel-border: #cbd5e1;
-	--gpen-panel-foreground: #1e293b;
-	--gpen-panel-muted: #64748b;
-	--gpen-panel-accent: #4f46e5;
-	--gpen-panel-shadow: 0 2px 8px rgb(15 23 42 / 0.12);
-
-	/* shape（非布局长度，保留 px） */
-	--gpen-radius: 4px;
-	--gpen-radius-sm: 3px;
-}
+@import "./lib/styles/tokens.css";

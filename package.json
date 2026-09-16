@@ -1,6 +1,6 @@
 {
   "name": "gpen-js",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "type": "module",
   "imports": {
@@ -8,9 +8,22 @@
     "#lib/*": "./src/lib/*"
   },
   "exports": {
-    "./storage": "./src/lib/bindings/storage/index.ts",
-    "./upDownloader": "./src/lib/bindings/upDownloader/index.ts",
-    "./storage/vscode": "./src/lib/bindings/storage/vscode.ts"
+    "./storage": {
+      "types": "./src/lib/bindings/storage/index.ts",
+      "default": "./src/lib/bindings/storage/index.ts"
+    },
+    "./upDownloader": {
+      "types": "./src/lib/bindings/upDownloader/index.ts",
+      "default": "./src/lib/bindings/upDownloader/index.ts"
+    },
+    "./storage/vscode": {
+      "types": "./src/lib/bindings/storage/vscode.ts",
+      "default": "./src/lib/bindings/storage/vscode.ts"
+    },
+    "./embed": {
+      "types": "./src/embed/index.ts",
+      "default": "./dist/embed/gpen-embed.js"
+    }
   },
   "scripts": {
     "//dev": "优先用.env而非已有的环境变量, --host则允许局域网访问本网页",
@@ -27,9 +40,14 @@
     "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json && tsc --noEmit",
     "check:commit": "commitlint --edit",
     "preview": "vite preview",
-    "prepare": "svelte-kit sync && husky"
+    "prepare": "svelte-kit sync && husky",
+    "build:embed": "vite build -c vite.embed.config.ts",
+    "test:embed": "playwright test -c playwright.embed.config.ts"
   },
   "dependencies": {
+    "@codemirror/commands": "^6.11.1",
+    "@codemirror/state": "^6.7.5",
+    "@codemirror/view": "^6.43.12",
     "dockview": "^8.2.0",
     "flatbuffers": "25.9.23",
     "gpen-protocol": "file:../gpen-protocol",
