@@ -263,8 +263,8 @@ test.describe("gpen-input-slider", () => {
   });
 
   test("scrubs continuously on drag without entering edit mode", async ({ page }) => {
-    const slider = page.locator(".input-slider");
     const field = page.getByLabel("滑条数值");
+    const slider = page.locator(".input-slider").filter({ has: field });
 
     await slider.scrollIntoViewIfNeeded();
     const box = await slider.boundingBox();
@@ -280,8 +280,8 @@ test.describe("gpen-input-slider", () => {
   });
 
   test("focuses for editing on a tap", async ({ page }) => {
-    const slider = page.locator(".input-slider");
     const field = page.getByLabel("滑条数值");
+    const slider = page.locator(".input-slider").filter({ has: field });
 
     await slider.scrollIntoViewIfNeeded();
     const box = await slider.boundingBox();
@@ -292,8 +292,8 @@ test.describe("gpen-input-slider", () => {
   });
 
   test("keeps the user-typed decimal width through a scrub", async ({ page }) => {
-    const slider = page.locator(".input-slider");
     const field = page.getByLabel("滑条数值");
+    const slider = page.locator(".input-slider").filter({ has: field });
 
     await field.fill("18.0");
     await field.evaluate((element) => (element as HTMLInputElement).blur());

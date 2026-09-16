@@ -35,8 +35,9 @@ div.input-widget[data-input-widget][data-orientation][role="group"]
 
 - `aria-valuenow/min/max/valuetext`（有 unit 时）、`aria-invalid`（校验失败时）。
 - 垂直布局用 `flex-direction: column` + `order`（视觉 `+ / value / unit / −`，焦点顺序仍是 down→up）。
-- 尺寸只加在根上，由变量覆盖：`width: var(--input-width, 16ch)`、高度 `calc(2 * var(--gpen-line-height) * 1em)`；
-  子元素只用 `flex`。InputSlider 通过 `--input-background*` 把内层背景设成透明以露出浮层。
+- 尺寸只加在根上：横向 `width: 100%`、`height: calc(2 * var(--gpen-line-height) * 1lh)`，填满父容器；
+  垂直则 `width: 2ch`、高度由内容撑开。子元素只用 `flex`。InputSlider 通过 `--input-background*`
+  把内层背景设成透明以露出浮层。样式用原生 CSS 嵌套（`&` + 后代选择器）组织，少写重复的父选择器。
 
 ## Props / 提交 / 校验
 
@@ -137,22 +138,3 @@ CodeMirror 6 扩展复用（方向键步进、`±` 拖拽把手），见 [`docs/
 {:else if type === 'color'}<InputColor bind:value {type} {...rest} />
 {:else}<input {type} bind:value {...rest} />{/if}
 ```
-
-## 消融记录（精简）
-
-| 能力 | 处理 | 理由 |
-| --- | --- | --- |
-| `InputText.svelte` / `label` prop | 删除 | 文本走原生 `<input>`；`aria-label` 已有 |
-| `precision` prop | 并入 `step` | step 的十进制位数就是精度 |
-| `placeValueForCaret` / `stepValueForCaret` / `stepNumericText` | 合并成 `stepAtCaret` + `addStepToValue` | 前两者只是“选 place”，后者只是“算值+caret” |
-| case 3 与 fallback 的两份 front 计算 | 提成 `frontStep()` | 决策表行 3/6 同构 |
-| `applyResult` / `commandCommit` 各自写回+广播 | 提成 `commit()` | 三件套完全同构 |
-| `handleKeydown` 里 4 处 `disabled` 判断 | 提成顶层 guard | disabled 是多个分支的支配条件 |
-| `min/max/step` 自动取整/钳值 | 只做校验 + 导出 `validateNumeric` | 边界/精度是调用方约束，组件不该静默改绑定值 |
-| 全局 strip 尾零 | case 2/3 固定宽度 / case 4 跟随活动位 | `23.49↑→23.50`，而 `0.009↑→0.01` |
-| Shift 倍率、`toPrecision(12)`、`writeInput` 等 | 删除 | 与 spec 不符 / 被更简单的整数缩放替代 |
-| 聚焦时也拦截 Delete | 只未聚焦时重置 | 激活后 Delete 应是原生删除 |
-| `scrubValue` / `roundTo` / `clampTo` | 提到 `numericScrub.ts` / core 导出 | InputSlider 与 CodeMirror 共用同一套 |
-
-更细的「条件原子化 → 决策表 → 冗余/支配/互斥 → 父级 if → 等价重构 → 差分测试」过程见
-本轮 commit / 历史，结论已落在上面的代码结构里。

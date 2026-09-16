@@ -214,21 +214,34 @@
 		position: relative;
 		display: block;
 		box-sizing: border-box;
-		width: var(--input-width, 16ch);
+		width: 100%;
 		/* 横向滑条把纵向留给页面滚动，纵向滑条反过来；拖拽本身由 pointer capture 接管。 */
 		touch-action: pan-y;
 		user-select: none;
+
+		&.vertical {
+			touch-action: pan-x;
+			width: 2ch;
+
+			.slider-fill { inset-block: auto; inset-inline: 1px; bottom: 1px; }
+			&.scrubbing { cursor: ns-resize; }
+		}
+		&.scrubbing {
+			cursor: ew-resize;
+
+			:global(input) { user-select: none; }
+		}
+
+		/* 让 InputNumber 铺满滑条，并把它的背景交给浮层（变量覆盖而非改子组件样式）。 */
+		:global(.input-widget) {
+			--input-background: transparent;
+			--input-background-hover: transparent;
+			--input-background-focus: transparent;
+			position: relative;
+			z-index: 1;
+		}
 	}
-	.input-slider.vertical { touch-action: pan-x; }
-	/* 让 InputNumber 铺满滑条，并把它的背景交给浮层（变量覆盖而非改子组件样式）。 */
-	.input-slider :global(.input-widget) {
-		--input-width: 100%;
-		--input-background: transparent;
-		--input-background-hover: transparent;
-		--input-background-focus: transparent;
-		position: relative;
-		z-index: 1;
-	}
+
 	.slider-fill {
 		position: absolute;
 		z-index: 0;
@@ -238,12 +251,4 @@
 		background: color-mix(in srgb, var(--gpen-panel-accent) 22%, transparent);
 		pointer-events: none;
 	}
-	.input-slider.vertical .slider-fill {
-		inset-block: auto;
-		inset-inline: 1px;
-		bottom: 1px;
-	}
-	.input-slider.scrubbing :global(input) { user-select: none; }
-	.input-slider.scrubbing { cursor: ew-resize; }
-	.input-slider.vertical.scrubbing { cursor: ns-resize; }
 </style>

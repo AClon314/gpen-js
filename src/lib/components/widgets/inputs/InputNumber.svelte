@@ -492,27 +492,39 @@
 		box-sizing: border-box;
 		display: inline-flex;
 		align-items: stretch;
-		/* 尺寸只约束在根部：宽度默认 16ch（可用 --input-width 覆盖），高度按全局行高
-		 * token 换算；子元素不设 width/height/min-width/min-height。 */
-		width: var(--input-width, 16ch);
+		width: 100%;
 		height: calc(2 * var(--gpen-line-height) * 1lh);
 		padding: 0 0.35ch;
 		border: 1px solid #94a3b8;
 		border-radius: var(--gpen-radius);
-		/* 背景走变量：InputSlider 把变量设成透明即可让底层滑条浮层透出来。 */
 		background: var(--input-background, #f8fafc);
 		color: #0f172a;
 		font: inherit;
 		font-variant-numeric: tabular-nums;
 		user-select: none;
+
+		&.disabled { opacity: 0.55; }
+		&:focus-within {
+			border-color: var(--gpen-panel-accent);
+			background: var(--input-background-focus, var(--gpen-panel-background));
+			box-shadow: 0 0 0 1px rgb(79 70 229 / 0.18);
+		}
+		&:hover:not(:focus-within) { border-color: #475569; background: var(--input-background-hover, #eef2ff); }
+
+		/* 垂直形态：不指定高度（由内容撑开），只约束宽度；视觉顺序 + / value / unit / −。 */
+		&[data-orientation='vertical'] {
+			flex-direction: column;
+			width: 2ch;
+			padding: 0.3lh 0;
+
+			.input-step { flex: 1 1 0; }
+			.input-step--up { order: -1; }
+			.input-step--down { order: 2; }
+			.input-field { flex: 1 1 0; width: 100%; }
+			.input-unit { display: grid; flex: 1 1 0; margin-inline: 0; place-items: center; }
+		}
 	}
-	.input-widget.disabled { opacity: 0.55; }
-	.input-widget[data-orientation='vertical'] {
-		flex-direction: column;
-		/* 垂直形态由内容撑高，只约束宽度。 */
-		width: 2ch;
-		padding: 0.3lh 0;
-	}
+
 	.input-step {
 		display: grid;
 		flex: 0 0 auto;
@@ -526,18 +538,12 @@
 		font-weight: 700;
 		cursor: pointer;
 		user-select: none;
+
+		&:hover:not(:disabled),
+		&:focus-visible { background: #e0e7ff; color: var(--gpen-panel-accent); outline: none; }
+		&:disabled { cursor: default; opacity: 0.45; }
 	}
-	/* 垂直时视觉顺序为 + / value / unit / −；DOM 与焦点顺序仍是 down → up。 */
-	.input-widget[data-orientation='vertical'] .input-step { flex: 1 1 0; }
-	.input-widget[data-orientation='vertical'] .input-step--up { order: -1; }
-	.input-widget[data-orientation='vertical'] .input-step--down { order: 2; }
-	.input-step:hover:not(:disabled),
-	.input-step:focus-visible {
-		background: #e0e7ff;
-		color: var(--gpen-panel-accent);
-		outline: none;
-	}
-	.input-step:disabled { cursor: default; opacity: 0.45; }
+
 	.input-field {
 		box-sizing: border-box;
 		flex: 1 1 auto;
@@ -552,10 +558,13 @@
 		font-variant-numeric: tabular-nums;
 		text-align: center;
 		user-select: text;
+
+		/* 非数字文本：只提示颜色（与 setCustomValidity 同源），不改写用户输入 */
+		&:invalid { background: var(--gpen-danger); }
+		&:focus-visible { outline: 2px solid var(--gpen-panel-accent); outline-offset: -1px; }
+		&:disabled { cursor: not-allowed; }
 	}
-	/* 非数字文本：只提示颜色（与 setCustomValidity 同源），不改写用户输入 */
-	.input-field:invalid { background: var(--gpen-danger); }
-	.input-widget[data-orientation='vertical'] .input-field { flex: 1 1 0; }
+
 	.input-unit {
 		align-self: center;
 		flex: 0 0 auto;
@@ -565,21 +574,4 @@
 		white-space: nowrap;
 		user-select: none;
 	}
-	.input-widget[data-orientation='vertical'] .input-unit {
-		display: grid;
-		flex: 1 1 0;
-		margin-inline: 0;
-		place-items: center;
-	}
-	.input-widget:focus-within {
-		border-color: var(--gpen-panel-accent);
-		background: var(--input-background-focus, var(--gpen-panel-background));
-		box-shadow: 0 0 0 1px rgb(79 70 229 / 0.18);
-	}
-	.input-widget:hover:not(:focus-within) {
-		border-color: #475569;
-		background: var(--input-background-hover, #eef2ff);
-	}
-	.input-field:focus-visible { outline: 2px solid var(--gpen-panel-accent); outline-offset: -1px; }
-	.input-field:disabled { cursor: not-allowed; }
 </style>

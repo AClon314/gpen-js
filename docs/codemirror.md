@@ -73,14 +73,3 @@ numberScrubber({ lower: 0, upper: 100 });
 最小依赖是 `@codemirror/state` + `@codemirror/view` + `@codemirror/commands`
 （`history`、`defaultKeymap`、`historyKeymap`、`drawSelection`），没有引入 `codemirror`
 元包（那会带上 autocomplete/fold/search 一大串）。
-
-## 消融记录（本轮）
-
-| 能力 / 代码 | 处理 | 理由 |
-| --- | --- | --- |
-| `scrubValue` / `scrubSensitivity` | 从 InputSlider 提到 `numericScrub.ts` | CM scrubber 与 InputSlider 共用像素→值公式，避免两套灵敏度 / soft clamp |
-| CM 里“贴边 ←/→ 按 step 步进” | 不做 | 编辑器没有输入框的“贴边”概念；`←/→` 在多行里保留导航，`CapsLock` 时映射成 ±1 |
-| CM 里“Shift 倍率 / 最小位 ±5” | 不做 | 该功能在 InputNumber 已删；CM 只做基础步进 |
-| 方向键触发条件 | 单行直接 `↑/↓`；多行要求 `CapsLock` | 多行里方向键是主力导航键，不能默认被数字步进抢走 |
-| scrub 的指针捕获 | 用 document 级监听 + `eq()===true` 复用 DOM | widget 会随文档重建/移动，pointer capture 可能丢；document 监听不依赖元素位置 |
-| `codemirror` 元包 | 不装 | 只要 keymap/history/selection，避免 autocomplete/fold/search 拖进 demo |
