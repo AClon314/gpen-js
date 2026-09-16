@@ -495,10 +495,10 @@
 		width: 100%;
 		height: calc(2 * var(--gpen-line-height) * 1lh);
 		padding: 0 0.35ch;
-		border: 1px solid #94a3b8;
+		border: 1px solid var(--gpen-panel-border);
 		border-radius: var(--gpen-radius);
-		background: var(--input-background, #f8fafc);
-		color: #0f172a;
+		background: var(--input-background, var(--gpen-panel-background));
+		color: var(--gpen-panel-foreground);
 		font: inherit;
 		font-variant-numeric: tabular-nums;
 		user-select: none;
@@ -509,12 +509,19 @@
 			background: var(--input-background-focus, var(--gpen-panel-background));
 			box-shadow: 0 0 0 1px rgb(79 70 229 / 0.18);
 		}
-		&:hover:not(:focus-within) { border-color: #475569; background: var(--input-background-hover, #eef2ff); }
+		&:hover:not(:focus-within) {
+			border-color: var(--gpen-panel-muted);
+			background: var(
+				--input-background-hover,
+				color-mix(in srgb, var(--gpen-panel-accent) 8%, var(--gpen-panel-background))
+			);
+		}
 
-		/* 垂直形态：不指定高度（由内容撑开），只约束宽度；视觉顺序 + / value / unit / −。 */
+		/* 垂直形态：宽度 2ch、高度撑满父级；视觉顺序 + / value / unit / −。 */
 		&[data-orientation='vertical'] {
 			flex-direction: column;
 			width: 2ch;
+			height: 100%;
 			padding: 0.3lh 0;
 
 			.input-step { flex: 1 1 0; }
@@ -540,7 +547,11 @@
 		user-select: none;
 
 		&:hover:not(:disabled),
-		&:focus-visible { background: #e0e7ff; color: var(--gpen-panel-accent); outline: none; }
+		&:focus-visible {
+			background: color-mix(in srgb, var(--gpen-panel-accent) 16%, transparent);
+			color: var(--gpen-panel-accent);
+			outline: none;
+		}
 		&:disabled { cursor: default; opacity: 0.45; }
 	}
 

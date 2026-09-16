@@ -36,7 +36,7 @@ div.input-widget[data-input-widget][data-orientation][role="group"]
 - `aria-valuenow/min/max/valuetext`（有 unit 时）、`aria-invalid`（校验失败时）。
 - 垂直布局用 `flex-direction: column` + `order`（视觉 `+ / value / unit / −`，焦点顺序仍是 down→up）。
 - 尺寸只加在根上：横向 `width: 100%`、`height: calc(2 * var(--gpen-line-height) * 1lh)`，填满父容器；
-  垂直则 `width: 2ch`、高度由内容撑开。子元素只用 `flex`。InputSlider 通过 `--input-background*`
+  垂直则 `width: 2ch`、`height: 100%`。子元素只用 `flex`。InputSlider 通过 `--input-background*`
   把内层背景设成透明以露出浮层。样式用原生 CSS 嵌套（`&` + 后代选择器）组织，少写重复的父选择器。
 
 ## Props / 提交 / 校验

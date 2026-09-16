@@ -1,0 +1,48 @@
+/*
+ * 白天 / 夜间主题 token（--gpen-*）。
+ *
+ * 静态 CSS 是当前唯一来源：`:root`（网页）与 `:host`（embed 的 ShadowRoot）各声明一份，
+ * 夜间用 `prefers-color-scheme: dark` 覆盖。组件用 var(--gpen-*) 消费；需要局部变体时
+ * 覆盖变量本身，而不是加“传具体值”的 props。
+ *
+ * 长度约定见 AGENTS.md：横向尺寸/间距用 ch，纵向（尤其 height/行高）用 lh；
+ * 字号 / 边框宽度 / 圆角 / 阴影等非布局长度保留 px。
+ */
+
+:root,
+:host {
+	/* typography */
+	--gpen-font-sans: system-ui, sans-serif;
+	--gpen-font-mono: ui-monospace, monospace;
+	--gpen-font-size: 13px;
+	--gpen-line-height: 1;
+
+	/* workspace + panel palette */
+	--gpen-workspace-background: transparent;
+	--gpen-panel-background: #ffffff;
+	--gpen-panel-border: #cbd5e1;
+	--gpen-panel-foreground: #1e293b;
+	--gpen-panel-muted: #64748b;
+	--gpen-panel-accent: #4f46e5;
+	--gpen-panel-shadow: 0 2px 8px rgb(15 23 42 / 0.12);
+
+	/* semantic */
+	--gpen-danger: #d24b4b;
+
+	/* shape（非布局长度，保留 px） */
+	--gpen-radius: 4px;
+	--gpen-radius-sm: 3px;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root,
+	:host {
+		--gpen-panel-background: #1e293b;
+		--gpen-panel-border: #334155;
+		--gpen-panel-foreground: #e2e8f0;
+		--gpen-panel-muted: #94a3b8;
+		--gpen-panel-accent: #818cf8;
+		--gpen-panel-shadow: 0 2px 8px rgb(0 0 0 / 0.45);
+		--gpen-danger: #7f1d1d;
+	}
+}
