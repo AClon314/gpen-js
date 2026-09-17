@@ -433,7 +433,7 @@ test.describe("gpen-input-slider (touch)", () => {
 });
 
 test.describe("gpen-input-slider (vertical)", () => {
-  test("sizes the +/- and unit rows to one token line, value takes the rest", async ({ page }) => {
+  test("sizes the +/- and unit rows to two token lines, value takes the rest", async ({ page }) => {
     await page.goto("/demo/widgets");
     const slider = page.locator(".vertical-card .input-slider");
     await slider.scrollIntoViewIfNeeded();
@@ -445,8 +445,8 @@ test.describe("gpen-input-slider (vertical)", () => {
       const height = (selector: string) =>
         element.querySelector(selector)?.getBoundingClientRect().height ?? 0;
       return {
-        // line-height 是 token（无单位）算出来的绝对值，1lh 就等于它
-        line: Number.parseFloat(style.lineHeight),
+        // line-height 是 token（无单位）算出来的绝对值，行高 = 2lh
+        line: 2 * Number.parseFloat(style.lineHeight),
         rows: [height(".input-step--up"), height(".input-unit"), height(".input-step--down")],
         field: height("input"),
         widget: widget.getBoundingClientRect().height,

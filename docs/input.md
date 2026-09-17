@@ -40,9 +40,9 @@ div.input-widget[data-input-widget][data-orientation][role="group"]
     控件自己声明 `line-height: var(--gpen-line-height)`，所以 `1lh` 只由 token × 自身字号决定，
     与宿主页的 `line-height` 无关；
   - 纵向：`width: calc(var(--gpen-char-width, 6) * 1ch)`、`height: auto` +
-    `min-height: calc(4 * var(--gpen-row))`，同时 `flex: 1 1 auto`——
-    父级是 flex 列时撑满剩余高度，普通块级父容器里退回 4 行高，所以不会溢出卡片。
-  - **纵向每行 = 一个 token 行高**：`--gpen-row: calc(var(--gpen-line-height, 1) * 1lh)`。
+    `min-height: calc(4 * var(--gpen-row))`（4 × 2lh），同时 `flex: 1 1 auto`——
+    父级是 flex 列时撑满剩余高度，普通块级父容器里退回 8lh，所以不会溢出卡片。
+  - **纵向每行 = 2 个 token 行高**（与水平控件等高）：`--gpen-row: calc(2 * var(--gpen-line-height, 1) * 1lh)`。
     ± 与 unit 固定 `height: var(--gpen-row)`、`flex: 0 0 auto`（字号回落到根字号，`1lh` 才等于
     根的行高），多出来的高度全给可编辑的 value（`flex: 1 1 auto`）。四行要正好铺满控件，
     所以纵向形态不加纵向 padding（横向 padding 由根那条覆盖）。

@@ -506,11 +506,11 @@
 		}
 
 		/* 垂直形态：宽度取 --gpen-char-width（竖向控件的统一宽度，默认 6ch）；
-		 * 每行正好一个 token 行高（--gpen-row），所以 + / value / unit / − 叠起来就是整数行：
+		 * 每行高 = 2 个 token 行高（--gpen-row，与水平控件等高）：
 		 * 高度不写死——作为 flex 子项时用 `flex: 1 1 auto` 撑满可用高度，多的空间全给 value；
-		 * 不在 flex 父级里就退回 `min-height`（4 行），因此不会撑破父级卡片。 */
+		 * 不在 flex 父级里就退回 `min-height`（4 行 × 2lh），因此不会撑破父级卡片。 */
 		&[data-orientation='vertical'] {
-			--gpen-row: calc(var(--gpen-line-height, 1) * 1lh);
+			--gpen-row: calc(2 * var(--gpen-line-height, 1) * 1lh);
 
 			flex: 1 1 auto;
 			flex-direction: column;
@@ -522,7 +522,7 @@
 			/* 四行要正好铺满控件，所以不再加纵向 padding（横向 padding 由根上那条覆盖掉）。 */
 			padding: 0;
 
-			/* ± 与 unit 固定占一行；字号回落到根字号，`1lh` 才等于根的行高。 */
+			/* ± 与 unit 固定占一行（2lh）；字号回落到根字号，`1lh` 才等于根的行高。 */
 			.input-step {
 				flex: 0 0 auto;
 				height: var(--gpen-row);
