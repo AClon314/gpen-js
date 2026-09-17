@@ -7,10 +7,11 @@
 		clampTo,
 		decimalPlaces,
 		decimalPlacesInText,
+		numericAttribute,
+		softClampTo,
+		stepAmount,
 		stepAtCaret,
 		toggleSign,
-		validateNumeric,
-		withinBounds,
 	} from '#lib/inputs/numericCaret';
 	import type { InputProps, InputValue } from '#lib/components/widgets/inputs/types';
 
@@ -52,21 +53,18 @@
 	const ariaValueText = $derived(
 		typeof value === 'number' && Number.isFinite(value) && unit ? `${value} ${unit}` : undefined,
 	);
-	// min/max/step 只在**校验**时体现：报告违规给原生 constraint validation，但不改绑定值。
+	// min/max 只在**校验**时体现：报告违规给原生 constraint validation，但不改绑定值。
 	// 调用方想要限制后的值，自己调 `validateNumeric(value, {min, max, step})`。
+	// `step` 不参与校验：步进规则（智能整数位 / 用户最大精度）会故意落在 step 网格之外。
 	const invalid = $derived(draft.trim() !== '' && !Number.isFinite(Number(draft)));
 	const validityMessage = $derived.by(() => {
 		if (invalid) return '请输入一个数值';
 		const current = finiteNumber(value);
 		if (current === undefined) return '';
-		const lower = finiteAttribute(rest.min);
-		const upper = finiteAttribute(rest.max);
+		const lower = numericAttribute(rest.min);
+		const upper = numericAttribute(rest.max);
 		if (lower !== undefined && current < lower) return `不能小于 ${lower}`;
 		if (upper !== undefined && current > upper) return `不能大于 ${upper}`;
-		const step = finiteAttribute(rest.step);
-		if (step !== undefined && step > 0 && Math.abs(current - validateNumeric(current, { step })) > 1e-9) {
-			return `必须是 ${step} 的倍数`;
-		}
 		return '';
 	});
 
@@ -74,14 +72,9 @@
 		return typeof candidate === 'number' && Number.isFinite(candidate) ? candidate : undefined;
 	}
 
-	function finiteAttribute(candidate: number | string | null | undefined): number | undefined {
-		if (candidate === '' || candidate === null || candidate === undefined) return undefined;
-		return finiteNumber(Number(candidate));
-	}
-
 	// step 的十进制位数同时是提交时的取整位数（`precision` 已并入 step）。
 	function stepDecimals(): number | undefined {
-		const step = finiteAttribute(rest.step);
+		const step = numericAttribute(rest.step);
 		return step === undefined ? undefined : decimalPlaces(step);
 	}
 
@@ -99,12 +92,10 @@
 		return formatValue(next);
 	}
 
-	// min/max/step 只做「校验」：组件不替调用方取整/钳值。step 作为步进 UI 的推荐步长仍在用；
+	// min/max 只做「校验」：组件不替调用方取整/钳值。`step` 只是步进量（见 `resolvedStep`）；
 	// 需要限制后的值时由调用方调 `validateNumeric(value, {min,max,step})`。
 	function softClamp(rawValue: number, origin: number): number {
-		const lower = finiteAttribute(rest.min);
-		const upper = finiteAttribute(rest.max);
-		return withinBounds(origin, lower, upper) ? clampTo(rawValue, lower, upper) : rawValue;
+		return softClampTo(rawValue, origin, numericAttribute(rest.min), numericAttribute(rest.max));
 	}
 
 	function readInput(element: HTMLInputElement): number {
@@ -156,12 +147,12 @@
 	function commandCommit(candidate: number) {
 		const element = input;
 		if (element === undefined) return;
-		const next = clampTo(candidate, finiteAttribute(rest.min), finiteAttribute(rest.max));
+		const next = clampTo(candidate, numericAttribute(rest.min), numericAttribute(rest.max));
 		commit(element, formatValue(next), next);
 	}
 
 	function boundItem(label: string, bound: number | string | null | undefined): MenuItem {
-		const target = finiteAttribute(bound);
+		const target = numericAttribute(bound);
 		return {
 			label,
 			disabled: target === undefined,
@@ -198,15 +189,13 @@
 		return target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT';
 	}
 
-	// props.step 显式非数值（如 step="any"）时不偷偷换步长：安全忽略并输出 debug，
-	// ± 按钮与「caret 贴边时的 ←/→」共用这个解析结果。
+	// 步进量：缺省按 HTML `<input type=number>` 的语义取 1；显式非数值（如 step="any"）
+	// 不偷偷换步长——安全忽略并输出 debug。± 按钮、「caret 贴边时的 ←/→」与
+	// InputSlider 的中央分区共用这个解析结果。
 	function resolvedStep(): number | undefined {
-		const amount = finiteAttribute(rest.step);
-		if (amount === undefined) {
-			if (rest.step !== undefined) console.debug('[gpen] non-numeric input step ignored', rest.step);
-			return undefined;
-		}
-		return amount > 0 ? amount : undefined;
+		const amount = stepAmount(rest.step);
+		if (amount === undefined) console.debug('[gpen] unusable input step ignored', rest.step);
+		return amount;
 	}
 
 	// ↑/↓ 与滚轮：caret 位权步进（纯函数 stepAtCaret）。
@@ -305,7 +294,7 @@
 			const start = element.selectionStart;
 			const end = element.selectionEnd;
 			const boundary = event.key === 'Home' ? 0 : element.value.length;
-			const bound = event.key === 'Home' ? finiteAttribute(rest.min) : finiteAttribute(rest.max);
+			const bound = event.key === 'Home' ? numericAttribute(rest.min) : numericAttribute(rest.max);
 			if (
 				bound !== undefined &&
 				start !== null &&
@@ -379,7 +368,7 @@
 		const element = event.currentTarget;
 		const next = readInput(element);
 		if (finiteNumber(next) !== undefined) {
-			// min/max/step 是校验，不在提交时改值；原样写回（同值时保留用户文本）。
+			// min/max 是校验，不在提交时改值；原样写回（同值时保留用户文本）。
 			write(element, formattedText(next, element.value), next);
 		} else if (element.value.trim() === '') {
 			// 清空：回到聚焦快照（或当前值），保持「空 → 上一个有效值」的既有行为。
@@ -462,8 +451,8 @@
 		class={`input-field${inputClass ? ` ${inputClass}` : ''}`}
 		aria-label={ariaLabel}
 		aria-valuenow={finiteNumber(value)}
-		aria-valuemin={finiteAttribute(rest.min)}
-		aria-valuemax={finiteAttribute(rest.max)}
+		aria-valuemin={numericAttribute(rest.min)}
+		aria-valuemax={numericAttribute(rest.max)}
 		aria-valuetext={ariaValueText}
 		aria-invalid={validityMessage !== '' || undefined}
 		value={draft}
@@ -500,6 +489,8 @@
 		background: var(--input-background, var(--gpen-panel-background));
 		color: var(--gpen-panel-foreground);
 		font: inherit;
+		/* 控件自己的行高就是 token，于是 1lh 处处同值（不受宿主页 line-height 影响）。 */
+		line-height: var(--gpen-line-height, 1);
 		font-variant-numeric: tabular-nums;
 		user-select: none;
 
@@ -517,11 +508,17 @@
 			);
 		}
 
-		/* 垂直形态：宽度 2ch、高度撑满父级；视觉顺序 + / value / unit / −。 */
+		/* 垂直形态：宽度取 --gpen-char-width（竖向控件的统一宽度，默认 6ch），
+		 * 高度不写死——作为 flex 子项时用 `flex: 1 1 auto` 撑满可用高度，否则
+		 * 退回 `min-height`（+ / value / unit / − 各 1 行），所以不会撑破父级卡片。 */
 		&[data-orientation='vertical'] {
+			flex: 1 1 auto;
 			flex-direction: column;
-			width: 2ch;
-			height: 100%;
+			width: calc(var(--gpen-char-width, 6) * 1ch);
+			/* flex 父级里只沿列方向长大，别被行方向的 grow 拉宽。 */
+			max-width: calc(var(--gpen-char-width, 6) * 1ch);
+			height: auto;
+			min-height: calc(4 * var(--gpen-line-height, 1) * 1lh);
 			padding: 0.3lh 0;
 
 			.input-step { flex: 1 1 0; }

@@ -1,9 +1,13 @@
 /**
- * Pointer-scrub math shared by `InputSlider` and the CodeMirror scrubber
- * (`#lib/inputs/codemirror/numberScrubber`), so both turn a pixel delta into a
- * value the same way.
+ * Pointer-scrub math for the CodeMirror `±` handle
+ * (`#lib/inputs/codemirror/numberScrubber`): a pixel delta becomes a value
+ * change at the precision of the number under the cursor.
+ *
+ * `InputSlider` no longer drags continuously — it steps discretely in one of
+ * three zones (see `numericCaret.ts` / `docs/input.md`) — but keeps the same
+ * `SCRUB_PIXELS_PER_STEP = 6` sensitivity.
  */
-import { clampTo, roundTo, withinBounds } from "./numericCaret.js";
+import { roundTo, softClampTo } from "./numericCaret.js";
 
 /** Horizontal pixels that move the value by one precision unit. */
 export const SCRUB_PIXELS_PER_STEP = 6;
@@ -34,5 +38,5 @@ export function scrubValue(
   upper?: number,
 ): number {
   const next = roundTo(start + pixels * scrubSensitivity(decimals), decimals);
-  return withinBounds(origin, lower, upper) ? clampTo(next, lower, upper) : next;
+  return softClampTo(next, origin, lower, upper);
 }

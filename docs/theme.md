@@ -22,7 +22,7 @@ import { initTheme, setThemeToken, themeTokens } from "#lib/themes/theme.svelte"
 
 initTheme(); // onMount 里读一次（+layout 已调用）
 setThemeToken("--gpen-panel-accent", "#e11d48"); // 之后 JS 说了算
-themeTokens()["--gpen-panel-accent"];            // 响应式读取
+themeTokens()["--gpen-panel-accent"]; // 响应式读取
 ```
 
 > `theme.svelte.ts` 带 runes，**不进 `#lib` 桶**（否则非 Svelte 上下文 import `#lib` 会炸），
@@ -34,3 +34,8 @@ themeTokens()["--gpen-panel-accent"];            // 响应式读取
   “传具体值”的 props。
 - 新增 token 要同时加进 `GPEN_TOKENS`（否则 JS 读不到 / 管不了）。
 - 长度单位见 `AGENTS.md`：横向 `ch`、纵向 `lh`，字号/边框/圆角等保留 px。
+- **两个布局基准 token**（都是无单位数，方便缩放）：
+  - `--gpen-line-height`：既当 `line-height` 用，也是纵向基准。组件把自身的 `line-height` 设成它，
+    于是 `1lh` 处处等值（水平数值控件高 `calc(2 * var(--gpen-line-height) * 1lh)`）。
+    库内不要再把 `line-height` 写成字面值（`font: …/var(--gpen-line-height) …`）。
+  - `--gpen-char-width`：竖向控件的宽度（ch 数），用 `calc(var(--gpen-char-width, 6) * 1ch)` 消费。

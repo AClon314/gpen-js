@@ -14,7 +14,7 @@
 import { EditorSelection, Prec, type Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 
-import { clampTo, roundTo, stepAtCaret, withinBounds } from "../numericCaret.js";
+import { roundTo, softClampTo, stepAtCaret } from "../numericCaret.js";
 
 /** A contiguous decimal number (sign, optional fraction, bare `.5` / `5.`). */
 const NUMBER_SOURCE = "[+-]?(?:\\d+\\.?\\d*|\\.\\d+)";
@@ -89,7 +89,7 @@ export function numberStepper(options: NumberStepperOptions = {}): Extension {
 
         const rounded = roundTo(raw, decimals);
         const origin = Number(token.text);
-        const next = withinBounds(origin, lower, upper) ? clampTo(rounded, lower, upper) : rounded;
+        const next = softClampTo(rounded, origin, lower, upper);
         const text = Object.is(next, raw) ? stepped.text : formatStep(next, decimals);
 
         view.dispatch({

@@ -31,7 +31,7 @@
 		height: 100%;
 		min-width: 0;
 		min-height: 0;
-		font: 12px/1.2 var(--gpen-font-sans);
+		font: 12px/var(--gpen-line-height) var(--gpen-font-sans);
 	}
 
 	.blender-panel-menu {

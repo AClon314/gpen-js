@@ -4,7 +4,7 @@
 
 ```text
 src/lib/inputs/
-├── numericCaret.ts              # 纯函数：stepAtCaret / addStepToValue / toggleSign / roundTo / clampTo …
+├── numericCaret.ts              # 纯函数：stepAtCaret / stepByRule / addStepToValue / toggleSign / roundTo / clampTo …
 ├── numericScrub.ts              # 纯函数：scrubValue / scrubSensitivity / scrubQuantum（拖拽像素→值）
 └── codemirror/
     ├── numberStepper.ts         # 扩展①：方向键步进光标下的数字
@@ -12,13 +12,14 @@ src/lib/inputs/
     └── index.ts
 ```
 
-| 逻辑 | 纯函数 | InputNumber / InputSlider | CodeMirror |
-| --- | --- | --- | --- |
-| 按位权 ↑/↓ | `stepAtCaret` | `applyResult` | `numberStepper` |
-| 按固定值 ± | `addStepToValue` | 贴边 ←/→、± 按钮 | —（editor 里没有“贴边”概念） |
-| 正负号切换 | `toggleSign` | `-` / `+` 键、case 5 | `stepAtCaret` 的 case 5 已含 |
-| 取整 / 钳边界 | `roundTo` / `clampTo` / `withinBounds` | `roundValue` / `softClamp` | stepper 的 `decimals` / `lower` / `upper` |
-| 拖拽像素→值 | `scrubValue` / `scrubSensitivity` | InputSlider 的 scrub | `numberScrubber` |
+| 逻辑          | 纯函数                                           | InputNumber / InputSlider     | CodeMirror                                |
+| ------------- | ------------------------------------------------ | ----------------------------- | ----------------------------------------- |
+| 按位权 ↑/↓    | `stepAtCaret`                                    | `applyResult`                 | `numberStepper`                           |
+| 按固定值 ±    | `addStepToValue`                                 | 贴边 ←/→、± 按钮              | —（editor 里没有“贴边”概念）              |
+| 按规则步进    | `stepByRule` / `stepByDigit` / `stepByPrecision` | InputSlider 的三段分区        | —                                         |
+| 正负号切换    | `toggleSign`                                     | `-` / `+` 键、case 5          | `stepAtCaret` 的 case 5 已含              |
+| 取整 / 钳边界 | `roundTo` / `clampTo` / `softClampTo`            | `softClamp` / `commandCommit` | stepper 的 `decimals` / `lower` / `upper` |
+| 拖拽像素→值   | `scrubValue` / `scrubSensitivity`                | —（改用离散步进）             | `numberScrubber`                          |
 
 ## numberStepper（方向键）
 
@@ -53,7 +54,8 @@ numberScrubber({ lower: 0, upper: 100 });
   `decorations: v => v.decorations`，光标移动或文档变化时重建）。
 - 拖拽目标：光标所在的数字 token，没有则文档里第一个数字。
 - 拖拽精度沿用 token 文本的小数位（`decimalPlacesInText`），灵敏度 = 精度 / 6px，落位走
-  `scrubValue(start, pixels, decimals, origin, lower, upper)`——与 InputSlider 同一个函数。
+  `scrubValue(start, pixels, decimals, origin, lower, upper)`。编辑器里连续拖拽最自然；
+  InputSlider 改用离散三段分区（`stepByRule`，每 6px 一步），两者只共享 6px 的灵敏度。
 - 拖拽实现要点：
   - pointerdown 时 `stopPropagation()`，并在 `document` 上挂 `pointermove`/`pointerup`，
     而不是靠 widget 自身的 pointer capture：文档每变一次都会重建装饰，元素可能在 DOM 里

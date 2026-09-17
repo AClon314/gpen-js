@@ -115,7 +115,7 @@
 		box-shadow: 0 0.75lh 2lh rgb(15 23 42 / 0.22);
 		color: #1e293b;
 		font: inherit;
-		line-height: 1.35;
+		line-height: var(--gpen-line-height);
 		user-select: none;
 	}
 
@@ -129,7 +129,7 @@
 		border-radius: 0.2lh;
 		color: inherit;
 		font: inherit;
-		line-height: 1.35;
+		line-height: var(--gpen-line-height);
 		text-align: start;
 		white-space: nowrap;
 		cursor: pointer;

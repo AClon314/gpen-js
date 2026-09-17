@@ -80,7 +80,7 @@
 <style>
 	:host {
 		display: block;
-		font: 14px/1.45 var(--gpen-font-sans);
+		font: var(--gpen-font-size)/var(--gpen-line-height) var(--gpen-font-sans);
 		color: var(--gpen-panel-foreground, #172033);
 		/* background / accent 与 app.css :root 的全局 token 值一致，不再重复定义；
 		 * border / shadow 是本组件的本地设计值，继续局部覆盖。 */

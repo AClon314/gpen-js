@@ -11,7 +11,7 @@
 		height: 100%;
 		min-width: 0;
 		min-height: 0;
-		font: 11px/1.2 var(--gpen-font-sans);
+		font: 11px/var(--gpen-line-height) var(--gpen-font-sans);
 	}
 
 	.blender-panel-statusbar {

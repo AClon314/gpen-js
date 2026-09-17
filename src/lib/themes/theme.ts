@@ -14,6 +14,7 @@ export const GPEN_TOKENS = [
   "--gpen-font-mono",
   "--gpen-font-size",
   "--gpen-line-height",
+  "--gpen-char-width",
   "--gpen-workspace-background",
   "--gpen-panel-background",
   "--gpen-panel-border",

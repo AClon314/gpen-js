@@ -1,9 +1,16 @@
 /**
- * Caret-relative stepping for a numeric text field, independent of DOM/Svelte.
+ * Stepping for a numeric text field, independent of DOM/Svelte.
  *
- * Model: **the caret picks one decimal place; ↑/↓ add/subtract `10 ** place`
- * to/from the magnitude**. The sign is separate (case 5), and a step never
- * pushes the magnitude below 0. Details/table: `docs/input.md`.
+ * Two layers, one shared core (`stepValue`, `addAtPrecision`, `formatValue`):
+ *
+ * - **caret-relative** (`stepAtCaret` / `addStepToValue` / `toggleSign`): the
+ *   caret picks one decimal place and ↑/↓ add/subtract `10 ** place`. The sign
+ *   is separate (case 5) and a step never pushes the magnitude below 0.
+ * - **value-level rules** (`stepByDigit` / `stepByPrecision` / `stepByRule`): the
+ *   slider's three zones and the ± buttons step the whole value by 智能整数位,
+ *   the caller's `step`, or 用户输入的最大精度.
+ *
+ * Details/tables: `docs/input.md`.
  */
 
 function clampCaret(caret: number, length: number): number {
@@ -60,6 +67,19 @@ export function withinBounds(
   upper: number | undefined,
 ): boolean {
   return (lower === undefined || value >= lower) && (upper === undefined || value <= upper);
+}
+
+/**
+ * Soft bounds: clamp only when `origin` is already inside them. Typing `150`
+ * into a `0–100` field then keeps ↑/↓ free until the value comes back in.
+ */
+export function softClampTo(
+  value: number,
+  origin: number,
+  lower: number | undefined,
+  upper: number | undefined,
+): number {
+  return withinBounds(origin, lower, upper) ? clampTo(value, lower, upper) : value;
 }
 
 /** Clamp, round, clamp again (so rounding cannot push the value out of bounds). */
@@ -209,6 +229,41 @@ export interface StepResult {
   caret: number;
 }
 
+/** A step over the whole value (no caret involved). */
+export interface ValueStep {
+  text: string;
+  value: number;
+}
+
+/** Soft bounds for a value step (`origin` = the value before stepping). */
+export interface StepBounds {
+  lower?: number;
+  upper?: number;
+}
+
+/**
+ * Add/subtract `amount` to the value in `text`: `places` is both the rounding
+ * width and the text width, so a carry keeps its padding (`23.49` ↑ → `23.50`).
+ * Shared core of `addStepToValue` and the `stepBy*` family below.
+ */
+function stepValue(
+  text: string,
+  direction: -1 | 1,
+  amount: number,
+  places: number,
+  bounds: StepBounds = {},
+): ValueStep {
+  const trimmed = text.trim();
+  const current = trimmed === "" ? Number.NaN : Number(trimmed);
+  if (!Number.isFinite(current) || !Number.isFinite(amount)) return { text, value: current };
+  const stepped = addAtPrecision(current, amount, direction, places);
+  const bounded = softClampTo(stepped, current, bounds.lower, bounds.upper);
+  const normalized = Object.is(bounded, -0) ? 0 : bounded;
+  const body = formatValue(normalized, places);
+  const nextText = text.startsWith("+") && normalized > 0 ? `+${body}` : body;
+  return { text: nextText, value: normalized };
+}
+
 /**
  * Step caret-relative (cases 1–5 of `InputNumber.md`). `direction` is `1` for
  * ↑ / wheel-up and `-1` for ↓ / wheel-down. A non-numeric text is returned
@@ -287,23 +342,115 @@ export function stepAtCaret(text: string, caret: number, direction: -1 | 1): Ste
 
 /**
  * Step the *value* (not the magnitude) by a fixed amount: `←`/`→` at the text
- * edges, the ± buttons and the slider all use this. Sign is free to change, so
- * this is the way to cross zero.
+ * edges and the ± buttons use this. Sign is free to change, so this is the way
+ * to cross zero.
  */
 export function addStepToValue(text: string, direction: -1 | 1, step: number): StepResult {
-  const trimmed = text.trim();
-  const value = trimmed === "" ? Number.NaN : Number(trimmed);
-  if (!Number.isFinite(value) || !Number.isFinite(step)) {
-    return { text, caret: text.length };
-  }
-
   const places = Math.max(decimalPlacesInText(text), decimalPlaces(step));
-  const next = addAtPrecision(value, step, direction, places);
-  const rounded = Number(next.toFixed(places));
-  const normalized = Object.is(rounded, -0) ? 0 : rounded;
-  const nextText = formatValue(normalized, places);
-  const signed = text.startsWith("+") && normalized > 0 ? `+${nextText}` : nextText;
-  return { text: signed, caret: signed.length };
+  const result = stepValue(text, direction, step, places);
+  return { text: result.text, caret: result.text.length };
+}
+
+/**
+ * How the slider picks a step amount: `digit` = 智能整数位 (leading significant
+ * digit), `step` = the caller's `step` prop, `precision` = 用户输入的最大精度.
+ */
+export type StepRule = "digit" | "step" | "precision";
+
+/** Each end of the slider owns a third of the bar; the middle third is `step`. */
+const SLIDER_ZONE = 1 / 3;
+
+/**
+ * The `step` prop as a step amount: missing means the HTML default `1`, a
+ * non-numeric value (`"any"`) means "no quantum" (`undefined`).
+ */
+export function stepAmount(declared: number | string | null | undefined): number | undefined {
+  if (declared === undefined || declared === null || declared === "") return 1;
+  const amount = numericAttribute(declared);
+  return amount !== undefined && amount > 0 ? amount : undefined;
+}
+
+/**
+ * Parse an optional numeric HTML attribute (`min` / `max` / `step`). Empty
+ * strings and non-numeric values (`"any"`) read as `undefined`.
+ */
+export function numericAttribute(
+  candidate: number | string | null | undefined,
+): number | undefined {
+  if (candidate === "" || candidate === null || candidate === undefined) return undefined;
+  const parsed = Number(candidate);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+/** Rule for a position along the bar (`0` = minus end, `1` = plus end). */
+export function stepRuleAt(ratio: number): StepRule {
+  if (!Number.isFinite(ratio)) return "step";
+  if (ratio < SLIDER_ZONE) return "digit";
+  if (ratio > 1 - SLIDER_ZONE) return "precision";
+  return "step";
+}
+
+/** Place of the leading significant digit: `1.12` → 0, `0.12` → -1, `0.02` → -2. */
+export function significantPlace(value: number): number {
+  const magnitude = Math.abs(value);
+  if (!Number.isFinite(magnitude) || magnitude === 0) return 0;
+  // `Math.log10` can land on either side of a power of ten (`log10(0.001)`);
+  // snap with exact comparisons instead of trusting the float.
+  let place = Math.floor(Math.log10(magnitude));
+  while (magnitude < 10 ** place) place -= 1;
+  while (magnitude >= 10 ** (place + 1)) place += 1;
+  return place;
+}
+
+/**
+ * 智能整数位 step: add/subtract `10 ** place` of the leading significant digit,
+ * so the step coarsens and refines with the value itself —
+ * `1.12 → 0.12 → 0.02 → 0.01 → 0.009` going down (智能小数位 takes over once the
+ * value *is* the place, so it approaches 0 forever instead of collapsing to 0).
+ */
+export function stepByDigit(text: string, direction: -1 | 1, bounds: StepBounds = {}): ValueStep {
+  const current = Number(text.trim());
+  if (!Number.isFinite(current)) return { text, value: current };
+  let place = significantPlace(current);
+  if (direction < 0 && Math.abs(current) === 10 ** place) place -= 1;
+  const places = Math.max(decimalPlacesInText(text), Math.max(0, -place));
+  return stepValue(text, direction, 10 ** place, places, bounds);
+}
+
+/**
+ * 用户最大精度 step: add/subtract the smallest place the user actually typed,
+ * trailing zeros included (`0.499 → 0.500 → 0.501`; `5` → `6`; `5.0` → `5.1`).
+ * Deleting the extra digits is how the user asks for a coarser step.
+ */
+export function stepByPrecision(
+  text: string,
+  direction: -1 | 1,
+  bounds: StepBounds = {},
+): ValueStep {
+  const places = decimalPlacesInText(text);
+  return stepValue(text, direction, 10 ** -places, places, bounds);
+}
+
+/** Options for `stepByRule` (the slider's three zones). */
+export interface StepRuleOptions extends StepBounds {
+  /** The caller's `step` prop; missing / non-numeric falls back to `precision`. */
+  step?: number;
+}
+
+/** Dispatch on `StepRule`; `step` is what the middle zone of the slider uses. */
+export function stepByRule(
+  text: string,
+  direction: -1 | 1,
+  rule: StepRule,
+  options: StepRuleOptions = {},
+): ValueStep {
+  if (rule === "digit") return stepByDigit(text, direction, options);
+  const step = options.step;
+  if (rule === "precision" || step === undefined || !Number.isFinite(step) || step <= 0) {
+    return stepByPrecision(text, direction, options);
+  }
+  const places = Math.max(decimalPlacesInText(text), decimalPlaces(step));
+  return stepValue(text, direction, step, places, options);
 }
 
 /**

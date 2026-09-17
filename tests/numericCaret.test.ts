@@ -4,6 +4,13 @@ import {
   addStepToValue,
   clampAndRound,
   decimalPlaces,
+  numericAttribute,
+  significantPlace,
+  stepAmount,
+  stepByDigit,
+  stepByPrecision,
+  stepByRule,
+  stepRuleAt,
   stepAtCaret,
   toggleSign,
   validateNumeric,
@@ -182,5 +189,106 @@ describe("addStepToValue", () => {
   test("keeps the caret at the end and ignores non-numeric text", () => {
     expect(addStepToValue("abc", 1, 1)).toEqual({ text: "abc", caret: 3 });
     expect(addStepToValue("", 1, 1)).toEqual({ text: "", caret: 0 });
+  });
+});
+
+describe("significantPlace", () => {
+  test("reads the leading digit place, snap-safe at powers of ten", () => {
+    expect(significantPlace(1.12)).toBe(0);
+    expect(significantPlace(0.12)).toBe(-1);
+    expect(significantPlace(0.02)).toBe(-2);
+    expect(significantPlace(100)).toBe(2);
+    expect(significantPlace(0.001)).toBe(-3);
+    expect(significantPlace(-42.5)).toBe(1);
+    expect(significantPlace(0)).toBe(0);
+  });
+});
+
+describe("stepByDigit", () => {
+  test("the documented descent refines itself instead of hitting 0", () => {
+    let value = "1.12";
+    const seen: string[] = [];
+    for (let index = 0; index < 4; index += 1) {
+      value = stepByDigit(value, -1).text;
+      seen.push(value);
+    }
+    expect(seen).toEqual(["0.12", "0.02", "0.01", "0.009"]);
+  });
+
+  test("takes the power of ten down a place, up stays on the place", () => {
+    expect(stepByDigit("100", -1).text).toBe("90");
+    expect(stepByDigit("1", -1).text).toBe("0.9");
+    expect(stepByDigit("0.001", -1).text).toBe("0.0009");
+    expect(stepByDigit("9", 1).text).toBe("10");
+    expect(stepByDigit("0.12", 1).text).toBe("0.22");
+  });
+
+  test("applies soft bounds and keeps an explicit plus", () => {
+    expect(stepByDigit("5", 1, { lower: 0, upper: 5 }).text).toBe("5");
+    // 起点在界外就完全不钳：填成 150 后还能自由走（与 scrubValue 同一套语义）。
+    expect(stepByDigit("95", 1, { lower: 0, upper: 100 }).text).toBe("100");
+    expect(stepByDigit("150", 1, { lower: 0, upper: 100 }).text).toBe("250");
+    expect(stepByDigit("+5", 1).text).toBe("+6");
+    expect(stepByDigit("abc", 1).value).toBeNaN();
+  });
+});
+
+describe("stepByPrecision", () => {
+  test("respects the digits the user typed, trailing zeros included", () => {
+    let value = "0.499";
+    const seen: string[] = [];
+    for (let index = 0; index < 3; index += 1) {
+      value = stepByPrecision(value, 1).text;
+      seen.push(value);
+    }
+    expect(seen).toEqual(["0.500", "0.501", "0.502"]);
+    expect(stepByPrecision("5", 1).text).toBe("6");
+    expect(stepByPrecision("5.0", 1).text).toBe("5.1");
+    expect(stepByPrecision("5.0", -1).text).toBe("4.9");
+  });
+});
+
+describe("stepRuleAt", () => {
+  test("splits the bar into three thirds", () => {
+    expect(stepRuleAt(0)).toBe("digit");
+    expect(stepRuleAt(0.32)).toBe("digit");
+    expect(stepRuleAt(1 / 3)).toBe("step");
+    expect(stepRuleAt(0.5)).toBe("step");
+    expect(stepRuleAt(2 / 3)).toBe("step");
+    expect(stepRuleAt(0.67)).toBe("precision");
+    expect(stepRuleAt(1)).toBe("precision");
+    expect(stepRuleAt(Number.NaN)).toBe("step");
+  });
+});
+
+describe("stepByRule", () => {
+  test("dispatches, falling back to precision without a usable step", () => {
+    expect(stepByRule("1.12", -1, "digit").text).toBe("0.12");
+    expect(stepByRule("0.499", 1, "precision").text).toBe("0.500");
+    expect(stepByRule("23.45", 1, "step", { step: 0.1 }).text).toBe("23.55");
+    expect(stepByRule("23.45", 1, "step").text).toBe("23.46");
+    expect(stepByRule("23.45", 1, "step", { step: Number.NaN }).text).toBe("23.46");
+  });
+});
+
+describe("stepAmount / numericAttribute", () => {
+  test("stepAmount defaults to the HTML 1 and rejects unusable values", () => {
+    expect(stepAmount(undefined)).toBe(1);
+    expect(stepAmount(null)).toBe(1);
+    expect(stepAmount("")).toBe(1);
+    expect(stepAmount(0.5)).toBe(0.5);
+    expect(stepAmount("2")).toBe(2);
+    expect(stepAmount("any")).toBeUndefined();
+    expect(stepAmount(0)).toBeUndefined();
+    expect(stepAmount(-1)).toBeUndefined();
+  });
+
+  test("numericAttribute reads optional min/max/step attributes", () => {
+    expect(numericAttribute("2.5")).toBe(2.5);
+    expect(numericAttribute(-3)).toBe(-3);
+    expect(numericAttribute(null)).toBeUndefined();
+    expect(numericAttribute(undefined)).toBeUndefined();
+    expect(numericAttribute("")).toBeUndefined();
+    expect(numericAttribute("any")).toBeUndefined();
   });
 });

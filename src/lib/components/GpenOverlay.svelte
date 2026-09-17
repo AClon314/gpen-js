@@ -213,7 +213,7 @@
 	:where(.floating-button, .close-button, .restore-button) {
 		border: 1px solid var(--gpen-panel-border, #cbd5e1);
 		color: var(--gpen-panel-foreground, #1e293b);
-		font: 600 1rem/1 var(--gpen-font-sans);
+		font: 600 1rem/var(--gpen-line-height) var(--gpen-font-sans);
 		cursor: pointer;
 	}
 
@@ -228,7 +228,7 @@
 		display: grid;
 		place-items: center;
 		/* 圆形/方形控件用同一个单位（lh）才不会因 ch/lh 比例不同而变形：
-		 * font-size: 1.35rem 且 line-height: 1 → 2.4lh ≈ 52px，
+		 * font-size: 1.35rem 且 line-height = --gpen-line-height → 2.4lh ≈ 52px，
 		 * 与脚本中的 BALL_SIZE = 3.25rem 对应。 */
 		width: 2.4lh;
 		height: 2.4lh;

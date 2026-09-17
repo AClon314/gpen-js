@@ -1,5 +1,20 @@
 import { expect, test, type Locator } from "playwright/test";
 
+/** Drag the slider by `pixels` starting at `ratio` (0 = minus end, 1 = plus end). */
+async function dragSlider(field: Locator, ratio: number, pixels: number) {
+  const slider = field.locator("xpath=ancestor::*[@data-input-slider]");
+  await slider.scrollIntoViewIfNeeded();
+  const box = await slider.boundingBox();
+  if (box === null) throw new Error("slider has no layout box");
+  const y = box.y + box.height / 2;
+  const x = box.x + box.width * ratio;
+  await field.evaluate((element) => (element as HTMLInputElement).blur());
+  await slider.page().mouse.move(x, y);
+  await slider.page().mouse.down();
+  await slider.page().mouse.move(x + pixels, y);
+  await slider.page().mouse.up();
+}
+
 async function caretAt(field: Locator, start: number, end = start) {
   await field.evaluate(
     (element, range) => {
@@ -262,21 +277,32 @@ test.describe("gpen-input-slider", () => {
     await page.goto("/demo/widgets");
   });
 
-  test("scrubs continuously on drag without entering edit mode", async ({ page }) => {
+  test("steps discretely on drag without entering edit mode", async ({ page }) => {
     const field = page.getByLabel("滑条数值");
-    const slider = page.locator(".input-slider").filter({ has: field });
 
-    await slider.scrollIntoViewIfNeeded();
-    const box = await slider.boundingBox();
-    if (box === null) throw new Error("slider has no layout box");
-
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-    await page.mouse.down();
-    await page.mouse.move(box.x + box.width / 2 + 18, box.y + box.height / 2);
-    await page.mouse.up();
+    // 中央 1/3 = props.step（0.01）；18px / 6px = 3 步：9.98 → 10.01。
+    await dragSlider(field, 0.5, 18);
 
     await expect(field).toHaveValue("10.01");
     await expect(field).not.toBeFocused();
+  });
+
+  test("uses the zone under the pointer: precision / step / integer place", async ({ page }) => {
+    const field = page.getByLabel("滑条数值");
+
+    // 靠近 + 的 1/3：用户输入的最大精度（18.0 是 0.1，不是 step 的 0.01）。
+    await field.fill("18.0");
+    await dragSlider(field, 0.92, 6);
+    await expect(field).toHaveValue("18.1");
+
+    // 中央 1/3：配置 step 0.01。
+    await dragSlider(field, 0.5, 6);
+    await expect(field).toHaveValue("18.11");
+
+    // 靠近 − 的 1/3：智能整数位，递减自动退回智能小数位（1.12 → 0.12 → 0.02 → 0.01 → 0.009）。
+    await field.fill("1.12");
+    await dragSlider(field, 0.08, -24);
+    await expect(field).toHaveValue("0.009");
   });
 
   test("focuses for editing on a tap", async ({ page }) => {
@@ -289,25 +315,5 @@ test.describe("gpen-input-slider", () => {
 
     await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
     await expect(field).toBeFocused();
-  });
-
-  test("keeps the user-typed decimal width through a scrub", async ({ page }) => {
-    const field = page.getByLabel("滑条数值");
-    const slider = page.locator(".input-slider").filter({ has: field });
-
-    await field.fill("18.0");
-    await field.evaluate((element) => (element as HTMLInputElement).blur());
-
-    await slider.scrollIntoViewIfNeeded();
-    const box = await slider.boundingBox();
-    if (box === null) throw new Error("slider has no layout box");
-
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-    await page.mouse.down();
-    await page.mouse.move(box.x + box.width / 2 + 6, box.y + box.height / 2);
-    await page.mouse.up();
-
-    // 拖拽精度 0.1（沿用 18.0 的位数），而不是 step 的 0.01。
-    await expect(field).toHaveValue("18.1");
   });
 });

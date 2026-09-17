@@ -14,7 +14,7 @@
 		height: 100%;
 		min-width: 0;
 		min-height: 0;
-		font: 13px/1.35 var(--gpen-font-sans);
+		font: var(--gpen-font-size)/var(--gpen-line-height) var(--gpen-font-sans);
 	}
 
 	.blender-panel-outliner {

@@ -11,11 +11,13 @@
 
 :root,
 :host {
-	/* typography */
+	/* typography + layout；所有布局尺寸都从后两个 token 派生：
+	 * --gpen-line-height 也直接当 line-height 用（决定 1lh 的大小）。 */
 	--gpen-font-sans: system-ui, sans-serif;
 	--gpen-font-mono: ui-monospace, monospace;
 	--gpen-font-size: 13px;
-	--gpen-line-height: 1;
+	--gpen-line-height: 1; /* 行高：水平数值控件高度 = 2lh */
+	--gpen-char-width: 6; /* 竖向控件宽度（ch 数）与相关横向尺寸的基准 */
 
 	/* workspace + panel palette */
 	--gpen-workspace-background: transparent;
