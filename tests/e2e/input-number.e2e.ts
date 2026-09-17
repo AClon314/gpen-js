@@ -303,6 +303,14 @@ test.describe("gpen-input-slider", () => {
     await field.fill("1.12");
     await dragSlider(field, 0.08, -24);
     await expect(field).toHaveValue("0.009");
+
+    // 鼠标也一样：分区在 pointerdown 时锁定。从靠 + 的 1/3 一路拖回靠 − 的 1/3，
+    // 规则始终是「用户最大精度」（18.0 → 6.4 每步 0.1），不会被新分区抢走。
+    const slider = field.locator("xpath=ancestor::*[@data-input-slider]");
+    await field.fill("18.0");
+    await dragSlider(field, 0.92, -700);
+    await expect(slider).toHaveAttribute("data-step-rule", "precision");
+    await expect(field).toHaveValue("6.4");
   });
 
   test("focuses for editing on a tap", async ({ page }) => {
@@ -315,5 +323,109 @@ test.describe("gpen-input-slider", () => {
 
     await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
     await expect(field).toBeFocused();
+  });
+});
+
+test.describe("gpen-input-slider (touch)", () => {
+  /** A touch page with the slider narrowed so one drag crosses the zone borders. */
+  async function touchFixture(browser: import("playwright/test").Browser) {
+    const context = await browser.newContext({
+      hasTouch: true,
+      isMobile: true,
+      viewport: { width: 900, height: 900 },
+    });
+    const page = await context.newPage();
+    await page.goto("/demo/widgets");
+    const field = page.getByLabel("滑条数值");
+    const slider = field.locator("xpath=ancestor::*[@data-input-slider]");
+    await slider.scrollIntoViewIfNeeded();
+    // 压窄到 240px：一段 80px，几十像素的位移就能跨过分区（两侧 ± 按钮各约 26px，
+    // 所以落点取 40 / 200，避开按钮本身）。
+    await page.addStyleTag({ content: "div[data-input-slider] { width: 240px !important; }" });
+    await field.fill("9.98");
+    await field.evaluate((element) => (element as HTMLInputElement).blur());
+    const box = await slider.boundingBox();
+    if (box === null) throw new Error("slider has no layout box");
+    const y = box.y + box.height / 2;
+    const cdp = await context.newCDPSession(page);
+    /**
+     * Dispatch a touch gesture. `dispatch` takes the full point set (multi-finger);
+     * `touch` is the one-finger shortcut and keeps `id: 1` stable for the whole
+     * gesture, like a real browser does.
+     */
+    const dispatch = (
+      type: "touchStart" | "touchMove" | "touchEnd",
+      points: { x: number; id: number }[],
+    ) =>
+      cdp.send("Input.dispatchTouchEvent", {
+        type,
+        touchPoints: type === "touchEnd" ? [] : points.map((point) => ({ ...point, y })),
+      });
+    const touch = (type: "touchStart" | "touchMove" | "touchEnd", x: number) =>
+      dispatch(type, type === "touchEnd" ? [] : [{ x, id: 1 }]);
+    return { context, page, field, slider, box, y, touch, dispatch };
+  }
+
+  test("locks the zone rule at touch-down while the finger crosses zones", async ({ browser }) => {
+    const { context, field, slider, box, touch } = await touchFixture(browser);
+
+    // 落在靠 − 的 1/3：智能整数位（9.98 ↑ → 10.98，是 +1 而不是 step 的 +0.01）。
+    await touch("touchStart", box.x + 40);
+    await expect(slider).toHaveAttribute("data-step-rule", "digit");
+    await touch("touchMove", box.x + 46);
+    await expect(field).toHaveValue("10.98");
+
+    // 拖进靠 + 的 1/3：规则仍是落点那一段，不改成「用户最大精度」。
+    await touch("touchMove", box.x + 200);
+    await expect(slider).toHaveAttribute("data-step-rule", "digit");
+    await touch("touchEnd", 0);
+
+    // touch 不做指针锁，也不抢焦点（拖拽 ≠ 点击编辑）。
+    await expect(field).not.toBeFocused();
+    expect(await context.pages()[0].evaluate(() => document.pointerLockElement)).toBeNull();
+    await context.close();
+  });
+
+  test("keeps the plus-zone precision when the finger drags back over the minus zone", async ({
+    browser,
+  }) => {
+    const { context, field, slider, box, touch } = await touchFixture(browser);
+
+    // 落在靠 + 的 1/3：用户最大精度（0.01），所以向左 6px 是 9.97。
+    await touch("touchStart", box.x + 200);
+    await expect(slider).toHaveAttribute("data-step-rule", "precision");
+    await touch("touchMove", box.x + 194);
+    await expect(field).toHaveValue("9.97");
+
+    // 跨到靠 − 的 1/3，规则不换成智能整数位。
+    await touch("touchMove", box.x + 30);
+    await expect(slider).toHaveAttribute("data-step-rule", "precision");
+    await touch("touchEnd", 0);
+    await context.close();
+  });
+
+  test("ignores a second finger that lands while the first one drags", async ({ browser }) => {
+    const { context, field, slider, box, touch, dispatch } = await touchFixture(browser);
+
+    await touch("touchStart", box.x + 40);
+    await expect(slider).toHaveAttribute("data-step-rule", "digit");
+
+    // 第二根手指落在靠 + 的 1/3：不得顶掉第一根手指的锚点与规则。
+    await dispatch("touchStart", [
+      { x: box.x + 40, id: 1 },
+      { x: box.x + 200, id: 2 },
+    ]);
+    await expect(slider).toHaveAttribute("data-step-rule", "digit");
+    await expect(field).toHaveValue("9.98");
+
+    // 第一根手指继续走：仍是智能整数位（9.98 ↑ → 10.98）。
+    await dispatch("touchMove", [
+      { x: box.x + 46, id: 1 },
+      { x: box.x + 200, id: 2 },
+    ]);
+    await expect(field).toHaveValue("10.98");
+
+    await dispatch("touchEnd", []);
+    await context.close();
   });
 });

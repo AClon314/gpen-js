@@ -15,9 +15,10 @@
 	// 点击 / 轻触走原生 focus 行为，激活 InputNumber 编辑模式；长按或拖拽不激活编辑模式，
 	// 由本组件直接把绑定值当作滑条值步进。编辑模式中（input 已聚焦）拖拽让位给原生选区。
 	//
-	// 拖拽把滑条沿轴平均分成三段，指针所在的那段决定步进规则（`stepRuleAt`）：
-	// 靠近 − 的 1/3 用「智能整数位」，中央 1/3 用 props.step，靠近 + 的 1/3 用「用户最大精度」。
-	// 步进本身是离散的：每 6px 走一步，方向由拖拽位移的符号决定。
+	// 拖拽把滑条沿轴平均分成三段（`stepRuleAt`）：靠近 − 的 1/3 用「智能整数位」，
+	// 中央 1/3 用 props.step，靠近 + 的 1/3 用「用户最大精度」。
+	// **规则在 pointerdown 时按落点选定，松开前不再变**（拖到别的分区不会换规则）；
+	// 步进是离散的：每 6px 走一步，方向由拖拽位移的符号决定。
 	let {
 		value = $bindable<InputValue>(0),
 		orientation = 'horizontal',
@@ -33,8 +34,9 @@
 	let root = $state<HTMLDivElement | undefined>();
 	let scrubbing = $state(false);
 	let locked = $state(false);
-	// 当前指针所在的规则（也是分区）：靠近 − 用 digit、中央用 step、靠近 + 用 precision。
-	let rule = $state<StepRule>('step');
+	// pointerdown 落点选定的步进规则（= 分区），整个拖拽期间锁定；
+	// 靠近 − 用 digit、中央用 step、靠近 + 用 precision。
+	let downRule = $state<StepRule>('step');
 	let pending = false;
 	let accumulated = 0; // 相对起点的总位移
 	let consumed = 0; // 已经兑换成步进的那部分位移（余量留着，避免抖动）
@@ -80,7 +82,7 @@
 	function applyStep(direction: -1 | 1) {
 		const element = innerInput();
 		if (element === undefined) return;
-		const result = stepByRule(element.value, direction, rule, {
+		const result = stepByRule(element.value, direction, downRule, {
 			step: stepAmount(rest.step),
 			lower,
 			upper,
@@ -99,10 +101,10 @@
 		}
 	}
 
-	function beginScrub(event: PointerEvent) {
+	// 规则已经由 handlePointerDown 按落点定好，这里只管进入 scrub 状态。
+	function beginScrub() {
 		if (scrubbing) return;
 		scrubbing = true;
-		rule = stepRuleAt(pointerRatio(event));
 		clearLongPress();
 		innerInput()?.blur(); // 拖拽不激活 InputNumber 编辑模式
 		// 直到确认拖拽才捕获指针：pointerdown 就捕获会让兼容鼠标事件改派到 wrapper，
@@ -121,11 +123,20 @@
 	}
 	// 指针锁定后 cursor 不再受屏幕边缘约束，movementX 可以无限累积（Blender 式无限拉）。
 	// 锁定失败就退回「指针 - 起点」的绝对坐标拖拽。
+	// 触屏优先的设备（`pointer: coarse`，含 Android Chrome）不做指针锁：那里的 Pointer Lock
+	// 仍是半成品——movementX/Y 的轴、缩放、灵敏度都不可靠，锁上会得到乱跳的位移；
+	// 这些设备（无论手指还是鼠标）都走「指针捕获 + 绝对坐标」。
+	function canLockPointer(): boolean {
+		if (typeof window.matchMedia !== 'function') return true;
+		return !window.matchMedia('(pointer: coarse)').matches;
+	}
+
 	function requestPointerLock() {
 		const element = root;
 		if (element === undefined || typeof element.requestPointerLock !== 'function') return;
 		// 只对鼠标申请指针锁：touch/pen 上锁定会弹出「按 ESC 退出」提示，且本来就有屏幕边界。
 		if (pointerType !== 'mouse') return;
+		if (!canLockPointer()) return;
 		// WebDriver 的合成事件里 movementX/Y 是无效值（指针锁定后 clientX 冻结、movement 乱跳），
 		// 锁上反而算错；只在真实浏览器（非 webdriver）启用无限拖拽。
 		if (navigator.webdriver) return;
@@ -138,6 +149,9 @@
 	function handlePointerDown(event: PointerEvent) {
 		if (rest.disabled) return;
 		if (event.target instanceof HTMLElement && event.target.closest('button')) return;
+		// 多指：第一根手指已经进入「待拖拽 / 拖拽中」时忽略后来者，否则第二根手指
+		// 会顶掉 pointerId 与落点规则，把正在进行的拖拽抢走（触屏上很常见）。
+		if (pending) return;
 		// 已经在编辑模式（input 聚焦）时让位：拖拽交给原生文本选区。
 		const active = document.activeElement;
 		if (active instanceof HTMLInputElement && root?.contains(active)) return;
@@ -147,13 +161,13 @@
 		pointerType = event.pointerType;
 		accumulated = 0;
 		consumed = 0;
-		rule = stepRuleAt(pointerRatio(event));
+		downRule = stepRuleAt(pointerRatio(event));
 		startX = event.clientX;
 		startY = event.clientY;
 		clearLongPress();
 		longPressTimer = setTimeout(() => {
 			longPressTimer = undefined;
-			beginScrub(event);
+			beginScrub();
 		}, LONG_PRESS_MS);
 	}
 
@@ -162,15 +176,15 @@
 		if (!scrubbing) {
 			const delta = vertical ? startY - event.clientY : event.clientX - startX;
 			if (Math.abs(delta) < DRAG_THRESHOLD) return;
-			beginScrub(event);
+			beginScrub();
 		}
 		if (!scrubbing) return;
 		if (locked) {
-			// 锁定后指针不再移动（clientX/Y 冻结），只能靠相对位移累加，也无法重新采样分区。
+			// 锁定后指针不再移动（clientX/Y 冻结），只能靠相对位移累加。
 			accumulated += vertical ? -event.movementY : event.movementX;
 		} else {
+			// 未锁定（touch / pen / 触屏优先设备）：绝对坐标。分区不在移动中重采样。
 			accumulated = vertical ? startY - event.clientY : event.clientX - startX;
-			rule = stepRuleAt(pointerRatio(event));
 		}
 		stepAccumulated();
 	}
@@ -222,6 +236,7 @@
 	bind:this={root}
 	data-input-slider
 	data-orientation={orientation}
+	data-step-rule={downRule}
 	role="group"
 	onpointerdown={handlePointerDown}
 	onpointermove={handlePointerMove}
@@ -238,7 +253,7 @@
 	<!-- 三段分区（智能整数位 / 配置 step / 用户最大精度）：悬浮或拖拽时显形。 -->
 	<div class="slider-zones" aria-hidden="true">
 		{#each SLIDER_RULES as candidate (candidate)}
-			<span class="slider-zone" class:active={candidate === rule}></span>
+			<span class="slider-zone" class:active={candidate === downRule}></span>
 		{/each}
 	</div>
 	<InputNumber bind:value {orientation} {unit} {...rest} />

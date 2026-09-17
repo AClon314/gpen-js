@@ -114,12 +114,14 @@ const limited = validateNumeric(value, { min: 0, max: 100, step: 0.2 }); // clam
 | 中央 1/3      | 配置 `step`  |
 | 靠近 + 的 1/3 | 用户最大精度 |
 
+- **规则在 `pointerdown` 时按落点选定，松开前不变**（`data-step-rule` 暴露当前值便于调试/测试）：
+  从靠 − 的 1/3 拖进靠 + 的 1/3，全程仍是智能整数位，不会半路换成新分区的规则。
 - 纵向形态里 − 在下、+ 在上，所以「智能整数位」段在最下面。
 - 步进是**离散**的：每 6px 兑换一步（`STEP_PIXELS`，与 CodeMirror scrubber 同灵敏度），
   方向由拖拽位移符号决定，余量留到下一次（来回微动不会反复触发）。
 - 每一步都往内部 input 派发 `input`（消费方回调 + InputNumber 的 `draft`/`draftDecimals` 与手工编辑同路径），
   拖拽结束再补一次 `change`。
-- 指针锁定后指针不再移动，分区取按下时那一段；`movementX/Y` 可以把值拉出屏幕外。
+- 多指同时落下时只认第一根手指：后来者不抢锚点与规则（`pending` 期间忽略后续 `pointerdown`）。
 
 ## caret 精度步进
 
@@ -151,9 +153,18 @@ const limited = validateNumeric(value, { min: 0, max: 100, step: 0.2 }); // clam
 - **点击/轻触**：走原生 focus，进 InputNumber 编辑模式；此时拖拽交给原生选区。
 - **长按(250ms) 或拖拽(>4px)**：不激活编辑模式，`blur` 后进入 scrub。确认拖拽才 `setPointerCapture`
   （pointerdown 就捕获会让 mousedown 改派、输入框拿不到焦点）。
-- **无限拖拽**：确认拖拽后、且指针类型为鼠标时申请 `pointerLock`，锁定后用 `movementX/Y` 累加
-  （可拉过屏幕边缘）；失败/被拒退回绝对坐标。**touch/pen 不申请**（避免弹「按 ESC 退出」提示），
-  WebDriver 的合成 movement 无效，`navigator.webdriver` 时也跳过。
+- **无限拖拽（桌面鼠标）**：确认拖拽后、指针类型为鼠标时申请 `pointerLock`，锁定后用 `movementX/Y`
+  累加（可拉过屏幕边缘）；失败/被拒退回绝对坐标。
+- **移动端 / 触屏优先设备**（`(pointer: coarse)`，含 Android Chrome）：**不申请指针锁**——那里的
+  Pointer Lock 仍是实验性实现，`movementX/Y` 的轴、缩放、灵敏度都不可靠，锁上反而拖不动或乱跳；
+  这些设备（手指或外接鼠标都一样）统一走「`setPointerCapture` + 绝对坐标」，靠指针捕获让手指
+  移出控件后事件仍回到控件上。
+- `touch`/`pen` 也从不申请指针锁（锁定会弹「按 ESC 退出」提示，而且本来就有屏幕边界）；
+  WebDriver 的合成 `movementX/Y` 无效，`navigator.webdriver` 时同样跳过。
+- 拖拽中浏览器接管手势（滚动/缩放）会发 `pointercancel`：按当前值收尾（等同松手），不会卡在 scrub。
+- 覆盖情况：e2e 用 CDP 合成真实 touch 事件（`hasTouch` + `isMobile` 上下文）覆盖「落点锁规则」
+  「跨区不换规则」「第二根手指不抢拖拽」；Android Chrome 上 Pointer Lock 的具体劣化无法在桌面
+  Chrome 复现，那部分只能靠真机回归。
 - CodeMirror 的 `±` 把手仍用**连续**拖拽（`numericScrub.ts` 的 `scrubValue`：精度取当前 token 的小数位，
   6px 一个精度单位）；离散三段分区是 InputSlider 独有的。
 

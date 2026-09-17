@@ -130,7 +130,7 @@
 			<div class="card-heading">
 				<div>
 					<h2>无极滑条（InputSlider）</h2>
-					<p>点击 / 轻触走原生 focus，激活 InputNumber 编辑模式；长按或拖拽进入 scrub。<strong>滑条沿轴平均分三段</strong>，指针所在的那段决定步进规则：靠近 − 用智能整数位（<code>1.12 → 0.12 → 0.02 → 0.01 → 0.009</code>），中央按 <code>step</code>，靠近 + 用用户输入的最大精度（<code>0.499 → 0.500 → 0.501</code>）。浮层按 min/max 显示比例，悬浮或拖拽时显示三段分区。</p>
+					<p>点击 / 轻触走原生 focus，激活 InputNumber 编辑模式；长按或拖拽进入 scrub。<strong>滑条沿轴平均分三段</strong>，按下时落点所在的那段决定步进规则（松开前不变）：靠近 − 用智能整数位（<code>1.12 → 0.12 → 0.02 → 0.01 → 0.009</code>），中央按 <code>step</code>，靠近 + 用用户输入的最大精度（<code>0.499 → 0.500 → 0.501</code>）。浮层按 min/max 显示比例，悬浮或拖拽时显示三段分区。</p>
 				</div>
 				<output aria-live="polite">{sliderValue}</output>
 			</div>
@@ -192,7 +192,7 @@
 			<li>鼠标悬浮在数值控件上、且未聚焦时，按裸 Delete 重置为创建时的初值；激活（input 聚焦）后 Delete 恢复原生向后删除。</li>
 			<li>数值控件上右键打开自研菜单（重置为默认值 / 设为最小值 / 设为最大值，后两项在没有对应 min/max 时禁用）；其余 <code>&lt;input&gt;</code> 保留浏览器原生右键菜单。</li>
 			<li>输入非数字文本时不再强行回退：文本原样保留、背景标 <code>--gpen-danger</code>、绑定值变 NaN，并让 <code>&lt;form&gt;</code> 的原生校验拦截提交；Escape 恢复聚焦快照。</li>
-			<li>滑条沿轴平均分成三段：靠近 − 的 1/3 用<strong>智能整数位</strong>（<code>1.12 → 0.12 → 0.02 → 0.01 → 0.009</code>，递减会自动退回智能小数位、无限趋近 0），中央 1/3 按配置 <code>step</code>，靠近 + 的 1/3 用<strong>用户输入的最大精度</strong>（<code>0.499 → 0.500 → 0.501</code>）；拖拽每 6px 走一步，方向由位移符号决定。</li>
+			<li>滑条沿轴平均分成三段，<strong>规则按 pointerdown 的落点锁定</strong>（拖到别的分区也不会换）：靠近 − 的 1/3 用<strong>智能整数位</strong>（<code>1.12 → 0.12 → 0.02 → 0.01 → 0.009</code>，递减会自动退回智能小数位、无限趋近 0），中央 1/3 按配置 <code>step</code>，靠近 + 的 1/3 用<strong>用户输入的最大精度</strong>（<code>0.499 → 0.500 → 0.501</code>）；拖拽每 6px 走一步，方向由位移符号决定。</li>
 			<li>−/+ 按钮与 caret 贴边的 ←/→ 按配置 step 调整（<code>step</code> 缺省按 HTML 语义取 1）；显式非数值 step（<code>step="any"</code>）退回用户精度。数值控件<strong>激活（聚焦）后</strong>滚轮等价于 ↑/↓，未激活时滚轮留给页面滚动。</li>
 			<li>最近一次提交：<output aria-live="polite">{lastChange}</output></li>
 		</ul>
