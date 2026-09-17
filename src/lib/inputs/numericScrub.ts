@@ -1,11 +1,9 @@
 /**
- * Pointer-scrub math for the CodeMirror `±` handle
- * (`#lib/inputs/codemirror/numberScrubber`): a pixel delta becomes a value
- * change at the precision of the number under the cursor.
- *
- * `InputSlider` no longer drags continuously — it steps discretely in one of
- * three zones (see `numericCaret.ts` / `docs/input.md`) — but keeps the same
- * `SCRUB_PIXELS_PER_STEP = 6` sensitivity.
+ * Pointer-scrub math shared by the two drag gestures of the numeric widgets:
+ * the CodeMirror `±` handle (`#lib/inputs/codemirror/numberScrubber`) drags
+ * continuously at the precision of the number under the cursor, and
+ * `InputSlider` steps discretely in one of three zones (see `numericCaret.ts` /
+ * `docs/input.md`) — both at `SCRUB_PIXELS_PER_STEP` pixels per unit.
  */
 import { roundTo, softClampTo } from "./numericCaret.js";
 
@@ -23,6 +21,22 @@ export function scrubQuantum(decimals: number): number {
 /** Value change per pixel of drag for a given precision. */
 export function scrubSensitivity(decimals: number): number {
   return scrubQuantum(decimals) / SCRUB_PIXELS_PER_STEP;
+}
+
+/**
+ * Whole steps to apply for a drag delta, plus the pixel position that has been
+ * spent. The remainder carries over to the next move, so tiny back-and-forth
+ * motions do not re-trigger a step (shared by the `InputSlider` zones and the
+ * CodeMirror handle, which both step once per `SCRUB_PIXELS_PER_STEP`).
+ */
+export function consumeScrubSteps(
+  accumulated: number,
+  consumed: number,
+  pixelsPerStep: number = SCRUB_PIXELS_PER_STEP,
+): { steps: number; consumed: number } {
+  const whole = Math.trunc((accumulated - consumed) / pixelsPerStep);
+  const steps = Object.is(whole, -0) ? 0 : whole; // 与 clampTo / roundTo 一样不吐 -0
+  return { steps, consumed: consumed + steps * pixelsPerStep };
 }
 
 /**

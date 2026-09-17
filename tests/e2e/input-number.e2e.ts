@@ -11,7 +11,9 @@ async function dragSlider(field: Locator, ratio: number, pixels: number) {
   await field.evaluate((element) => (element as HTMLInputElement).blur());
   await slider.page().mouse.move(x, y);
   await slider.page().mouse.down();
-  await slider.page().mouse.move(x + pixels, y);
+  // 分几步走：pointer capture 是在确认拖拽（>4px）之后才申请的，一步跨出控件
+  // 会丢掉后面的 move（那一瞬间还没有捕获）。
+  await slider.page().mouse.move(x + pixels, y, { steps: 8 });
   await slider.page().mouse.up();
 }
 
@@ -427,5 +429,34 @@ test.describe("gpen-input-slider (touch)", () => {
 
     await dispatch("touchEnd", []);
     await context.close();
+  });
+});
+
+test.describe("gpen-input-slider (vertical)", () => {
+  test("sizes the +/- and unit rows to one token line, value takes the rest", async ({ page }) => {
+    await page.goto("/demo/widgets");
+    const slider = page.locator(".vertical-card .input-slider");
+    await slider.scrollIntoViewIfNeeded();
+
+    const metrics = await slider.evaluate((element) => {
+      const widget = element.querySelector(".input-widget");
+      if (widget === null) throw new Error("widget missing");
+      const style = getComputedStyle(widget);
+      const height = (selector: string) =>
+        element.querySelector(selector)?.getBoundingClientRect().height ?? 0;
+      return {
+        // line-height 是 token（无单位）算出来的绝对值，1lh 就等于它
+        line: Number.parseFloat(style.lineHeight),
+        rows: [height(".input-step--up"), height(".input-unit"), height(".input-step--down")],
+        field: height("input"),
+        widget: widget.getBoundingClientRect().height,
+        card: (element.closest(".vertical-card") as HTMLElement).getBoundingClientRect().height,
+      };
+    });
+
+    expect(metrics.rows).toHaveLength(3); // + / unit / −
+    for (const row of metrics.rows) expect(row).toBeCloseTo(metrics.line, 1);
+    expect(metrics.field).toBeGreaterThan(metrics.line); // 多出来的高度全给 value
+    expect(metrics.widget).toBeLessThanOrEqual(metrics.card);
   });
 });

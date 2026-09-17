@@ -40,9 +40,12 @@ div.input-widget[data-input-widget][data-orientation][role="group"]
     控件自己声明 `line-height: var(--gpen-line-height)`，所以 `1lh` 只由 token × 自身字号决定，
     与宿主页的 `line-height` 无关；
   - 纵向：`width: calc(var(--gpen-char-width, 6) * 1ch)`、`height: auto` +
-    `min-height: calc(4 * var(--gpen-line-height) * 1lh)`，同时 `flex: 1 1 auto`——
-    父级是 flex 列时撑满剩余高度，普通块级父容器里退回 4 行高（+ / value / unit / − 各一行），
-    所以不会溢出卡片。
+    `min-height: calc(4 * var(--gpen-row))`，同时 `flex: 1 1 auto`——
+    父级是 flex 列时撑满剩余高度，普通块级父容器里退回 4 行高，所以不会溢出卡片。
+  - **纵向每行 = 一个 token 行高**：`--gpen-row: calc(var(--gpen-line-height, 1) * 1lh)`。
+    ± 与 unit 固定 `height: var(--gpen-row)`、`flex: 0 0 auto`（字号回落到根字号，`1lh` 才等于
+    根的行高），多出来的高度全给可编辑的 value（`flex: 1 1 auto`）。四行要正好铺满控件，
+    所以纵向形态不加纵向 padding（横向 padding 由根那条覆盖）。
 - 垂直布局用 `flex-direction: column` + `order`（视觉 `+ / value / unit / −`，焦点顺序仍是 down→up）。
 - 子元素只用 `flex`；InputSlider 通过 `--input-background*` 把内层背景设成透明以露出浮层。
 
@@ -175,8 +178,13 @@ const limited = validateNumeric(value, { min: 0, max: 100, step: 0.2 }); // clam
 
 ## 与 CodeMirror 共用
 
-`stepAtCaret` / `addStepToValue` / `toggleSign` / `softClampTo` / `roundTo` / `clampTo` / `scrubValue`
-被两个 CodeMirror 6 扩展复用（方向键步进、`±` 拖拽把手），见 [`docs/codemirror.md`](codemirror.md)。
+`stepAtCaret` / `addStepToValue` / `toggleSign` / `softClampTo` / `finiteNumber` / `roundTo` /
+`clampTo` / `scrubValue` 被两个 CodeMirror 6 扩展与两个输入组件共用（方向键步进、`±` 拖拽把手），
+见 [`docs/codemirror.md`](codemirror.md)。
+
+拖拽像素→步进的量化也抽成了纯函数 `consumeScrubSteps(accumulated, consumed, pixelsPerStep)`：
+返回这次该走几步 + 已经花掉的像素（余量留到下一次，微动不反复触发），InputSlider 的三段分区
+与 CodeMirror 的连续拖拽共用同一个 `SCRUB_PIXELS_PER_STEP = 6` 灵敏度。
 
 ## 如何增加新 input 类型
 

@@ -69,6 +69,11 @@ export function withinBounds(
   return (lower === undefined || value >= lower) && (upper === undefined || value <= upper);
 }
 
+/** The value as a finite number, or `undefined` when it is not one. */
+export function finiteNumber(candidate: unknown): number | undefined {
+  return typeof candidate === "number" && Number.isFinite(candidate) ? candidate : undefined;
+}
+
 /**
  * Soft bounds: clamp only when `origin` is already inside them. Typing `150`
  * into a `0–100` field then keeps ↑/↓ free until the value comes back in.

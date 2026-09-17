@@ -7,6 +7,7 @@
 		clampTo,
 		decimalPlaces,
 		decimalPlacesInText,
+		finiteNumber,
 		numericAttribute,
 		softClampTo,
 		stepAmount,
@@ -51,7 +52,7 @@
 	// 默认值取组件创建时收到的 value（还没有 bpy.props 式的属性默认值定义层，挂载初值即近似）。
 	const defaultValue = finiteNumber(value) ?? 0;
 	const ariaValueText = $derived(
-		typeof value === 'number' && Number.isFinite(value) && unit ? `${value} ${unit}` : undefined,
+		finiteNumber(value) !== undefined && unit ? `${value} ${unit}` : undefined,
 	);
 	// min/max 只在**校验**时体现：报告违规给原生 constraint validation，但不改绑定值。
 	// 调用方想要限制后的值，自己调 `validateNumeric(value, {min, max, step})`。
@@ -67,10 +68,6 @@
 		if (upper !== undefined && current > upper) return `不能大于 ${upper}`;
 		return '';
 	});
-
-	function finiteNumber(candidate: InputValue | undefined): number | undefined {
-		return typeof candidate === 'number' && Number.isFinite(candidate) ? candidate : undefined;
-	}
 
 	// step 的十进制位数同时是提交时的取整位数（`precision` 已并入 step）。
 	function stepDecimals(): number | undefined {
@@ -508,24 +505,41 @@
 			);
 		}
 
-		/* 垂直形态：宽度取 --gpen-char-width（竖向控件的统一宽度，默认 6ch），
-		 * 高度不写死——作为 flex 子项时用 `flex: 1 1 auto` 撑满可用高度，否则
-		 * 退回 `min-height`（+ / value / unit / − 各 1 行），所以不会撑破父级卡片。 */
+		/* 垂直形态：宽度取 --gpen-char-width（竖向控件的统一宽度，默认 6ch）；
+		 * 每行正好一个 token 行高（--gpen-row），所以 + / value / unit / − 叠起来就是整数行：
+		 * 高度不写死——作为 flex 子项时用 `flex: 1 1 auto` 撑满可用高度，多的空间全给 value；
+		 * 不在 flex 父级里就退回 `min-height`（4 行），因此不会撑破父级卡片。 */
 		&[data-orientation='vertical'] {
+			--gpen-row: calc(var(--gpen-line-height, 1) * 1lh);
+
 			flex: 1 1 auto;
 			flex-direction: column;
 			width: calc(var(--gpen-char-width, 6) * 1ch);
 			/* flex 父级里只沿列方向长大，别被行方向的 grow 拉宽。 */
 			max-width: calc(var(--gpen-char-width, 6) * 1ch);
 			height: auto;
-			min-height: calc(4 * var(--gpen-line-height, 1) * 1lh);
-			padding: 0.3lh 0;
+			min-height: calc(4 * var(--gpen-row));
+			/* 四行要正好铺满控件，所以不再加纵向 padding（横向 padding 由根上那条覆盖掉）。 */
+			padding: 0;
 
-			.input-step { flex: 1 1 0; }
+			/* ± 与 unit 固定占一行；字号回落到根字号，`1lh` 才等于根的行高。 */
+			.input-step {
+				flex: 0 0 auto;
+				height: var(--gpen-row);
+				font-size: 1em;
+			}
 			.input-step--up { order: -1; }
 			.input-step--down { order: 2; }
-			.input-field { flex: 1 1 0; width: 100%; }
-			.input-unit { display: grid; flex: 1 1 0; margin-inline: 0; place-items: center; }
+			/* 剩下的高度全给可编辑的 value。 */
+			.input-field { flex: 1 1 auto; width: 100%; }
+			.input-unit {
+				display: grid;
+				flex: 0 0 auto;
+				height: var(--gpen-row);
+				margin-inline: 0;
+				font-size: 1em;
+				place-items: center;
+			}
 		}
 	}
 

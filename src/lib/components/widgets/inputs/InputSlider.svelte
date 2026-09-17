@@ -3,12 +3,14 @@
 
 	import InputNumber from '#lib/components/widgets/inputs/InputNumber.svelte';
 	import {
+		finiteNumber,
 		numericAttribute,
 		stepAmount,
 		stepByRule,
 		stepRuleAt,
 		type StepRule,
 	} from '#lib/inputs/numericCaret';
+	import { consumeScrubSteps } from '#lib/inputs/numericScrub';
 	import type { InputProps, InputValue } from '#lib/components/widgets/inputs/types';
 
 	// InputSlider = InputNumber + 浮层（Blender 风滑条）。
@@ -28,7 +30,6 @@
 
 	const DRAG_THRESHOLD = 4; // 视为拖拽而非点击的像素阈值
 	const LONG_PRESS_MS = 250; // 无位移长按进入拖拽的毫秒数
-	const STEP_PIXELS = 6; // 一个步进单位需要的像素（与 CodeMirror scrubber 同灵敏度）
 	const SLIDER_RULES = ['digit', 'step', 'precision'] as const; // 沿轴从 − 到 +
 
 	let root = $state<HTMLDivElement | undefined>();
@@ -52,7 +53,7 @@
 	const hasRange = $derived(lower !== undefined && upper !== undefined);
 	const ratio = $derived.by(() => {
 		if (lower === undefined || upper === undefined || upper === lower) return 0;
-		const current = typeof value === 'number' && Number.isFinite(value) ? value : lower;
+		const current = finiteNumber(value) ?? lower;
 		return Math.min(1, Math.max(0, (current - lower) / (upper - lower)));
 	});
 
@@ -92,13 +93,13 @@
 		element.dispatchEvent(new Event('input', { bubbles: true }));
 	}
 
-	// 每走满 STEP_PIXELS 兑换一步；余量留给下一次，所以来回微动不会反复触发。
+	// 每走满一步的像素数就兑换一步（纯函数给出步数与余量），余量留给下一次，
+	// 所以来回微动不会反复触发。
 	function stepAccumulated() {
-		while (Math.abs(accumulated - consumed) >= STEP_PIXELS) {
-			const direction = accumulated > consumed ? 1 : -1;
-			consumed += direction * STEP_PIXELS;
-			applyStep(direction);
-		}
+		const { steps, consumed: nextConsumed } = consumeScrubSteps(accumulated, consumed);
+		consumed = nextConsumed;
+		const direction: -1 | 1 = steps < 0 ? -1 : 1;
+		for (let index = 0; index < Math.abs(steps); index += 1) applyStep(direction);
 	}
 
 	// 规则已经由 handlePointerDown 按落点定好，这里只管进入 scrub 状态。
@@ -269,8 +270,8 @@
 		touch-action: pan-y;
 		user-select: none;
 
-		/* 垂直：宽度跟随 InputNumber（--gpen-char-width），高度撑满 flex 父级，
-		 * 否则退回 4 行高；不写 height: 100%，避免撑破父级卡片。 */
+		/* 垂直：宽度跟随 InputNumber（--gpen-char-width），高度由 InputNumber 的
+		 * min-height / flex 决定（这里不再重复写 4 行，也不写 height: 100%）。 */
 		&.vertical {
 			display: flex;
 			flex: 1 1 auto;
@@ -278,7 +279,6 @@
 			width: fit-content;
 			max-width: calc(var(--gpen-char-width, 6) * 1ch);
 			height: auto;
-			min-height: calc(4 * var(--gpen-line-height, 1) * 1lh);
 			touch-action: pan-x;
 
 			.slider-fill { inset-block: auto; inset-inline: 1px; bottom: 1px; }
