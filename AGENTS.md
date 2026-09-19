@@ -23,9 +23,9 @@
 
 - 默认依赖原生行为来压低逻辑复杂度：优先 `<input type="…">` 等原生元素/属性、原生约束校验（`setCustomValidity` / `:invalid` / `required`）与浏览器默认交互（剪切复制粘贴、右键菜单、selection），再考虑自研。
 - 只有原生行为无法满足精确要求时才自研，并在对应 `docs/*.md` 写清「缺口 + 自研代价」。目前只有两处例外：
-  - `number`：Chrome 的 `<input type="number">` 不提供 `selectionStart` / `setSelectionRange`，做不了 `InputNumber` 的「按光标位权步进」，所以它用 `type="text" inputmode="decimal"` 并在组件内补回数值语义（见 [`docs/input.md`](docs/input.md)）；将来的 `color` 同理。
+  - `number`：Chrome 的 `<input type="number">` 不提供 `selectionStart` / `setSelectionRange`，做不了 `InputNumber` 的「按光标位权步进」，所以它用 `type="text" inputmode="decimal"` 并在组件内补回数值语义（见 [`docs/input.md`](docs/input.md)）。
   - 多行文本：`CodeEditor` 用 CodeMirror 6 换掉 `<textarea>`（缺口 / 代价 / 表单镜像个案见 [`docs/code-editor.md`](docs/code-editor.md)）。
-- 因此除 `number`（和将来的 `color`）外，其余 `<input type>` 一律渲染原生元素，不要再套自研 wrapper/编辑态。
+- 因此除 `number` 外，其余 `<input type>` 一律渲染原生元素，不要再套自研 wrapper/编辑态。`color` 是例外中的例外：**不自研也不用原生 `<input type="color">`**，而是用 Spectrum Web Components 的取色器（见 [`docs/color.md`](docs/color.md)）。
 
 ## 样式与 token
 

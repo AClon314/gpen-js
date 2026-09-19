@@ -8,6 +8,11 @@
         "@codemirror/commands": "^6.11.1",
         "@codemirror/state": "^6.7.5",
         "@codemirror/view": "^6.43.12",
+        "@spectrum-web-components/color-area": "^1.12.2",
+        "@spectrum-web-components/color-field": "^1.12.2",
+        "@spectrum-web-components/color-slider": "^1.12.2",
+        "@spectrum-web-components/swatch": "^1.12.2",
+        "@spectrum-web-components/theme": "^1.12.2",
         "dockview": "^8.2.0",
         "flatbuffers": "25.9.23",
         "gpen-protocol": "file:../gpen-protocol",
@@ -124,6 +129,12 @@
 
     "@eslint/plugin-kit": ["@eslint/plugin-kit@0.7.3", "", { "dependencies": { "@eslint/core": "^1.2.1", "levn": "^0.4.1" } }, "sha512-IkO+/KEUvwbVpiURZg+P7zF74z5Jxe0UgJxVni+RtoHQ6IZieXaO02kmadomap/q+l6bc/jdPGGqTjhuZnuz1Q=="],
 
+    "@floating-ui/core": ["@floating-ui/core@1.8.0", "", { "dependencies": { "@floating-ui/utils": "^0.2.12" } }, "sha512-0CIZ5itps/8x7BG8dEIhs53BvCUH2PCoogtakwRTut+Arm58sJooJ0AuZhLw2HJYIR5cMLNPBSS728sPho2khQ=="],
+
+    "@floating-ui/dom": ["@floating-ui/dom@1.7.4", "", { "dependencies": { "@floating-ui/core": "^1.7.3", "@floating-ui/utils": "^0.2.10" } }, "sha512-OOchDgh4F2CchOX94cRVqhvy7b3AFb+/rQXyswmzmGakRfkMgoWVjfnLWkRirfLEfuD4ysVW16eXzwt3jHIzKA=="],
+
+    "@floating-ui/utils": ["@floating-ui/utils@0.2.10", "", {}, "sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ=="],
+
     "@humanfs/core": ["@humanfs/core@0.19.2", "", { "dependencies": { "@humanfs/types": "^0.15.0" } }, "sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA=="],
 
     "@humanfs/node": ["@humanfs/node@0.16.8", "", { "dependencies": { "@humanfs/core": "^0.19.2", "@humanfs/types": "^0.15.0", "@humanwhocodes/retry": "^0.4.0" } }, "sha512-gE1eQNZ3R++kTzFUpdGlpmy8kDZD/MLyHqDwqjkVQI0JMdI1D51sy1H958PNXYkM2rAac7e5/CnIKZrHtPh3BQ=="],
@@ -193,6 +204,12 @@
     "@lezer/highlight": ["@lezer/highlight@1.2.3", "", { "dependencies": { "@lezer/common": "^1.3.0" } }, "sha512-qXdH7UqTvGfdVBINrgKhDsVTJTxactNNxLk7+UMwZhU13lMHaOBlJe9Vqp907ya56Y3+ed2tlqzys7jDkTmW0g=="],
 
     "@lezer/lr": ["@lezer/lr@1.4.10", "", { "dependencies": { "@lezer/common": "^1.0.0" } }, "sha512-rnCpTIBafOx4mRp43xOxDJbFipJm/c0cia/V5TiGlhmMa+wsSdoGmUN3w5Bqrks/09Q/D4tNAmWaT8p6NRi77A=="],
+
+    "@lit-labs/observers": ["@lit-labs/observers@2.0.2", "", { "dependencies": { "@lit/reactive-element": "^1.0.0 || ^2.0.0" } }, "sha512-eZb5+W9Cb0e/Y5m1DNxBSGTvGB2TAVTGMnTxL/IzFhPQEcZIAHewW1eVBhN8W07A5tirRaAmmF6fGL1V20p3gQ=="],
+
+    "@lit-labs/ssr-dom-shim": ["@lit-labs/ssr-dom-shim@1.6.0", "", {}, "sha512-VHb0ALPMTlgKjM6yIxxoQNnpKyUKLD04VzeQdsiXkMqkvYlAHxq9glGLmgbb889/1GsohSOAjvQYoiBppXFqrQ=="],
+
+    "@lit/reactive-element": ["@lit/reactive-element@2.1.2", "", { "dependencies": { "@lit-labs/ssr-dom-shim": "^1.5.0" } }, "sha512-pbCDiVMnne1lYUIaYNN5wrwQXDtHaYtg7YEFPeW+hws6U47WeFvISGUWekPGKWOP1ygrs0ef0o1VJMk1exos5A=="],
 
     "@lix-js/sdk": ["@lix-js/sdk@0.4.10", "", { "dependencies": { "@lix-js/server-protocol-schema": "0.1.1", "dedent": "1.5.1", "human-id": "^4.1.1", "js-sha256": "^0.11.0", "kysely": "^0.28.12", "sqlite-wasm-kysely": "0.3.0", "uuid": "^14.0.0" } }, "sha512-0dMInAJK/67guTG5rRZaCEhvzC5cCXENOjaePA5AqMXrCE97kaY7SRor9e2vnoGsFIiGqXKlT0MCIoZj36G0gg=="],
 
@@ -322,6 +339,56 @@
 
     "@sinclair/typebox": ["@sinclair/typebox@0.31.30", "", {}, "sha512-MGsM7bVmHg3sUKCphlu3SGQ+T+5JTbygZWYArfKQCW5anJeACHeqLhcnf+R7XlCWZ+QR3C8JTBx3kCKJTN69ow=="],
 
+    "@spectrum-web-components/action-button": ["@spectrum-web-components/action-button@1.12.2", "", { "dependencies": { "@spectrum-web-components/base": "1.12.2", "@spectrum-web-components/button": "1.12.2", "@spectrum-web-components/icon": "1.12.2", "@spectrum-web-components/icons-ui": "1.12.2", "@spectrum-web-components/shared": "1.12.2" } }, "sha512-iH9gAJhbRAa4D8oxQSXYq8b9uXu7KIT7ZhpEdFYqk0AwMs+doIqLT0EDy9P90BI9nHRZvDWUnQ0pS+nkzbq+0g=="],
+
+    "@spectrum-web-components/base": ["@spectrum-web-components/base@1.12.2", "", { "dependencies": { "lit": "^2.5.0 || ^3.1.3" } }, "sha512-7vB3182FqJzRevafUWlFRw/bfM4ZjC+Mmh5Fh0mDmVcP/SohUowrmHsQns1fsQPi+/O8iMP8XbtT7sAFp6ejkA=="],
+
+    "@spectrum-web-components/button": ["@spectrum-web-components/button@1.12.2", "", { "dependencies": { "@spectrum-web-components/base": "1.12.2", "@spectrum-web-components/clear-button": "1.12.2", "@spectrum-web-components/close-button": "1.12.2", "@spectrum-web-components/icon": "1.12.2", "@spectrum-web-components/icons-ui": "1.12.2", "@spectrum-web-components/progress-circle": "1.12.2", "@spectrum-web-components/reactive-controllers": "1.12.2", "@spectrum-web-components/shared": "1.12.2" } }, "sha512-THab5wD0gzF4vOzUrQwvrNoHYk5fvtVHXNlY272YmEMaVGCP/mpqS2Kf5Pbd9sSNKhe5uRn9QRCVve+e4TZjCw=="],
+
+    "@spectrum-web-components/clear-button": ["@spectrum-web-components/clear-button@1.12.2", "", { "dependencies": { "@spectrum-web-components/base": "1.12.2" } }, "sha512-iTDs+FQJkHelR+f4Iz3JL+i5ltbI5XHpweFYLn6UgP+tO6hjZfIr1iw6bCaDs1MEHLIJez1a4mYl0aR6orKa6Q=="],
+
+    "@spectrum-web-components/close-button": ["@spectrum-web-components/close-button@1.12.2", "", { "dependencies": { "@spectrum-web-components/base": "1.12.2" } }, "sha512-T1owl+MncqZTMapRZvwGI0IRzzYigzDpsGWR4yu4yc8MDD8D9k067KFZeh2Og1o5uzLNMT9jr6qUh795Xk6rtg=="],
+
+    "@spectrum-web-components/color-area": ["@spectrum-web-components/color-area@1.12.2", "", { "dependencies": { "@spectrum-web-components/base": "1.12.2", "@spectrum-web-components/color-handle": "1.12.2", "@spectrum-web-components/opacity-checkerboard": "1.12.2", "@spectrum-web-components/reactive-controllers": "1.12.2", "@spectrum-web-components/shared": "1.12.2" } }, "sha512-72EvnHOUs30lJwKVNR8xrVRWpYVIJ+yOign7d/ZsDaKIwSkYNbOCX7xgyh/VepQ6tDeFHvBwA9atBBw5j4m9mQ=="],
+
+    "@spectrum-web-components/color-field": ["@spectrum-web-components/color-field@1.12.2", "", { "dependencies": { "@spectrum-web-components/base": "1.12.2", "@spectrum-web-components/color-handle": "1.12.2", "@spectrum-web-components/reactive-controllers": "1.12.2", "@spectrum-web-components/textfield": "1.12.2" } }, "sha512-OZBRbrixfWPEvE8qXGW3wdhWAT8cmEM7ach7wYEU4pz8Z/zldaR5QRbdw9dU8IhHNJybOSVu2BBmk31fyzvcvQ=="],
+
+    "@spectrum-web-components/color-handle": ["@spectrum-web-components/color-handle@1.12.2", "", { "dependencies": { "@spectrum-web-components/base": "1.12.2", "@spectrum-web-components/color-loupe": "1.12.2", "@spectrum-web-components/opacity-checkerboard": "1.12.2" } }, "sha512-4Wygb+DPmNCzPyoHLOXpfG0IYwsLPnkcp4JwIAd+ZeKXr9SvltYXqJd5jii4JyafB7eHdbgTPyV94gp/htkshA=="],
+
+    "@spectrum-web-components/color-loupe": ["@spectrum-web-components/color-loupe@1.12.2", "", { "dependencies": { "@spectrum-web-components/base": "1.12.2", "@spectrum-web-components/opacity-checkerboard": "1.12.2" } }, "sha512-gfzaFYT7svkKRo4LJlWAicRNUEOkTXJseQux72GI2DRD4MLefivAGBQCMGT5jeYHggCk+dRU/rHTbNM4HX9C4g=="],
+
+    "@spectrum-web-components/color-slider": ["@spectrum-web-components/color-slider@1.12.2", "", { "dependencies": { "@spectrum-web-components/base": "1.12.2", "@spectrum-web-components/color-handle": "1.12.2", "@spectrum-web-components/opacity-checkerboard": "1.12.2", "@spectrum-web-components/reactive-controllers": "1.12.2", "@spectrum-web-components/shared": "1.12.2" } }, "sha512-EM38+HAOp1Z4JcJTBnhWvZYgYE/wvgrjdsStGJdByaaAP7vRB9aEEdtSFk62RTdOFU42BmTgtot7AXdTSJkxeQ=="],
+
+    "@spectrum-web-components/help-text": ["@spectrum-web-components/help-text@1.12.2", "", { "dependencies": { "@spectrum-web-components/base": "1.12.2", "@spectrum-web-components/icons-workflow": "1.12.2", "@spectrum-web-components/shared": "1.12.2" } }, "sha512-r8parJrGwPf/FO7CMjfjCpS6reczRX/RDkGuAs2lYNISE3HUoSUV7OL3CSI4eCKeiwhInHgSACpW93t7RRSCQw=="],
+
+    "@spectrum-web-components/icon": ["@spectrum-web-components/icon@1.12.2", "", { "dependencies": { "@spectrum-web-components/base": "1.12.2", "@spectrum-web-components/iconset": "1.12.2", "@spectrum-web-components/reactive-controllers": "1.12.2" } }, "sha512-mvnP1wcjdRVQCV73Le0rKJ22EhPi2jb5xAktRaPdYQebH0yjqVV1EvRNB5ZQPLqVzzDz9UzBm2RzOoGDupu+Jg=="],
+
+    "@spectrum-web-components/icons-ui": ["@spectrum-web-components/icons-ui@1.12.2", "", { "dependencies": { "@spectrum-web-components/base": "1.12.2", "@spectrum-web-components/icon": "1.12.2", "@spectrum-web-components/iconset": "1.12.2" } }, "sha512-ibSFBD1gM6NkU+88g7QOPcee8E2JpClwiI/VZ/6EXbvOa/9QvQR23NfcYZIWHu8p3Wh7Lyas4MO+NdKlt6b09g=="],
+
+    "@spectrum-web-components/icons-workflow": ["@spectrum-web-components/icons-workflow@1.12.2", "", { "dependencies": { "@spectrum-web-components/base": "1.12.2", "@spectrum-web-components/icon": "1.12.2" } }, "sha512-r8r5YhaCwlw8D839HIbqZ+G3J1H49/ibbnp4golnfa96u9oY0OTkQIrdpPefrDxgk4eLXAjwovCMQk7hCWtuNw=="],
+
+    "@spectrum-web-components/iconset": ["@spectrum-web-components/iconset@1.12.2", "", { "dependencies": { "@spectrum-web-components/base": "1.12.2" } }, "sha512-s6BsY6VnZQOcTx8LfLixdu16g0QXr54wC4PiY7wKcgqkS+VJzo3Up02y7nUUcga38tDb2XcYHZU3rqKVagz6zQ=="],
+
+    "@spectrum-web-components/opacity-checkerboard": ["@spectrum-web-components/opacity-checkerboard@1.12.2", "", { "dependencies": { "@spectrum-web-components/base": "1.12.2" } }, "sha512-oiO/8z8ixJV+iY5VqKsyFAPwYzRoi5s7G/skRC33rldRYa/R/HS3qSB5jGRV+uJFhrSdkKRu+wnQSbKilSqL8A=="],
+
+    "@spectrum-web-components/overlay": ["@spectrum-web-components/overlay@1.12.2", "", { "dependencies": { "@floating-ui/dom": "1.7.4", "@floating-ui/utils": "0.2.10", "@spectrum-web-components/action-button": "1.12.2", "@spectrum-web-components/base": "1.12.2", "@spectrum-web-components/reactive-controllers": "1.12.2", "@spectrum-web-components/shared": "1.12.2", "@spectrum-web-components/theme": "1.12.2", "focus-trap": "7.6.5" } }, "sha512-yYGo8MtN6NJMDVU5e8fm6w3G4Gc7XZXaCWEtDXwJD3s3Pw9FZnWWraxbGlIRswBwCjR67RJ17pdG320fo0HhVA=="],
+
+    "@spectrum-web-components/progress-circle": ["@spectrum-web-components/progress-circle@1.12.2", "", { "dependencies": { "@spectrum-web-components/base": "1.12.2", "@spectrum-web-components/reactive-controllers": "1.12.2", "@spectrum-web-components/shared": "1.12.2" } }, "sha512-I7gAZM8gza/gDZ+tJuKcWF8lld4030GcJpLcySb1NTzBpJlnIItPuybBolSpSb+QzmFTAnlGJaRWTXPZkC8hwA=="],
+
+    "@spectrum-web-components/reactive-controllers": ["@spectrum-web-components/reactive-controllers@1.12.2", "", { "dependencies": { "@spectrum-web-components/progress-circle": "1.12.2", "colorjs.io": "0.5.2", "lit": "^2.5.0 || ^3.1.3" } }, "sha512-TD94tuA5XDK8ISUM4pWHxJF9oe/IvSHYoR/4P6aYsAj8oPZgrGerNh1a+vzQZ0PorRpVMV4Rg/UHCbtTwxOgOQ=="],
+
+    "@spectrum-web-components/shared": ["@spectrum-web-components/shared@1.12.2", "", { "dependencies": { "@lit-labs/observers": "2.0.2", "@spectrum-web-components/base": "1.12.2", "focus-visible": "5.2.1" } }, "sha512-1vRimMtdKllujoFPbuDoPP0eSHZJfExWld2jeqboMKjzNTDvBfoOIN3ZOz7ClOVyrJOQDJSP2htCVfDBYl72Ug=="],
+
+    "@spectrum-web-components/styles": ["@spectrum-web-components/styles@1.12.2", "", { "dependencies": { "@spectrum-web-components/base": "1.12.2", "lit": "^2.5.0 || ^3.1.3" } }, "sha512-6vYe/VEbjJ4VDcOSbjxEZaKatwRdxp6yLgEf+qtlo7YOSTAM2016kr6MaqV3EbKXBsVJP8qe9j2hoq29MLGqyA=="],
+
+    "@spectrum-web-components/swatch": ["@spectrum-web-components/swatch@1.12.2", "", { "dependencies": { "@lit-labs/observers": "2.0.2", "@spectrum-web-components/base": "1.12.2", "@spectrum-web-components/icon": "1.12.2", "@spectrum-web-components/icons-ui": "1.12.2", "@spectrum-web-components/opacity-checkerboard": "1.12.2", "@spectrum-web-components/reactive-controllers": "1.12.2", "@spectrum-web-components/shared": "1.12.2" } }, "sha512-yGHY8YpzS9cPYQQwINFeAsLYUI9rbcGocaGYRgpIFCtJUnN07aowaziK2qFH3Kye6Bh6RgVBzXVC5VNdi6SCTg=="],
+
+    "@spectrum-web-components/textfield": ["@spectrum-web-components/textfield@1.12.2", "", { "dependencies": { "@spectrum-web-components/base": "1.12.2", "@spectrum-web-components/help-text": "1.12.2", "@spectrum-web-components/icon": "1.12.2", "@spectrum-web-components/icons-ui": "1.12.2", "@spectrum-web-components/icons-workflow": "1.12.2", "@spectrum-web-components/overlay": "1.12.2", "@spectrum-web-components/shared": "1.12.2", "@spectrum-web-components/tooltip": "1.12.2" } }, "sha512-FGms1SeWy9dNP8tK8+NUJYNK2kopWLVnyxYSB148UQW/SxRqnlgmkmP4Sofn94C3VzyVURW3cLWTLxCKS5HGAQ=="],
+
+    "@spectrum-web-components/theme": ["@spectrum-web-components/theme@1.12.2", "", { "dependencies": { "@spectrum-web-components/base": "1.12.2", "@spectrum-web-components/styles": "1.12.2" } }, "sha512-JWzjsTybXBevJpFlH3HRD+MbssGu2K3/8hv0THU1Wy7khSxNIvfsCAg1Twjt9qTr7BNgw5gfCdMoMDj0qD7Ilg=="],
+
+    "@spectrum-web-components/tooltip": ["@spectrum-web-components/tooltip@1.12.2", "", { "dependencies": { "@spectrum-web-components/base": "1.12.2", "@spectrum-web-components/overlay": "1.12.2", "@spectrum-web-components/reactive-controllers": "1.12.2", "@spectrum-web-components/shared": "1.12.2" } }, "sha512-Q0tbH/7SuInvizNf8f5IdnIhhI21tjGysLJP6HeK+nVjNHOoA45wrphverXVpeQmMhbek6nPizHoeI6fxToxEg=="],
+
     "@sqlite.org/sqlite-wasm": ["@sqlite.org/sqlite-wasm@3.48.0-build4", "", { "bin": { "sqlite-wasm": "bin/index.js" } }, "sha512-hI6twvUkzOmyGZhQMza1gpfqErZxXRw6JEsiVjUbo7tFanVD+8Oil0Ih3l2nGzHdxPI41zFmfUQG7GHqhciKZQ=="],
 
     "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
@@ -446,6 +513,8 @@
 
     "clsx": ["clsx@2.1.1", "", {}, "sha512-eYm0QWBtUrBWZWG0d386OGAw16Z995PiOVo2B7bjWSbHedGl5e0ZWaq65kOGgUSNesEIDkB9ISbTg/JK9dhCZA=="],
 
+    "colorjs.io": ["colorjs.io@0.5.2", "", {}, "sha512-twmVoizEW7ylZSN32OgKdXRmo1qg+wT5/6C3xu5b9QsWzSFAhHLn2xd8ro0diCsKfCj1RdaTP/nrcW+vAoQPIw=="],
+
     "commander": ["commander@11.1.0", "", {}, "sha512-yPVavfyCcRhmorC7rWlkHn15b4wDVgVmBA7kV4QVBsF7kv/9TKJAbAXVTxvTnwP8HHKjRCJDClKbciiYS7p0DQ=="],
 
     "comment-json": ["comment-json@4.6.2", "", { "dependencies": { "array-timsort": "^1.0.3", "esprima": "^4.0.1" } }, "sha512-R2rze/hDX30uul4NZoIZ76ImSJLFxn/1/ZxtKC1L77y2X1k+yYu1joKbAtMA2Fg3hZrTOiw0I5mwVMo0cf250w=="],
@@ -560,6 +629,10 @@
 
     "flatted": ["flatted@3.4.4", "", {}, "sha512-5+ybhBZANEJxaH3X5evAFatUxLfEHSr7n6kYJ+1Qd0mUqr4eu9gIf6GDbWHf8RJijHrjjO8G+la14SlL2SeS1Q=="],
 
+    "focus-trap": ["focus-trap@7.6.5", "", { "dependencies": { "tabbable": "^6.2.0" } }, "sha512-7Ke1jyybbbPZyZXFxEftUtxFGLMpE2n6A+z//m4CRDlj0hW+o3iYSmh8nFlYMurOiJVDmJRilUQtJr08KfIxlg=="],
+
+    "focus-visible": ["focus-visible@5.2.1", "", {}, "sha512-8Bx950VD1bWTQJEH/AM6SpEk+SU55aVnp4Ujhuuxy3eMEBCRwBnTBnVXr9YAPvZL3/CNjCa8u4IWfNmEO53whA=="],
+
     "framework-utils": ["framework-utils@1.1.0", "", {}, "sha512-KAfqli5PwpFJ8o3psRNs8svpMGyCSAe8nmGcjQ0zZBWN2H6dZDnq+ABp3N3hdUmFeMrLtjOCTXD4yplUJIWceg=="],
 
     "fsevents": ["fsevents@2.3.2", "", { "os": "darwin" }, "sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA=="],
@@ -667,6 +740,12 @@
     "lines-and-columns": ["lines-and-columns@1.2.4", "", {}, "sha512-7ylylesZQ/PV29jhEDl3Ufjo6ZX7gCqJr5F7PKrqc93v7fzSymt1BpwEU8nAUXs8qzzvqhbjhK5QZg6Mt/HkBg=="],
 
     "lint-staged": ["lint-staged@17.3.0", "", { "dependencies": { "picomatch": "^4.0.5", "string-argv": "^0.3.2", "tinyexec": "^1.2.4" }, "optionalDependencies": { "yaml": "^2.9.0" }, "bin": { "lint-staged": "bin/lint-staged.js" } }, "sha512-woZS3vNe3UKqBaLPvbLOtKRY4tLANpWQhom12MGWqC8Mh1lCOO+WgSwmX2amjJAqTY9BkXYW87fCUH5H9Ph6xw=="],
+
+    "lit": ["lit@3.3.3", "", { "dependencies": { "@lit/reactive-element": "^2.1.0", "lit-element": "^4.2.0", "lit-html": "^3.3.0" } }, "sha512-fycuvZg/hkpozL00lm1pEJH5nN/lr9ZXd6mJI2HSN4+Bzc+LDNdEApJ6HFbPkdFNHLvOplIIuJvxkS4XUxqirw=="],
+
+    "lit-element": ["lit-element@4.2.2", "", { "dependencies": { "@lit-labs/ssr-dom-shim": "^1.5.0", "@lit/reactive-element": "^2.1.0", "lit-html": "^3.3.0" } }, "sha512-aFKhNToWxoyhkNDmWZwEva2SlQia+jfG0fjIWV//YeTaWrVnOxD89dPKfigCUspXFmjzOEUQpOkejH5Ly6sG0w=="],
+
+    "lit-html": ["lit-html@3.3.3", "", { "dependencies": { "@types/trusted-types": "^2.0.2" } }, "sha512-el8M6jK2o3RXBnrSHX3ZKrsN8zEV63pSExTO1wYJz7QndGYZ8353e2a5PPX+qHe2aGayfnchQmkAojaWAREOIA=="],
 
     "locate-character": ["locate-character@3.0.0", "", {}, "sha512-SW13ws7BjaeJ6p7Q6CO2nchbYEc3X3J6WrmTTDto7yMPqVSZTUyY5Tjbid+Ab8gLnATtygYtiDIJGQRRn2ZOiA=="],
 
@@ -786,6 +865,8 @@
 
     "svelte-check": ["svelte-check@4.7.4", "", { "dependencies": { "@jridgewell/trace-mapping": "^0.3.25", "@sveltejs/load-config": "^0.2.1", "chokidar": "^4.0.1", "fdir": "^6.2.0", "picocolors": "^1.0.0", "sade": "^1.7.4" }, "peerDependencies": { "svelte": "^4.0.0 || ^5.0.0-next.0", "typescript": "^5.0.0 || ^6.0.0" }, "bin": { "svelte-check": "bin/svelte-check" } }, "sha512-IW9ot9YqAoyv8FvyN+eb4ZTe8zgcKZrJLNYU6dzSKkGwEBsSPc4K7lmQ8bKn8W2YMXM6WDfZSSVOaGtekyUfOQ=="],
 
+    "tabbable": ["tabbable@6.5.0", "", {}, "sha512-wieBHXygIm7OyQOu5hQlkk62/WyCFYGlWg7L6/ZCUZwx0o398Zkn4pVmMyfYhfMG8kGrj/Krt8eIk6UKC6VzwA=="],
+
     "tailwindcss": ["tailwindcss@4.3.3", "", {}, "sha512-gOhV3P7ufE62QDGg1zVaTgCR+EtPv92k2nIhVcVKcLmxT1sUBsQGhnZj175j+MqRt4zLF7ic+sCYjfhxMxj7YQ=="],
 
     "tapable": ["tapable@2.3.3", "", {}, "sha512-uxc/zpqFg6x7C8vOE7lh6Lbda8eEL9zmVm/PLeTPBRhh1xCgdWaQ+J1CUieGpIfm2HdtsUpRv+HshiasBMcc6A=="],
@@ -863,6 +944,8 @@
     "@commitlint/config-validator/ajv": ["ajv@8.20.0", "", { "dependencies": { "fast-deep-equal": "^3.1.3", "fast-uri": "^3.0.1", "json-schema-traverse": "^1.0.0", "require-from-string": "^2.0.2" } }, "sha512-Thbli+OlOj+iMPYFBVBfJ3OmCAnaSyNn4M1vz9T6Gka5Jt9ba/HIR56joy65tY6kx/FCF5VXNB819Y7/GUrBGA=="],
 
     "@eslint-community/eslint-utils/eslint-visitor-keys": ["eslint-visitor-keys@3.4.3", "", {}, "sha512-wpc+LXeiyiisxPlEkUzU6svyS1frIO3Mgxj1fdy7Pm8Ygzguax2N3Fa/D/ag1WqbOprdI+uY6wMUl8/a2G+iag=="],
+
+    "@floating-ui/core/@floating-ui/utils": ["@floating-ui/utils@0.2.12", "", {}, "sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww=="],
 
     "@tailwindcss/node/lightningcss": ["lightningcss@1.32.0", "", { "dependencies": { "detect-libc": "^2.0.3" }, "optionalDependencies": { "lightningcss-android-arm64": "1.32.0", "lightningcss-darwin-arm64": "1.32.0", "lightningcss-darwin-x64": "1.32.0", "lightningcss-freebsd-x64": "1.32.0", "lightningcss-linux-arm-gnueabihf": "1.32.0", "lightningcss-linux-arm64-gnu": "1.32.0", "lightningcss-linux-arm64-musl": "1.32.0", "lightningcss-linux-x64-gnu": "1.32.0", "lightningcss-linux-x64-musl": "1.32.0", "lightningcss-win32-arm64-msvc": "1.32.0", "lightningcss-win32-x64-msvc": "1.32.0" } }, "sha512-NXYBzinNrblfraPGyrbPoD19C1h9lfI/1mzgWYvXUTe414Gz/X1FD2XBZSZM7rRTrMA8JL3OtAaGifrIKhQ5yQ=="],
 
