@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { tick } from 'svelte';
+	import { executeCommand } from '#lib/commands';
 	import {
 		clampMenuPosition,
 		close,
@@ -72,6 +73,12 @@
 	function run(item: MenuItem): void {
 		if (resolveMenuDisabled(item)) return;
 		close();
+		// 命令与菜单分家：节点要么引用命令 id（走注册表，`when`/`enabled` 已在
+		// `resolveMenuDisabled` 里合并过），要么自带 action。两者都没有就是空项。
+		if (item.command !== undefined) {
+			executeCommand(item.command);
+			return;
+		}
 		item.action?.();
 	}
 

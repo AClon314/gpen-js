@@ -5,10 +5,13 @@
  * when / children）、分隔项判定、线性键盘导航。`contextMenu.svelte.ts` 只负责注册表与
  * 浏览器事件桥接，`ContextMenu.svelte` 只负责渲染与焦点——「逻辑与框架解耦」。
  *
- * 菜单与命令是**分家**的（见 AGENTS / handoff）：菜单是树，节点用 `id` 引用命令 id
- * （`builtin.draw` / `gpen.open_file` / `addon.<vendor>.<op>`）。本层不解析命令，
- * 只保证 id 原样透传，留给命令注册表。
+ * 菜单与命令是**分家**的（见 AGENTS / handoff）：菜单是树，节点用 `command` 引用命令 id
+ * （`builtin.draw` / `gpen.save` / `addon.<vendor>.<op>`）。本层不执行命令，只做两件事：
+ * 原样透传 id，以及把命令注册表里的 `when` / `enabled` 合并进节点求值——否则菜单会
+ * 显示一个按不动、或该消失却没消失的项（那是「假承诺」，handoff 明确禁止）。
  */
+import { commandEnabled, commandVisible, getCommand } from "../../commands.js";
+import { evaluatePredicate } from "../../predicates.js";
 
 /** 菜单节点种类；省略时按 `separator`/`children` 推导。 */
 export type MenuItemType = "command" | "menu" | "separator";
@@ -16,6 +19,8 @@ export type MenuItemType = "command" | "menu" | "separator";
 export type MenuItem = {
   /** 引用的命令 id；等于协议 `ToolReference.idname`，零转换。 */
   id?: string;
+  /** 命令 id（与 `action` 二选一）。节点执行时走 `executeCommand(command)`。 */
+  command?: string;
   type?: MenuItemType;
   label?: string | (() => string);
   /** 仅用于显示的快捷键提示（真实匹配走 keymap，不在这里解析）。 */
@@ -46,19 +51,33 @@ export function resolveMenuItems(provider: MenuItemProviderInput | undefined): M
 export function resolveMenuLabel(item: MenuItem): string {
   const label = item.label;
   if (typeof label === "function") return label();
-  return label ?? "";
+  if (label !== undefined) return label;
+  // 只给了命令 id 时，标签直接取命令自己的 label（菜单与快捷键不会各写一份文案）。
+  const command = item.command === undefined ? undefined : getCommand(item.command);
+  if (!command) return "";
+  return typeof command.label === "function" ? command.label() : command.label;
 }
 
+/**
+ * 节点是否禁用：节点自己的 `disabled` 与命令注册表的 `enabled` 合并，
+ * 任一说「不可用」就是禁用。谓词抛错按 `false` 处理（见 predicates.ts）。
+ */
 export function resolveMenuDisabled(item: MenuItem): boolean {
-  const disabled = item.disabled;
-  if (typeof disabled === "function") return disabled();
-  return disabled ?? false;
+  if (evaluatePredicate(item.disabled, false, "menu item disabled")) return true;
+  if (item.command === undefined) return false;
+  return !commandEnabled(getCommand(item.command));
 }
 
+/**
+ * 节点是否可见：节点的 `when` 与命令的 `when` 都要为真，并且命令必须存在
+ * （引用了一个没注册的 id 的菜单项不该渲染出来）。
+ */
 export function resolveMenuVisible(item: MenuItem): boolean {
-  const when = item.when;
-  if (typeof when === "function") return when();
-  return when ?? true;
+  if (!evaluatePredicate(item.when, true, "menu item when")) return false;
+  if (item.command === undefined) return true;
+  const command = getCommand(item.command);
+  if (!command) return false;
+  return commandVisible(command);
 }
 
 /** 子菜单是否应参与渲染：`type: "menu"` 或显式提供了非空 children。 */

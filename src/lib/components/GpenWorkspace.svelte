@@ -35,6 +35,11 @@
 	import type { TreeKey, TreeOp } from '../layers/tree/index.js';
 	import { applyInfiniteCanvas, guessWebLayer, type InfiniteCanvas } from '../canvas/index';
 	import { createLayerView, type LayerView } from '../layers/layerView';
+	import { installKeymapDispatcher } from '#lib/commands/keymap';
+	import {
+		registerWorkspaceCommands,
+		registerWorkspaceKeyBindings
+	} from './workspaceCommands';
 	import {
 		cloneGpenPanelLayout,
 		createDefaultGpenWorkspaceState,
@@ -116,6 +121,8 @@
 	let documentReady = $state(false);
 	let tabMenuPanelId: string | undefined;
 	let disposeTabMenu: (() => void) | undefined;
+	/// 命令注册 + 快捷键绑定 + 全局派发器的总 disposer（见 registerCommands）。
+	let disposeCommands: (() => void) | undefined;
 	let layoutSubscriptions: { dispose(): void }[] = [];
 	let viewportResizeObserver: ResizeObserver | undefined;
 	let removeViewportListeners: (() => void) | undefined;
@@ -124,6 +131,8 @@
 	let pendingRestore = false;
 	let layoutDirty = false;
 	let mounted = false;
+
+	const STATUS_BAR_PANEL_ID = 'statusbar';
 
 	let viewportWidth = $state(0);
 	let viewportHeight = $state(0);
@@ -182,6 +191,8 @@
 		onExpandedChange: (keys: Set<TreeKey>) => void;
 		onRename: (key: TreeKey, name: string) => void;
 		onMove: (ops: TreeOp[]) => void;
+		/** 「重命名活动项」请求号（F2 / 菜单）；Outliner 只读它。 */
+		renameRequest: number;
 	}>({
 		tree: undefined,
 		selectedKeys: new Set<TreeKey>(),
@@ -195,7 +206,8 @@
 			outlinerProps.expandedKeys = keys;
 		},
 		onRename: (key, name) => renameLayerNode(key, name),
-		onMove: (ops) => moveLayerNodes(ops)
+		onMove: (ops) => moveLayerNodes(ops),
+		renameRequest: 0
 	});
 
 	/**
@@ -351,23 +363,90 @@
 		}
 	}
 
-	/** 文本框 / CodeMirror 有自己的撤销栈，别抢 Ctrl+Z。 */
-	function isTextEntryTarget(target: EventTarget | null): boolean {
-		if (!(target instanceof HTMLElement)) return false;
-		if (target.isContentEditable) return true;
-		const tag = target.tagName;
-		return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+	/**
+	 * 撤销 / 重做 / 重命名 / 保存都走命令注册表（`gpen.undo` …）：菜单栏显示
+	 * 的快捷键就是这里绑定的同一串，不存在“菜单写了 Ctrl+S 但按了没反应”。
+	 * 派发器只有一个（`installKeymapDispatcher`），并且会跳过文本框 / CodeMirror。
+	 */
+	function registerCommands() {
+		const disposeCommands = registerWorkspaceCommands({
+			undo: undoDocument,
+			redo: redoDocument,
+			canUndo: () => history.canUndo(),
+			canRedo: () => history.canRedo(),
+			renameActive: requestRenameActive,
+			resetPanelLayout,
+			toggleImmersive,
+			immersive: () => workspaceState.immersive,
+			toggleStatusBar,
+			statusBarVisible: () => dockview?.getPanel(STATUS_BAR_PANEL_ID) !== undefined,
+			save: () => void commitDocumentNow(),
+			toggleFullscreen: () => void toggleFullscreen(),
+			fullscreen: () => typeof document !== 'undefined' && document.fullscreenElement !== null
+		});
+		const disposeBindings = registerWorkspaceKeyBindings();
+		const removeDispatcher = installKeymapDispatcher();
+		return () => {
+			disposeBindings();
+			disposeCommands();
+			removeDispatcher();
+		};
 	}
 
-	function handleDocumentKeydown(event: KeyboardEvent) {
-		if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
-		const key = event.key.toLowerCase();
-		if (key !== 'z' && key !== 'y') return;
-		if (isTextEntryTarget(event.target)) return;
-		event.preventDefault();
-		// Ctrl+Shift+Z 与 Ctrl+Y 都是重做。
-		if (key === 'y' || event.shiftKey) redoDocument();
-		else undoDocument();
+	/** 「重命名活动项」（F2 / 编辑菜单）：Outliner 自己决定对哪一行进编辑态。 */
+	function requestRenameActive(): boolean {
+		if (!gpenDocument) return false;
+		outlinerProps.renameRequest += 1;
+		return true;
+	}
+
+	/** 保存 = 立即刷盘（不等 debounce），失败只记日志。 */
+	async function commitDocumentNow(): Promise<void> {
+		const store = gpenStore;
+		if (!store) return;
+		try {
+			await store.commit();
+		} catch (error) {
+			console.debug('[gpen] ignored rejection: GpenWorkspace explicit save', error);
+			return;
+		}
+	}
+
+	async function toggleFullscreen(): Promise<void> {
+		if (typeof document === 'undefined') return;
+		try {
+			if (document.fullscreenElement === null) await document.documentElement.requestFullscreen();
+			else await document.exitFullscreen();
+		} catch (error) {
+			console.debug('[gpen] ignored rejection: GpenWorkspace toggleFullscreen', error);
+			return;
+		}
+	}
+
+	/**
+	 * 显示 / 隐藏状态栏。重新 add 时必须重跑默认布局里的两步
+	 * （`setConstraints({ minimumHeight: 22 })` 与显式高度），否则高度会回到
+	 * dockview 的 100px 组最小值（handoff §7 的坑）。
+	 */
+	function toggleStatusBar(): void {
+		const instance = dockview;
+		if (!instance) return;
+		const panel = instance.getPanel(STATUS_BAR_PANEL_ID);
+		if (panel) {
+			instance.removePanel(panel);
+			return;
+		}
+		instance.addPanel({
+			id: STATUS_BAR_PANEL_ID,
+			component: STATUS_BAR_PANEL_ID,
+			title: '状态栏',
+			position: { referencePanel: 'timeline', direction: 'below' },
+			initialHeight: 24,
+			minimumHeight: 22
+		});
+		instance.getPanel(STATUS_BAR_PANEL_ID)?.group.api.setConstraints({ minimumHeight: 22 });
+		applyDefaultSizes = true;
+		scheduleLayout();
 	}
 
 	/** 挂载时读存档；没有 / 坏了都退回已经设好的默认文档。 */
@@ -448,7 +527,7 @@
 		dockview?.getPanel('tools')?.group.api.setSize({ width: 62 });
 		dockview?.getPanel('outliner')?.group.api.setSize({ width: 300 });
 		dockview?.getPanel('timeline')?.group.api.setSize({ height: 190 });
-		dockview?.getPanel('statusbar')?.group.api.setSize({ height: 24 });
+		dockview?.getPanel(STATUS_BAR_PANEL_ID)?.group.api.setSize({ height: 24 });
 	}
 
 	/** 低于这个尺寸的布局不是“用户的布局”，见 `captureDockviewLayout`。 */
@@ -906,7 +985,7 @@
 
 		disposeTabMenu = registerMenuItems(WORKSPACE_TAB_MENU_ID, tabMenuItems);
 		container.addEventListener('contextmenu', handleTabContextMenu);
-		window.addEventListener('keydown', handleDocumentKeydown);
+		disposeCommands = registerCommands();
 
 		const onViewportChange = () => {
 			updateExternalZoom();
@@ -938,7 +1017,8 @@
 		for (const subscription of layoutSubscriptions) subscription.dispose();
 		layoutSubscriptions = [];
 		container.removeEventListener('contextmenu', handleTabContextMenu);
-		window.removeEventListener('keydown', handleDocumentKeydown);
+		disposeCommands?.();
+		disposeCommands = undefined;
 		disposeTabMenu?.();
 		disposeTabMenu = undefined;
 		dockview?.dispose();

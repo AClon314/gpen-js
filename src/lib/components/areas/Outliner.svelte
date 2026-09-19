@@ -32,6 +32,12 @@
 		onExpandedChange?: (keys: Set<TreeKey>) => void;
 		onRename?: (key: TreeKey, name: string) => void;
 		onMove?: (ops: TreeOp[]) => void;
+		/**
+		 * 递增的「开始重命名」请求计数（F2 / 菜单「重命名活动项」）。
+		 * 重命名是**编辑态**而不是树状态（见 docs/tree.md §3.9），所以不进 `tree`，
+		 * 由外部用一个只增不减的请求号触发：面板自己决定对哪一行进入编辑态。
+		 */
+		renameRequest?: number;
 	}
 
 	let {
@@ -45,7 +51,8 @@
 		defaultExpandedKeys,
 		onExpandedChange,
 		onRename,
-		onMove
+		onMove,
+		renameRequest = 0
 	}: OutlinerProps = $props();
 
 	const root = $derived(tree?.root ?? null);
@@ -115,6 +122,13 @@
 		if (renamingKey === undefined || !renameInput) return;
 		renameInput.focus();
 		renameInput.select();
+	});
+
+	// 外部请求（F2 / 菜单）进入重命名：只读请求号，所以这不会因其它状态变化而重跑。
+	$effect(() => {
+		if (renameRequest <= 0) return;
+		const key = tabbableKey;
+		if (key !== undefined) startRename(key);
 	});
 
 	function measureGeometry() {
