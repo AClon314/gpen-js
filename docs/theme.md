@@ -49,7 +49,7 @@ themeTokens()["--gpen-panel-accent"]; // 响应式读取
 | 面板表面       | `--gpen-panel-background` / `-foreground` / `-muted` / `-border` / `-accent` / `-shadow` | 面板本体、控件、菜单                     |
 | 工作区外壳     | `--gpen-chrome-background` / `--gpen-chrome-background-subtle`                           | 菜单栏、状态栏、标题栏（tab 条）、工具条 |
 | 面板内部次级面 | `--gpen-panel-background-raised` / `-hover` / `--gpen-panel-selection`                   | 卡片、胶囊按钮、输入、选中行             |
-| 视口浮层       | `--gpen-viewport-overlay-background` / `-foreground`                                     | 小地图（浮在宿主网页上，不随配色方案变） |
+| 视口浮层       | `--gpen-viewport-overlay-background` / `-foreground` / `-shadow`                         | 小地图（浮在宿主网页上，不随配色方案变） |
 | 形状           | `--gpen-radius` / `-sm`                                                                  | 控件圆角                                 |
 
 `--gpen-workspace-background` 供工作区容器使用，默认 `transparent`：工作区铺满 `visualViewport`，

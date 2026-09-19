@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { observeViewport, viewportSize } from '#lib/visualViewport';
 	import MiniMap from '../MiniMap.svelte';
 
-	// 视口本身是 overlay 上的一个洞（viewpoint: 内容由 MiniMap 承担）：宿主网页从它中间透出来，所以这里**不画背景**，
-	// 只在右上角放一块导航小地图。整块区域 pointer-events: none，只有小地图 opt-in。
+	// 视口本身是 overlay 上的一个洞：宿主网页从它中间透出来，所以这里**不画背景**，
+	// 只在右上角放一块导航小地图；整块区域 pointer-events: none，只有小地图 opt-in。
 	//
 	// 小地图映射的是宿主网页的滚动范围：拖动 / 方向键平移就是在 `window.scrollTo`
 	// 平移网页（overlay 跟着 visualViewport 走，所以工作区不动，洞里的内容在动）。
@@ -12,20 +13,15 @@
 	let viewport = $state({ x: 0, y: 0, width: 0, height: 0 });
 
 	function readHostViewport() {
-		const visual = window.visualViewport;
-		const width = visual?.width ?? window.innerWidth;
-		const height = visual?.height ?? window.innerHeight;
+		const { width, height } = viewportSize();
 		const root = document.documentElement;
 		extent = {
 			width: Math.max(root.scrollWidth, document.body?.scrollWidth ?? 0, width),
 			height: Math.max(root.scrollHeight, document.body?.scrollHeight ?? 0, height)
 		};
-		viewport = {
-			x: window.scrollX,
-			y: window.scrollY,
-			width,
-			height
-		};
+		// 这里用 `scrollX/scrollY` 而不是 `pageLeft/pageTop`：小地图平移是 `window.scrollTo`，
+		// 后者只能寻址布局视口的滚动量（pinch 平移没法用它设置）。
+		viewport = { x: window.scrollX, y: window.scrollY, width, height };
 	}
 
 	function navigateTo(next: { x: number; y: number }) {
@@ -35,31 +31,8 @@
 
 	onMount(() => {
 		readHostViewport();
-
-		// scroll 每帧都可能触发：批量到一个 rAF，避免连续平移时反复布局。
-		let frame: number | undefined;
-		const schedule = () => {
-			if (frame !== undefined) return;
-			frame = requestAnimationFrame(() => {
-				frame = undefined;
-				readHostViewport();
-			});
-		};
-
-		const targets: (Window | VisualViewport)[] = [window];
-		if (window.visualViewport) targets.push(window.visualViewport);
-		for (const target of targets) {
-			target.addEventListener('scroll', schedule, { passive: true });
-			target.addEventListener('resize', schedule, { passive: true });
-		}
-
-		return () => {
-			if (frame !== undefined) cancelAnimationFrame(frame);
-			for (const target of targets) {
-				target.removeEventListener('scroll', schedule);
-				target.removeEventListener('resize', schedule);
-			}
-		};
+		// 滚动 / 缩放 / 软键盘都会改可视区：合并到 rAF 后重读一次（observeViewport 已经做了批量）。
+		return observeViewport(readHostViewport);
 	});
 </script>
 
@@ -70,15 +43,6 @@
 </div>
 
 <style>
-	.blender-panel {
-		box-sizing: border-box;
-		width: 100%;
-		height: 100%;
-		min-width: 0;
-		min-height: 0;
-		font: var(--gpen-font-size)/var(--gpen-line-height) var(--gpen-font-sans);
-	}
-
 	.blender-panel-viewport {
 		position: relative;
 		background: transparent;

@@ -1,4 +1,5 @@
 // 全局右键菜单的注册表、状态和浏览器事件桥接。
+import { observeViewport, viewportSize } from "../../visualViewport.js";
 
 export type MenuItem = {
   label?: string | (() => string);
@@ -134,15 +135,6 @@ export function contextMenu(node: HTMLElement, options: ContextMenuOptions) {
       disposeOwn = undefined;
       if (node.dataset.contextMenuId === id) delete node.dataset.contextMenuId;
     },
-  };
-}
-
-function viewportSize(): { width: number; height: number } {
-  if (typeof window === "undefined") return { width: 0, height: 0 };
-  const visualViewport = window.visualViewport;
-  return {
-    width: visualViewport?.width || window.innerWidth,
-    height: visualViewport?.height || window.innerHeight,
   };
 }
 
@@ -309,9 +301,9 @@ if (typeof document !== "undefined" && typeof window !== "undefined") {
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") close();
   });
+  // 嵌套滚动容器也要收起菜单，所以这一条保持捕获阶段。
   window.addEventListener("scroll", close, true);
   window.addEventListener("wheel", close, { passive: true });
-  window.addEventListener("resize", close);
-  window.visualViewport?.addEventListener("resize", close, { passive: true });
-  window.visualViewport?.addEventListener("scroll", close, { passive: true });
+  // 页面滚动 / pinch / 软键盘 / 旋转都会让菜单脱离锚点：直接收起（同帧触发已合并）。
+  observeViewport(close);
 }

@@ -56,16 +56,9 @@
 </div>
 
 <style>
-	.blender-panel {
-		box-sizing: border-box;
-		width: 100%;
-		height: 100%;
-		min-width: 0;
-		min-height: 0;
-		font: var(--gpen-font-size)/var(--gpen-line-height) var(--gpen-font-sans);
-	}
-
 	.blender-panel-tools {
+		/* 工具图标比面板其它图标大一号（panel.css 的默认是 1.2lh）。 */
+		--mod-icon-size: 1.5lh;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
@@ -111,17 +104,6 @@
 		outline-offset: 1px;
 	}
 
-	.blender-panel-tools :global(sp-icon-brush),
-	.blender-panel-tools :global(sp-icon-erase),
-	.blender-panel-tools :global(sp-icon-color-fill),
-	.blender-panel-tools :global(sp-icon-lasso-select),
-	.blender-panel-tools :global(sp-icon-selection),
-	.blender-panel-tools :global(sp-icon-eyedropper),
-	.blender-panel-tools :global(sp-icon-move),
-	.blender-panel-tools :global(sp-icon-more) {
-		--mod-icon-size: 1.5lh;
-		color: inherit;
-	}
 
 	:global(.dockview-container .dv-groupview .blender-panel-tools) {
 		min-width: 0;

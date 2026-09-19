@@ -3,6 +3,8 @@
 	import 'dockview/dist/styles/dockview.css';
 	// 必须在 dockview 自带样式之后引入：本文件把 `--dv-*` 映射到 `--gpen-*`。
 	import '#lib/themes/dockview.css';
+	// 所有 area 共用的外壳样式（容器盒 / 字体 / 图标尺寸 / 小控件状态）。
+	import './areas/panel.css';
 	import {
 		createDockview,
 		type CreateComponentOptions,
@@ -23,6 +25,7 @@
 		type GpenWorkspaceState
 	} from './gpenWorkspaceState';
 	import { readGpenViewportZoomFactor } from './gpenViewport';
+	import { observeViewport } from '#lib/visualViewport';
 	import {
 		open as openMenu,
 		registerMenuItems,
@@ -140,7 +143,6 @@
 			}
 			// 尺寸落定后再落一次布局：`setSize` 之后的变更事件是在 dockview 还在
 			// 100×100 时发出的，那一次会被 capture 的尺寸守卫挡掉。
-			markHoleGroup();
 			if (layoutDirty) captureDockviewLayout();
 		});
 	}
@@ -183,7 +185,8 @@
 	 * 视口那一组是 overlay 上真正的“洞”：整组透明、且不接指针（见 themes/dockview.css
 	 * 的 `.gpen-hole`）。以前只靠 `:has(.blender-panel-viewport)` 判断，面板内容一旦缺失
 	 * （组件抛错、还没挂载），洞就会退回不透明的 chrome 底色——所以这里按面板 id 打标记。
-	 * 每次布局变更都重算一次（幂等、很便宜）。
+	 * 面板的增删、激活、尺寸变化都会触发 dockview 的布局事件，所以这一处调用就够了
+	 * （在 rAF 里再来一次是消融实验证伪掉的冗余：去掉后洞依然是透明的）。
 	 */
 	function markHoleGroup() {
 		const instance = dockview;
@@ -573,7 +576,6 @@
 			buildDefaultLayout();
 			applyDefaultSizes = true;
 		}
-		markHoleGroup();
 		captureDockviewLayout();
 
 		disposeTabMenu = registerMenuItems(WORKSPACE_TAB_MENU_ID, tabMenuItems);
@@ -584,16 +586,7 @@
 			measureViewport();
 			scheduleLayout();
 		};
-		window.addEventListener('resize', onViewportChange, { passive: true });
-		window.addEventListener('scroll', onViewportChange, { passive: true });
-		window.visualViewport?.addEventListener('resize', onViewportChange, { passive: true });
-		window.visualViewport?.addEventListener('scroll', onViewportChange, { passive: true });
-		removeViewportListeners = () => {
-			window.removeEventListener('resize', onViewportChange);
-			window.removeEventListener('scroll', onViewportChange);
-			window.visualViewport?.removeEventListener('resize', onViewportChange);
-			window.visualViewport?.removeEventListener('scroll', onViewportChange);
-		};
+		removeViewportListeners = observeViewport(onViewportChange);
 
 		const parent = container.parentElement;
 		if (typeof ResizeObserver !== 'undefined' && parent) {
@@ -726,7 +719,7 @@
 		height: 100%;
 		min-height: 1.75lh;
 		padding: 0.5lh 2ch 0.75lh;
-		color: #475569;
+		color: var(--gpen-panel-muted);
 		background: var(--gpen-panel-background);
 		overflow: auto;
 	}
@@ -742,7 +735,7 @@
 	:global(.gpen-timeline-header) {
 		margin-bottom: 0.5lh;
 		font-weight: 600;
-		color: #334155;
+		color: var(--gpen-panel-foreground);
 	}
 
 	:global(.gpen-layer-list) {
@@ -766,7 +759,7 @@
 
 	:global(.gpen-layer-row-active) {
 		border-color: var(--gpen-panel-border);
-		background: #eef2ff;
+		background: var(--gpen-panel-selection);
 	}
 
 	:global(.gpen-layer-kind) {
@@ -776,15 +769,15 @@
 		font-size: 0.7rem;
 		text-transform: uppercase;
 		letter-spacing: 0.03em;
-		color: #fff;
+		color: var(--gpen-panel-background);
 	}
 
 	:global(.gpen-layer-kind-gpen) {
-		background: #7c3aed;
+		background: var(--gpen-panel-accent);
 	}
 
 	:global(.gpen-layer-kind-html) {
-		background: #0ea5e9;
+		background: var(--gpen-panel-muted);
 	}
 
 	:global(.gpen-layer-active) {
@@ -793,7 +786,7 @@
 	}
 
 	:global(.gpen-layer-empty) {
-		color: #94a3b8;
+		color: var(--gpen-panel-muted);
 	}
 
 	/* dockview's own stylesheet (dockview/dist/styles/dockview.css) styles the

@@ -34,9 +34,9 @@
 >
 	<div class="timeline-toolbar">
 		<span class="editor-chip">时间轴</span>
-		<button type="button">视图</button>
-		<button type="button">选择</button>
-		<button type="button">标记</button>
+		<button class="gpen-panel-button" type="button">视图</button>
+		<button class="gpen-panel-button" type="button">选择</button>
+		<button class="gpen-panel-button" type="button">标记</button>
 		<span class="spacer"></span>
 		<span class="frame-readout">帧 {currentFrame} / {lastFrame}</span>
 		<span class="frame-readout">{fps} fps</span>
@@ -74,32 +74,27 @@
 
 	<div class="timeline-footer">
 		<span class="transport" role="group" aria-label="播放控制">
-			<button type="button" aria-label="回到起点"><sp-icon-rewind></sp-icon-rewind></button>
-			<button type="button" aria-label="播放"><sp-icon-play></sp-icon-play></button>
-			<button type="button" aria-label="到结尾"><sp-icon-fast-forward></sp-icon-fast-forward></button>
+			<button class="gpen-panel-button transport-button" type="button" aria-label="回到起点">
+				<sp-icon-rewind></sp-icon-rewind>
+			</button>
+			<button class="gpen-panel-button transport-button" type="button" aria-label="播放">
+				<sp-icon-play></sp-icon-play>
+			</button>
+			<button class="gpen-panel-button transport-button" type="button" aria-label="到结尾">
+				<sp-icon-fast-forward></sp-icon-fast-forward>
+			</button>
 		</span>
-		<button type="button" class="keyframe-button">◆ 插入关键帧</button>
+		<button class="gpen-panel-button keyframe-button" type="button">◆ 插入关键帧</button>
 	</div>
 </div>
 
 <style>
-	.blender-panel {
-		box-sizing: border-box;
-		width: 100%;
-		height: 100%;
-		min-width: 0;
-		min-height: 0;
-		font: var(--gpen-font-size)/var(--gpen-line-height) var(--gpen-font-sans);
-	}
-
 	.blender-panel-timeline {
 		/* 帧列宽：标尺、网格、关键帧、播放头全部按它换算。 */
 		--frame-width: 3.5ch;
 		display: flex;
 		flex-direction: column;
 		overflow: hidden;
-		background: var(--gpen-panel-background);
-		color: var(--gpen-panel-foreground);
 	}
 
 	.timeline-toolbar,
@@ -123,20 +118,12 @@
 	.timeline-toolbar button,
 	.timeline-footer button {
 		height: 1.8lh;
-		padding: 0 1ch;
-		border: 1px solid transparent;
-		border-radius: var(--gpen-radius-sm);
-		background: transparent;
 		color: var(--gpen-panel-muted);
-		font: inherit;
-		cursor: pointer;
 	}
 
-	.timeline-toolbar button:hover,
-	.timeline-footer button:hover {
-		border-color: var(--gpen-panel-border);
-		background: var(--gpen-panel-background-hover);
-		color: var(--gpen-panel-foreground);
+	.transport-button {
+		width: 2.2lh;
+		padding: 0;
 	}
 
 	.editor-chip {
@@ -299,10 +286,4 @@
 		margin-left: 1.5ch;
 	}
 
-	.blender-panel-timeline :global(sp-icon-rewind),
-	.blender-panel-timeline :global(sp-icon-play),
-	.blender-panel-timeline :global(sp-icon-fast-forward) {
-		--mod-icon-size: 1.2lh;
-		color: inherit;
-	}
 </style>

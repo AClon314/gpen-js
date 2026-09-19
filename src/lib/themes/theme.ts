@@ -29,6 +29,7 @@ export const GPEN_TOKENS = [
   "--gpen-panel-selection",
   "--gpen-viewport-overlay-background",
   "--gpen-viewport-overlay-foreground",
+  "--gpen-viewport-overlay-shadow",
   "--gpen-danger",
   "--gpen-radius",
   "--gpen-radius-sm",

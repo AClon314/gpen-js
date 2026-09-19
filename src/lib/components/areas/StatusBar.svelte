@@ -14,16 +14,8 @@
 </div>
 
 <style>
-	.blender-panel {
-		box-sizing: border-box;
-		width: 100%;
-		height: 100%;
-		min-width: 0;
-		min-height: 0;
-		font: 11px/var(--gpen-line-height) var(--gpen-font-sans);
-	}
-
 	.blender-panel-statusbar {
+		font-size: 11px;
 		display: flex;
 		align-items: center;
 		gap: 1.25ch;

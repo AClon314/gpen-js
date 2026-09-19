@@ -82,30 +82,19 @@
 		{#if !isColorCollapsed}
 			<div class="property-row">
 				<span class="property-label">主色</span>
-				<span class="swatch" aria-label="当前颜色 #4f46e5"></span>
+				<span class="swatch" aria-label="当前颜色"></span>
 			</div>
 		{/if}
 	</section>
 </div>
 
 <style>
-	.blender-panel {
-		box-sizing: border-box;
-		width: 100%;
-		height: 100%;
-		min-width: 0;
-		min-height: 0;
-		font: var(--gpen-font-size)/var(--gpen-line-height) var(--gpen-font-sans);
-	}
-
 	.blender-panel-properties {
 		display: flex;
 		flex-direction: column;
 		gap: 0.6lh;
 		overflow: auto;
 		padding: 0.6lh 1.25ch;
-		background: var(--gpen-panel-background);
-		color: var(--gpen-panel-foreground);
 	}
 
 	.property-card {
@@ -132,22 +121,11 @@
 	}
 
 	.card-menu {
-		display: grid;
-		place-items: center;
 		width: 1.8lh;
 		height: 1.8lh;
 		margin-left: auto;
 		padding: 0;
-		border: 0;
-		border-radius: var(--gpen-radius-sm);
-		background: transparent;
 		color: var(--gpen-panel-muted);
-		cursor: pointer;
-	}
-
-	.card-menu:hover {
-		background: var(--gpen-panel-background-hover);
-		color: var(--gpen-panel-foreground);
 	}
 
 	.property-row {
@@ -176,12 +154,4 @@
 		background: var(--gpen-panel-accent);
 	}
 
-	.blender-panel-properties :global(sp-icon-brush),
-	.blender-panel-properties :global(sp-icon-color-fill),
-	.blender-panel-properties :global(sp-icon-chevron-right),
-	.blender-panel-properties :global(sp-icon-chevron-down),
-	.blender-panel-properties :global(sp-icon-more) {
-		--mod-icon-size: 1.2lh;
-		color: inherit;
-	}
 </style>

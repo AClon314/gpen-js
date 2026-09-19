@@ -10,6 +10,7 @@ export * from "./inputs/numericCaret.js";
 export * from "./inputs/numericScrub.js";
 export * from "./inputs/units.js";
 export * from "./viewportMap.js";
+export * from "./visualViewport.js";
 export * from "./inputs/codemirror/index.js";
 export * from "./themes/theme.js";
 export * from "./error.js";

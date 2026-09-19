@@ -52,7 +52,7 @@
 		<span class="app-mark" aria-hidden="true">✦</span>
 		<nav class="menu-items" aria-label="主菜单">
 			{#each menuItems as item}
-				<button type="button">{item}</button>
+				<button class="gpen-panel-button menu-item" type="button">{item}</button>
 			{/each}
 			<!-- 窗口：用原生 select 承载「执行一次的菜单命令」，<option> 就是命令本身。
 			     不做 value 绑定——选完就复位，没有需要保持的状态。 -->
@@ -63,23 +63,25 @@
 		</nav>
 
 		<span class="title-bar-actions">
-			<button class="workspace-switcher" type="button">2D Animation</button>
+			<button class="gpen-pill workspace-switcher" type="button">2D Animation</button>
 
-			<div class="ui-scale" role="group" aria-label="界面缩放">
+			<div class="gpen-pill ui-scale" role="group" aria-label="界面缩放">
 				<button
+					class="gpen-panel-button"
 					type="button"
 					aria-label="缩小界面"
 					disabled={uiScale <= UI_SCALE_MIN}
 					onclick={() => onChangeUiScale?.(-UI_SCALE_STEP)}
 				>−</button>
 				<button
-					class="ui-scale-value"
+					class="gpen-panel-button ui-scale-value"
 					type="button"
 					title="点击重置界面缩放"
 					aria-label="当前界面缩放 {uiScale.toFixed(2)}，点击重置"
 					onclick={() => onResetUiScale?.()}
 				>{uiScale.toFixed(2)}×</button>
 				<button
+					class="gpen-panel-button"
 					type="button"
 					aria-label="放大界面"
 					disabled={uiScale >= UI_SCALE_MAX}
@@ -89,7 +91,7 @@
 
 			{#if onMinimize}
 				<button
-					class="title-bar-button"
+					class="gpen-panel-button title-bar-button"
 					type="button"
 					aria-label="最小化 gpen（把网页交还给页面）"
 					title="最小化（把指针交还给网页）"
@@ -101,7 +103,7 @@
 
 			{#if onClose}
 				<button
-					class="title-bar-button close-workspace"
+					class="gpen-panel-button title-bar-button close-workspace"
 					type="button"
 					aria-label="关闭 gpen"
 					title="关闭 gpen"
@@ -114,38 +116,28 @@
 	</div>
 
 	<div class="tool-settings" aria-label="工具设置">
-		<button class="setting-tool" type="button">
+		<button class="gpen-pill setting-tool" type="button">
 			<sp-icon-brush></sp-icon-brush>
 			<span>Airbrush</span>
 			<sp-icon-chevron-down></sp-icon-chevron-down>
 		</button>
 		<span class="setting-label">画笔</span>
 		<span class="divider" aria-hidden="true"></span>
-		<span class="setting-field">尺寸 <strong>0.15 m</strong></span>
-		<span class="setting-field">强度/力度 <strong>0.400</strong></span>
+		<span class="gpen-pill setting-field">尺寸 <strong>0.15 m</strong></span>
+		<span class="gpen-pill setting-field">强度/力度 <strong>0.400</strong></span>
 		<span class="divider" aria-hidden="true"></span>
-		<span class="setting-field">高级</span>
-		<span class="setting-field">笔画 ⌄</span>
-		<span class="setting-field">游标 ⌄</span>
+		<span class="gpen-pill setting-field">高级</span>
+		<span class="gpen-pill setting-field">笔画 ⌄</span>
+		<span class="gpen-pill setting-field">游标 ⌄</span>
 	</div>
 </div>
 
 <style>
-	.blender-panel {
-		box-sizing: border-box;
-		width: 100%;
-		height: 100%;
-		min-width: 0;
-		min-height: 0;
-		font: var(--gpen-font-size)/var(--gpen-line-height) var(--gpen-font-sans);
-	}
-
 	.blender-panel-menu {
 		display: flex;
 		flex-direction: column;
 		overflow: hidden;
 		background: var(--gpen-chrome-background);
-		color: var(--gpen-panel-foreground);
 	}
 
 	.menu-row,
@@ -178,19 +170,12 @@
 		overflow: hidden;
 	}
 
-	.menu-items button,
+	.menu-item,
 	.menu-items .menu-select {
 		padding: 0.25lh 1ch;
-		border: 0;
 		border-radius: var(--gpen-radius);
-		background: transparent;
-		color: inherit;
-		font: inherit;
-		white-space: nowrap;
-		cursor: pointer;
 	}
 
-	.menu-items button:hover,
 	.menu-items .menu-select:hover {
 		background: var(--gpen-panel-background-hover);
 	}
@@ -200,23 +185,25 @@
 	 * 系统配色走（dockview 在根上把 color-scheme 固定成了 light）。 */
 	.menu-items .menu-select {
 		box-sizing: border-box;
+		/* 宽度按占位项（"窗口"）给，不要跟着最宽的 <option> 撑开。 */
+		width: 7ch;
 		height: 1.9lh;
-		/* Tailwind preflight / forms 把 select 的 appearance 清成了 none，
-		 * 这里改回 auto：保留浏览器自带的箭头，也不必自己画一个假的。 */
+		/* Tailwind preflight / forms 把 select 的 appearance 清成了 none 并画了自己的箭头；
+		 * 这里改回 auto 用浏览器自带的箭头，同时关掉那个背景箭头（否则会出现两个箭头）。 */
 		appearance: auto;
-		padding-right: 0.5ch;
-		border: 0;
-		border-radius: var(--gpen-radius);
+		background-image: none;
 		background-color: transparent;
+		border: 0;
+		padding: 0 0 0 1ch;
 		color: inherit;
 		font: inherit;
 		cursor: pointer;
+		/* 弹出的列表跟着系统配色走（dockview 在根上把 color-scheme 固定成了 light）。 */
 		color-scheme: light dark;
 	}
 
-	.menu-items button:focus-visible {
-		background: var(--gpen-panel-background-hover);
-		outline: 2px solid var(--gpen-panel-accent);
+	/* 菜单项贴在一起，焦点环外扩会和邻项重叠，所以画在内侧。 */
+	.menu-item:focus-visible {
 		outline-offset: -2px;
 	}
 
@@ -233,27 +220,14 @@
 	.workspace-switcher {
 		height: 1.6lh;
 		padding: 0 1.25ch;
-		border: 1px solid var(--gpen-panel-border);
 		border-radius: 99px;
-		background: var(--gpen-panel-background-raised);
 		color: var(--gpen-panel-muted);
-		font: inherit;
 		font-weight: 600;
-		cursor: pointer;
-	}
-
-	.workspace-switcher:hover {
-		background: var(--gpen-panel-background-hover);
-		color: var(--gpen-panel-foreground);
 	}
 
 	.ui-scale {
-		display: flex;
-		align-items: center;
 		height: 1.6lh;
-		border: 1px solid var(--gpen-panel-border);
-		border-radius: var(--gpen-radius);
-		background: var(--gpen-panel-background-raised);
+		padding: 0;
 		overflow: hidden;
 	}
 
@@ -262,21 +236,9 @@
 		min-width: 2.25ch;
 		padding: 0 0.5ch;
 		border: 0;
-		background: transparent;
+		border-radius: 0;
 		color: var(--gpen-panel-muted);
-		font: inherit;
 		font-size: 12px;
-		cursor: pointer;
-	}
-
-	.ui-scale button:hover:not(:disabled) {
-		background: var(--gpen-panel-background-hover);
-		color: var(--gpen-panel-foreground);
-	}
-
-	.ui-scale button:disabled {
-		opacity: 0.4;
-		cursor: not-allowed;
 	}
 
 	/* 比 `.ui-scale button` 多一个 class，才能压过它的 min-width。 */
@@ -286,21 +248,17 @@
 	}
 
 	.title-bar-button {
-		display: grid;
-		place-items: center;
 		width: 1.6lh;
 		height: 1.6lh;
 		padding: 0;
-		border: 1px solid var(--gpen-panel-border);
+		border-color: var(--gpen-panel-border);
 		border-radius: var(--gpen-radius);
 		background: var(--gpen-panel-background-raised);
 		color: var(--gpen-panel-muted);
-		cursor: pointer;
 	}
 
-	.title-bar-button:hover {
+	.title-bar-button:hover:not(:disabled) {
 		border-color: var(--gpen-panel-accent);
-		background: var(--gpen-panel-background-hover);
 		color: var(--gpen-panel-accent);
 	}
 
@@ -320,28 +278,9 @@
 		overflow: hidden;
 	}
 
-	.setting-tool,
-	.setting-field {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.75ch;
-		height: 1.7lh;
-		padding: 0 1ch;
-		border: 1px solid var(--gpen-panel-border);
-		border-radius: var(--gpen-radius);
-		background: var(--gpen-panel-background-raised);
-		color: var(--gpen-panel-foreground);
-		white-space: nowrap;
-	}
-
 	.setting-tool {
 		padding-right: 0.75ch;
 		font-weight: 600;
-		cursor: pointer;
-	}
-
-	.setting-tool:hover {
-		background: var(--gpen-panel-background-hover);
 	}
 
 	.setting-field strong {
@@ -361,11 +300,4 @@
 		background: var(--gpen-panel-border);
 	}
 
-	.blender-panel-menu sp-icon-brush,
-	.blender-panel-menu sp-icon-chevron-down,
-	.blender-panel-menu sp-icon-minimize,
-	.blender-panel-menu sp-icon-close {
-		--mod-icon-size: 1.15em;
-		color: inherit;
-	}
 </style>

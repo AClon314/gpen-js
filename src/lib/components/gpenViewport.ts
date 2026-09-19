@@ -1,12 +1,10 @@
+import { viewportZoom } from "../visualViewport.js";
+
 let baselineDpr: number | undefined;
 let baselineVisualScale: number | undefined;
 
 function currentDpr(): number {
   return window.devicePixelRatio || 1;
-}
-
-function currentVisualScale(): number {
-  return window.visualViewport?.scale ?? 1;
 }
 
 function normalize(value: number): number {
@@ -19,7 +17,7 @@ function normalize(value: number): number {
 export function initializeGpenViewportZoomBaseline(): void {
   if (baselineDpr !== undefined && baselineVisualScale !== undefined) return;
   baselineDpr = currentDpr();
-  baselineVisualScale = currentVisualScale();
+  baselineVisualScale = viewportZoom();
 }
 
 /**
@@ -33,6 +31,6 @@ export function initializeGpenViewportZoomBaseline(): void {
 export function readGpenViewportZoomFactor(): number {
   initializeGpenViewportZoomBaseline();
   return normalize(
-    (currentDpr() / (baselineDpr ?? 1)) * (currentVisualScale() / (baselineVisualScale ?? 1)),
+    (currentDpr() / (baselineDpr ?? 1)) * (viewportZoom() / (baselineVisualScale ?? 1)),
   );
 }

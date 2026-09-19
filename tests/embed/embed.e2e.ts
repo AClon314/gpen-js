@@ -1,6 +1,17 @@
+import { readFileSync } from "node:fs";
+
 import { expect, test } from "playwright/test";
 
 const EMBED_BUNDLE = "dist/embed/gpen-embed.iife.js";
+
+/**
+ * 期望值从 token 定义里现取，而不是抄一个色号：色号会随主题改，抄下来只会变成
+ * 新的维护点（`--gpen-danger` 就从 #fee2e2 改成过 #d24b4b，测试忘了跟）。
+ * 文件里第一处 `--gpen-danger` 是白天那套（夜间在后面的 @media 块里）。
+ */
+const LIGHT_DANGER_TOKEN = /--gpen-danger:\s*([^;]+);/
+  .exec(readFileSync("src/lib/themes/day-night.css", "utf8"))?.[1]
+  ?.trim();
 
 const PAGE = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>host page</title>
@@ -69,7 +80,7 @@ test.describe("gpen embed", () => {
         window.GpenEmbed.mountGpen().shadowRoot.firstElementChild as Element,
       ).getPropertyValue("--gpen-danger"),
     );
-    expect(tokenValue.trim()).toBe("#fee2e2");
+    expect(tokenValue.trim()).toBe(LIGHT_DANGER_TOKEN);
 
     // 样式只在 shadow 里：宿主页 head 没有新增 style，页面自己的样式不受影响
     expect(await page.locator("head style").count()).toBe(headStylesBefore);
@@ -88,6 +99,20 @@ test.describe("gpen embed", () => {
     const shadowRoot = page.locator("#gpen-host").locator("button.floating-button");
     await shadowRoot.click();
     await expect(page.locator("#gpen-host").locator(".dockview-container")).toBeVisible();
+
+    // 视口那一组必须是"洞"：透明（宿主网页从中间透出来）且不接指针。
+    // 这条断言守的是"面板内容缺失 / 分组标记漏打 → 视口变不透明"这个回归。
+    const hole = await page.evaluate(() => {
+      const group = document
+        .querySelector("#gpen-host")
+        .shadowRoot.querySelector(".dv-groupview.gpen-hole");
+      if (!group) return null;
+      const styles = getComputedStyle(group);
+      return { background: styles.backgroundColor, pointerEvents: styles.pointerEvents };
+    });
+    expect(hole).not.toBeNull();
+    expect(hole?.background).toBe("rgba(0, 0, 0, 0)");
+    expect(hole?.pointerEvents).toBe("none");
 
     // 工作区打开时宿主页仍可交互（透明视口事件穿透）
     await page.click("#page-button");

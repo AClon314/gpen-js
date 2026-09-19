@@ -6,6 +6,7 @@
 	import { applyFakeInfiniteCanvas, guessWebLayer } from '#lib/canvas/index';
 	import { draggable, type DragPosition } from '#lib/gestures/index';
 	import { createInstanceId } from '#lib/instanceId';
+	import { observeViewport, viewportRect } from '#lib/visualViewport';
 	import GpenWorkspace from './GpenWorkspace.svelte';
 	import {
 		createDefaultGpenWorkspaceState,
@@ -112,44 +113,25 @@
 		infiniteCanvas = undefined;
 	});
 
-	// A fixed element can stop tracking the visual viewport after pinch zoom.
-	// Keep the overlay itself absolute and move it in page coordinates instead:
-	// pageTop/pageLeft include document scroll and visualViewport panning, while
-	// width/height follow the currently visible area (including soft keyboards).
+	// `position: fixed` 在 pinch 缩放后就不再跟着可视区走了，所以 overlay 用绝对定位，
+	// 每次可视区变化时按 `visualViewport` 的文档矩形重新摆一遍（width/height 也一起更新，
+	// 所以软键盘把可视区压缩时工作区不会溢出）。
 	function positionOverlay() {
 		const el = overlayEl;
 		if (!el) return;
-		const vv = window.visualViewport;
-		const top = vv?.pageTop ?? window.pageYOffset;
-		const left = vv?.pageLeft ?? window.pageXOffset;
-		const width = vv?.width ?? window.innerWidth;
-		const height = vv?.height ?? window.innerHeight;
-
-		el.style.top = `${Math.max(0, top)}px`;
-		el.style.left = `${Math.max(0, left)}px`;
-		el.style.width = `${Math.max(0, width)}px`;
-		el.style.height = `${Math.max(0, height)}px`;
+		const rect = viewportRect();
+		el.style.top = `${Math.max(0, rect.top)}px`;
+		el.style.left = `${Math.max(0, rect.left)}px`;
+		el.style.width = `${Math.max(0, rect.width)}px`;
+		el.style.height = `${Math.max(0, rect.height)}px`;
 	}
 
 	$effect(() => {
 		if (!workspaceState.open) return;
-		const el = overlayEl;
-		if (!el) return;
+		if (!overlayEl) return;
 
-		const vv = window.visualViewport;
-		const onViewportMove = () => positionOverlay();
 		positionOverlay();
-		window.addEventListener('scroll', onViewportMove, { passive: true });
-		window.addEventListener('resize', onViewportMove, { passive: true });
-		vv?.addEventListener('scroll', onViewportMove, { passive: true });
-		vv?.addEventListener('resize', onViewportMove, { passive: true });
-
-		return () => {
-			window.removeEventListener('scroll', onViewportMove);
-			window.removeEventListener('resize', onViewportMove);
-			vv?.removeEventListener('scroll', onViewportMove);
-			vv?.removeEventListener('resize', onViewportMove);
-		};
+		return observeViewport(positionOverlay);
 	});
 
 </script>

@@ -36,9 +36,11 @@
 	--gpen-panel-background-hover: #e5eaf3;
 	--gpen-panel-selection: #dbe3fb;
 
-	/* viewport 里浮在宿主网页上的物件（坐标轴、标签）：始终按深色半透明绘制 */
+	/* viewport 里浮在宿主网页上的物件（小地图、角标）：始终按深色半透明绘制，
+	 * 因为底下是别人的网页，不能假设配色。 */
 	--gpen-viewport-overlay-background: rgb(15 23 42 / 0.55);
 	--gpen-viewport-overlay-foreground: rgb(248 250 252 / 0.94);
+	--gpen-viewport-overlay-shadow: 0 4px 14px rgb(15 23 42 / 0.25);
 
 	/* semantic */
 	--gpen-danger: #d24b4b;

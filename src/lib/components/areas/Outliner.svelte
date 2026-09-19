@@ -41,13 +41,13 @@
 				</span>
 				<span class="row-name">{row.name}</span>
 				<span class="row-actions">
-					<button type="button" aria-label="切换可见性" title="切换可见性">
+					<button class="gpen-panel-button row-action-button" type="button" aria-label="切换可见性" title="切换可见性">
 						<sp-icon-visibility></sp-icon-visibility>
 					</button>
-					<button type="button" aria-label="标记收藏" title="标记收藏">
+					<button class="gpen-panel-button row-action-button" type="button" aria-label="标记收藏" title="标记收藏">
 						<sp-icon-star></sp-icon-star>
 					</button>
-					<button type="button" aria-label="锁定图层" title="锁定图层">
+					<button class="gpen-panel-button row-action-button" type="button" aria-label="锁定图层" title="锁定图层">
 						<sp-icon-lock></sp-icon-lock>
 					</button>
 				</span>
@@ -57,20 +57,9 @@
 </div>
 
 <style>
-	.blender-panel {
-		box-sizing: border-box;
-		width: 100%;
-		height: 100%;
-		min-width: 0;
-		min-height: 0;
-		font: var(--gpen-font-size)/var(--gpen-line-height) var(--gpen-font-sans);
-	}
-
 	.blender-panel-outliner {
 		overflow: auto;
 		padding: 0.6lh 0.75ch 0.75lh;
-		background: var(--gpen-panel-background);
-		color: var(--gpen-panel-foreground);
 	}
 
 	.outliner-tree {
@@ -153,29 +142,14 @@
 		opacity: 1;
 	}
 
-	.row-actions button {
-		display: grid;
-		place-items: center;
+	.row-action-button {
 		width: 2lh;
 		height: 2lh;
 		padding: 0;
-		border: 0;
-		border-radius: var(--gpen-radius-sm);
-		background: transparent;
-		color: inherit;
-		cursor: pointer;
 	}
 
-	.row-actions button:hover {
-		background: var(--gpen-panel-background-raised);
+	.row-action-button:hover:not(:disabled) {
 		color: var(--gpen-panel-accent);
 	}
 
-	.blender-panel-outliner :global(sp-icon-layers),
-	.blender-panel-outliner :global(sp-icon-visibility),
-	.blender-panel-outliner :global(sp-icon-star),
-	.blender-panel-outliner :global(sp-icon-lock) {
-		--mod-icon-size: 1.2lh;
-		color: inherit;
-	}
 </style>

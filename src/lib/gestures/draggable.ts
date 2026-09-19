@@ -33,10 +33,19 @@
  */
 import type { Action } from "svelte/action";
 
-export interface DragPosition {
-  x: number;
-  y: number;
-}
+import {
+  observeViewport,
+  offsetPosition,
+  pageOffset,
+  viewportOffset,
+  viewportSize,
+  type ViewportPosition,
+  type ViewportSize,
+} from "../visualViewport.js";
+
+/** 位置（这两个名字在拖拽 API 里更顺口，语义和 viewport 模块的一致）。 */
+export type DragPosition = ViewportPosition;
+export type { ViewportSize };
 
 /** Allowed top-left positions for the dragged element (already size-aware). */
 export interface DragBounds {
@@ -44,11 +53,6 @@ export interface DragBounds {
   minY: number;
   maxX: number;
   maxY: number;
-}
-
-export interface ViewportSize {
-  width: number;
-  height: number;
 }
 
 export interface DraggableOptions {
@@ -85,45 +89,6 @@ export const DEFAULT_DRAG_THRESHOLD = 8;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
-}
-
-function visualViewport(): VisualViewport | null | undefined {
-  return typeof window === "undefined" ? undefined : window.visualViewport;
-}
-
-/** Visible viewport size; prefers `visualViewport` so pinch/soft-keyboard are respected. */
-export function viewportSize(): ViewportSize {
-  const viewport = visualViewport();
-  return {
-    width: viewport?.width ?? (typeof window === "undefined" ? 0 : window.innerWidth),
-    height: viewport?.height ?? (typeof window === "undefined" ? 0 : window.innerHeight),
-  };
-}
-
-/**
- * 视觉视口相对**布局视口**的偏移：`position: fixed` 的元素要补它。
- * 未缩放时为 (0, 0)，pinch 放大后平移就会出现非零值。
- */
-export function visualViewportOffset(): DragPosition {
-  const viewport = visualViewport();
-  return { x: viewport?.offsetLeft ?? 0, y: viewport?.offsetTop ?? 0 };
-}
-
-/**
- * 视觉视口相对**文档原点**的偏移：`position: absolute` 的元素要补它。
- * `pageLeft/pageTop` 已经把页面滚动和 pinch 平移都算进去了。
- */
-export function pageOffset(): DragPosition {
-  const viewport = visualViewport();
-  return {
-    x: viewport?.pageLeft ?? (typeof window === "undefined" ? 0 : window.scrollX),
-    y: viewport?.pageTop ?? (typeof window === "undefined" ? 0 : window.scrollY),
-  };
-}
-
-/** 视觉视口坐标 → 写进 DOM 的坐标（两个参考系只差一个偏移）。 */
-export function offsetPosition(position: DragPosition, offset: DragPosition): DragPosition {
-  return { x: position.x + offset.x, y: position.y + offset.y };
 }
 
 /** Size-aware bounds keeping a `size`×`size` element inside the viewport. */
@@ -204,7 +169,7 @@ export const draggable: Action<HTMLElement, DraggableOptions | undefined> = (
   function currentVisualPosition(): DragPosition {
     if (applied) return { x: applied.x, y: applied.y };
     const rect = node.getBoundingClientRect();
-    const offset = visualViewportOffset();
+    const offset = viewportOffset();
     return { x: rect.left - offset.x, y: rect.top - offset.y };
   }
 
@@ -218,7 +183,7 @@ export const draggable: Action<HTMLElement, DraggableOptions | undefined> = (
   }
 
   function domOffset(): DragPosition {
-    return options.anchor === "page" ? pageOffset() : visualViewportOffset();
+    return options.anchor === "page" ? pageOffset() : viewportOffset();
   }
 
   function writePosition(position: DragPosition): void {
@@ -372,17 +337,9 @@ export const draggable: Action<HTMLElement, DraggableOptions | undefined> = (
     options.onPositionChange?.(current.position);
   }
 
-  const viewportListeners: Array<[EventTarget, string]> = [];
-  if (typeof window !== "undefined") {
-    // window scroll 只在 `anchor: 'page'` 下会改变偏移，但订阅成本极低，
-    // 两个 anchor 共用一条注册路径（reconcile 自己判断有没有真的变化）。
-    viewportListeners.push([window, "resize"], [window, "scroll"]);
-    const viewport = window.visualViewport;
-    if (viewport) viewportListeners.push([viewport, "resize"], [viewport, "scroll"]);
-  }
-  for (const [target, type] of viewportListeners) {
-    target.addEventListener(type, reconcileViewport);
-  }
+  // window scroll 只在 `anchor: 'page'` 下会改变偏移，但订阅成本极低，
+  // 两个 anchor 共用一条注册路径（reconcile 自己判断有没有真的变化）。
+  const stopObservingViewport = observeViewport(reconcileViewport);
 
   node.addEventListener("pointerdown", handlePointerDown);
   node.addEventListener("pointermove", handlePointerMove);
@@ -404,9 +361,7 @@ export const draggable: Action<HTMLElement, DraggableOptions | undefined> = (
     },
     destroy() {
       cancelAnimationFrame(initialClamp);
-      for (const [target, type] of viewportListeners) {
-        target.removeEventListener(type, reconcileViewport);
-      }
+      stopObservingViewport();
       node.removeEventListener("pointerdown", handlePointerDown);
       node.removeEventListener("pointermove", handlePointerMove);
       node.removeEventListener("pointerup", handlePointerEnd);

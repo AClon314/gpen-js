@@ -134,7 +134,7 @@
 		border: 1px solid color-mix(in srgb, var(--gpen-viewport-overlay-foreground) 24%, transparent);
 		border-radius: var(--gpen-radius);
 		background: var(--gpen-viewport-overlay-background);
-		box-shadow: 0 4px 14px rgb(15 23 42 / 0.25);
+		box-shadow: var(--gpen-viewport-overlay-shadow);
 		backdrop-filter: blur(2px);
 		color: var(--gpen-viewport-overlay-foreground);
 		/* 视口整块是 pointer-events: none 的“洞”，这里 opt-in 回来。 */
@@ -206,7 +206,8 @@
 		border: 1px solid var(--gpen-panel-accent);
 		border-radius: 2px;
 		background: color-mix(in srgb, var(--gpen-panel-accent) 32%, transparent);
-		box-shadow: 0 0 0 1px rgb(15 23 42 / 0.35);
+		/* 视图框描边用 overlay 底色（两套配色下都是深色半透明，保证任何网页上都看得清）。 */
+		box-shadow: 0 0 0 1px var(--gpen-viewport-overlay-background);
 		pointer-events: none;
 	}
 </style>

@@ -1,0 +1,89 @@
+/*
+ * 所有 area（工作区面板）共用的外壳样式，由 GpenWorkspace 引入（它是唯一挂载 area 的地方）。
+ *
+ * 为什么单独一个文件：容器盒、字体、图标尺寸、小控件状态在每个面板里都一模一样，
+ * 分散在 7 个组件的 `<style>` 里既长又容易改一处漏一处。组件自己的 `<style>` 只留
+ * "这个面板特有的部分"：内部布局、尺寸变体、局部配色。
+ *
+ * 约定（见 AGENTS.md）：横向尺寸用 ch、纵向用 lh；字号只覆盖 `font-size`，
+ * 不要在组件里重写整个 `font` 简写（那会把 token 行高一起覆盖掉，`1lh` 就不准了）。
+ */
+
+.blender-panel {
+	box-sizing: border-box;
+	width: 100%;
+	height: 100%;
+	min-width: 0;
+	min-height: 0;
+	font: var(--gpen-font-size) / var(--gpen-line-height) var(--gpen-font-sans);
+	/* 默认表面 = 普通面板（白/深底）；菜单栏、状态栏、工具 rail 这些外壳面板
+ * 在自己的变体里换成 chrome 底色。 */
+	background: var(--gpen-panel-background);
+	color: var(--gpen-panel-foreground);
+	/* Spectrum 图标（sp-icon-*）的尺寸靠 `--mod-icon-size` 继承，不用逐个图标写选择器。
+ * 面板想换尺寸就在自己的根上覆盖这一个变量（工具 rail 是 1.5lh）。 */
+	--mod-icon-size: 1.2lh;
+}
+
+/*
+ * 面板里的小控件（菜单项、工具按钮、图标按钮…）：状态一致，只有尺寸和变体不同。
+ * 组件样式是 scoped 的（多一个 class），所以组件里的尺寸/变体声明能直接压过这里。
+ */
+.gpen-panel-button {
+	display: inline-grid;
+	place-items: center;
+	padding: 0 1ch;
+	border: 1px solid transparent;
+	border-radius: var(--gpen-radius-sm);
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.gpen-panel-button:hover:not(:disabled) {
+	background: var(--gpen-panel-background-hover);
+	color: var(--gpen-panel-foreground);
+}
+
+.gpen-panel-button:focus-visible {
+	outline: 2px solid var(--gpen-panel-accent);
+	outline-offset: 1px;
+}
+
+.gpen-panel-button:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+
+/*
+ * 抬起的小面（"胶囊"）：工具设置、工作区切换、界面缩放、只读数值……
+ * 可以落在 <span>（纯展示）或 <button> 上。
+ */
+.gpen-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.75ch;
+	height: 1.7lh;
+	padding: 0 1ch;
+	border: 1px solid var(--gpen-panel-border);
+	border-radius: var(--gpen-radius);
+	background: var(--gpen-panel-background-raised);
+	color: var(--gpen-panel-foreground);
+	font: inherit;
+	white-space: nowrap;
+}
+
+button.gpen-pill {
+	cursor: pointer;
+}
+
+button.gpen-pill:hover:not(:disabled) {
+	background: var(--gpen-panel-background-hover);
+}
+
+button.gpen-pill:focus-visible {
+	outline: 2px solid var(--gpen-panel-accent);
+	outline-offset: 1px;
+}
