@@ -1,5 +1,11 @@
 <script lang="ts">
 	import Input from '#lib/components/widgets/inputs/Input.svelte';
+	import { STD_UNITS, type Dimension } from '#lib/inputs/units';
+
+	// 无换算需求的纯标签单位：`units` 收一张「单量纲表」，显示单位缺省取它的 base，
+	// 所以一张恒等表就等价于「只是把 % / px 显示在旁边」。
+	const PERCENT: Dimension = { base: '%', units: { '%': 1 } };
+	const PIXEL: Dimension = { base: 'px', units: { px: 1 } };
 
 	let horizontalValue = $state(42);
 	let fineValue = $state(23.45);
@@ -10,6 +16,10 @@
 	let disabled = $state(true);
 	let sliderValue = $state(9.98);
 	let fractionValue = $state(0.009);
+	let validDemoValue = $state(5);
+	let validDemoOutput = $state<number | undefined>(5);
+	let lengthInMeters = $state(0.12);
+	let massInKg = $state(1.234);
 	let lastChange = $state('还没有提交变更');
 
 	type InputChangeEvent = Event & { currentTarget: HTMLInputElement };
@@ -53,7 +63,7 @@
 				min={0}
 				max={100}
 				step={1}
-				unit="%"
+				units={PERCENT}
 				onchange={(event) => recordChange('强度', event)}
 			/>
 		</article>
@@ -72,7 +82,6 @@
 				min={-1000}
 				max={1000}
 				step={0.01}
-				unit=""
 				onchange={(event) => recordChange('不透明度', event)}
 			/>
 		</article>
@@ -92,7 +101,7 @@
 				min={0}
 				max={50}
 				step={1}
-				unit="px"
+				units={PIXEL}
 				onchange={(event) => recordChange('压力', event)}
 			/>
 		</article>
@@ -126,6 +135,29 @@
 			<Input bind:value={fractionValue} aria-label="小数位轮" min={0} max={1} step={0.001} />
 		</article>
 
+		<article class="demo-card">
+			<div class="card-heading">
+				<div>
+					<h2>validValue 输出通道</h2>
+					<p>
+						<code>min=0 max=10</code>：输入 <code>150</code> 时绑定值仍是 150（打字不钳），
+						<code>onvalidvalue</code> 给出钳好的 <code>10</code>；文本改成非数字（如 <code>1.2.3</code>）时
+						通道给 <code>undefined</code>（不下发 NaN）。不按 <code>step</code> 取整。
+					</p>
+				</div>
+				<output aria-live="polite">{validDemoOutput ?? 'undefined'}</output>
+			</div>
+			<Input
+				bind:value={validDemoValue}
+				aria-label="validValue 演示"
+				min={0}
+				max={10}
+				step={1}
+				onvalidvalue={(next) => (validDemoOutput = next)}
+			/>
+			<p class="inline-value">绑定值：<strong>{validDemoValue}</strong>（原样保留，未被钳制）</p>
+		</article>
+
 		<article class="demo-card demo-card-wide">
 			<div class="card-heading">
 				<div>
@@ -135,6 +167,42 @@
 				<output aria-live="polite">{sliderValue}</output>
 			</div>
 			<Input bind:value={sliderValue} aria-label="滑条数值" min={0} max={100} step={0.01} />
+		</article>
+
+		<article class="demo-card demo-card-wide">
+			<div class="card-heading">
+				<div>
+					<h2>单位（质量：只给 <code>units</code>）</h2>
+					<p>传一张量纲表时，显示单位就是它的 <code>base</code>（此处 <code>kg</code>）。敲 <code>1234克</code> 或
+						<code>1234 克</code>（两侧空格无所谓）会在输入过程中就地换算成 <code>1.234</code>，右侧
+						<code>kg</code> 只是只读标签，二次编辑只会改到数字。不认识的单位（如 <code>12 xyz</code>）不换算，
+						按既有的非数字 → 红底 <code>:invalid</code> 处理。</p>
+				</div>
+				<output aria-live="polite">{massInKg} kg</output>
+			</div>
+			<Input bind:value={massInKg} units={STD_UNITS.mass} min={0} step={0.001} aria-label="质量" />
+		</article>
+
+		<article class="demo-card demo-card-wide">
+			<div class="card-heading">
+				<div>
+					<h2>单位（长度：<code>units</code> + <code>activeUnit</code>）</h2>
+					<p><code>activeUnit="cm"</code> 覆盖默认显示单位，而 <code>value</code> 仍以基准单位 <code>m</code> 存储：
+						输入 <code>12</code> → <code>value = 0.12</code>；<code>12cm</code> / <code>12 厘米</code> / <code>1 in</code> 都会换算到 cm；
+						跨量纲的 <code>2 kg</code> 被拒（不换算，交给 <code>:invalid</code>）。只想要长度这一量纲时
+						直接传 <code>units={'{STD_UNITS.length}'}</code> 即可。</p>
+				</div>
+				<output aria-live="polite">{lengthInMeters} m</output>
+			</div>
+			<Input
+				bind:value={lengthInMeters}
+				units={STD_UNITS.length}
+				activeUnit="cm"
+				min={0}
+				max={200}
+				step={1}
+				aria-label="长度"
+			/>
 		</article>
 
 		<article class="demo-card demo-card-wide">
@@ -165,7 +233,7 @@
 				<output aria-live="polite">{Number.isNaN(formValue) ? 'NaN' : formValue}</output>
 			</div>
 			<form onsubmit={recordSubmit}>
-				<Input bind:value={formValue} aria-label="表单数值" min={0} max={10} step={1} unit="" />
+				<Input bind:value={formValue} aria-label="表单数值" min={0} max={10} step={1} />
 				<button type="submit" class="secondary-button">提交表单</button>
 			</form>
 		</article>
@@ -195,6 +263,16 @@
 			<li>滑条沿轴平均分成三段，<strong>规则按 pointerdown 的落点锁定</strong>（拖到别的分区也不会换）：靠近 − 的 1/3 用<strong>智能整数位</strong>（<code>1.12 → 0.12 → 0.02 → 0.01 → 0.009</code>，递减会自动退回智能小数位、无限趋近 0），中央 1/3 按配置 <code>step</code>，靠近 + 的 1/3 用<strong>用户输入的最大精度</strong>（<code>0.499 → 0.500 → 0.501</code>）；拖拽每 6px 走一步，方向由位移符号决定。</li>
 			<li>−/+ 按钮与 caret 贴边的 ←/→ 按配置 step 调整（<code>step</code> 缺省按 HTML 语义取 1）；显式非数值 step（<code>step="any"</code>）退回用户精度。数值控件<strong>激活（聚焦）后</strong>滚轮等价于 ↑/↓，未激活时滚轮留给页面滚动。</li>
 			<li>最近一次提交：<output aria-live="polite">{lastChange}</output></li>
+			<li>
+				<code>onvalidvalue</code> 是只读的校验结果通道（不做 <code>bind:validValue</code>）：只钳
+				<code>min</code>/<code>max</code>、不按 <code>step</code> 取整，非法文本/空值给
+				<code>undefined</code>。挂载初值、外部改值与用户输入都会触发。
+			</li>
+			<li>
+				<code>units</code> + <code>activeUnit</code>：<code>value</code> 存<strong>基准单位</strong>，显示与编辑
+				用 <code>activeUnit</code>；<code>min</code>/<code>max</code>/<code>step</code> 按显示单位表述。
+				粘贴带单位的文本会换算（整段替换），跨量纲或未知单位则不改写。
+			</li>
 		</ul>
 	</section>
 </main>

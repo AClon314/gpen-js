@@ -30,11 +30,12 @@ InputSlider（滑条 + 直接输入，大多数人要的形态）；要纯数值
 div.input-widget[data-input-widget][data-orientation][role="group"]
 ├── button.input-step--down  (−)
 ├── input.input-field        (type="text" inputmode="decimal" role="spinbutton")
-├── span.input-unit          (unit 非空时, aria-hidden)
+├── span.input-unit          (显示单位非空时, aria-hidden)
 └── button.input-step--up    (+)
 ```
 
-- `aria-valuenow/min/max/valuetext`（有 unit 时）、`aria-invalid`（校验失败时）。
+- `aria-valuenow/min/max/valuetext`（有显示单位时）、`aria-invalid`（校验失败时）。
+- `aria-valuenow`/`aria-valuetext` 给的是**显示单位**下的值（`value` 本身是基准单位）。
 - **尺寸只由 InputNumber 决定，外层壳（`Input` / `InputSlider`）跟着它，不自己撑开**：
   - 横向：`width: 100%`（填满父容器）、`height: calc(2 * var(--gpen-line-height) * 1lh)`；
     控件自己声明 `line-height: var(--gpen-line-height)`，所以 `1lh` 只由 token × 自身字号决定，
@@ -43,10 +44,10 @@ div.input-widget[data-input-widget][data-orientation][role="group"]
     `min-height: calc(4 * var(--gpen-row))`（4 × 2lh），同时 `flex: 1 1 auto`——
     父级是 flex 列时撑满剩余高度，普通块级父容器里退回 8lh，所以不会溢出卡片。
   - **纵向每行 = 2 个 token 行高**（与水平控件等高）：`--gpen-row: calc(2 * var(--gpen-line-height, 1) * 1lh)`。
-    ± 与 unit 固定 `height: var(--gpen-row)`、`flex: 0 0 auto`（字号回落到根字号，`1lh` 才等于
+    ± 与单位标签固定 `height: var(--gpen-row)`、`flex: 0 0 auto`（字号回落到根字号，`1lh` 才等于
     根的行高），多出来的高度全给可编辑的 value（`flex: 1 1 auto`）。四行要正好铺满控件，
     所以纵向形态不加纵向 padding（横向 padding 由根那条覆盖）。
-- 垂直布局用 `flex-direction: column` + `order`（视觉 `+ / value / unit / −`，焦点顺序仍是 down→up）。
+- 垂直布局用 `flex-direction: column` + `order`（视觉 `+ / value / 单位标签 / −`，焦点顺序仍是 down→up）。
 - 子元素只用 `flex`；InputSlider 通过 `--input-background*` 把内层背景设成透明以露出浮层。
 
 ## Props / 提交 / 校验
@@ -54,9 +55,11 @@ div.input-widget[data-input-widget][data-orientation][role="group"]
 | prop                   | 行为                                                      |
 | ---------------------- | --------------------------------------------------------- |
 | `value`                | `$bindable` 的 `number \| string`                         |
-| `orientation` / `unit` | 数值分支专用                                              |
+| `orientation`          | 数值分支专用                                              |
 | `step`                 | 步进量（± / 贴边 ←/→ / 滑条中央分区）；缺省按 HTML 取 `1` |
-| `min` / `max`          | **只做校验**：不静默改绑定值（见下）                      |
+| `min` / `max`          | **只做校验**：不静默改绑定值（见下）；按**显示单位**表述  |
+| `onvalidvalue`         | 校验后的值：钳 `min`/`max`、不按 `step` 取整（见下）       |
+| `units` / `activeUnit` | 单位表与当前显示单位；见「单位」一节                      |
 | 其余                   | `Omit<HTMLInputAttributes,'value'>`                       |
 
 - `oninput`：空/非有限值不写绑定值；有效时写值并记下 `draftDecimals`（用户敲的小数位，含尾零）。
@@ -81,6 +84,78 @@ const limited = validateNumeric(value, { min: 0, max: 100, step: 0.2 }); // clam
 - 违规只进原生校验：`setCustomValidity('不能小于/大于 …')`，`<form>` 拦提交，绑定值不变。
   `step` 不参与校验——智能整数位/用户最大精度本来就会落在 step 网格之外（`step=0.01` 也能到 `0.008`）。
 - `Home`/`End`/右键「设为最大/小值」这类命令式提交总是钳到边界。
+
+### validValue：校验后的值输出通道
+
+`value` 是唯一真值源；组件另给一条**只读**的校验结果通道，不做 `bind:validValue`：
+
+```svelte
+<Input bind:value={size} min={0} max={10} step={0.5}
+       onvalidvalue={(v) => (limited = v)} />
+```
+
+```ts
+validValue = finiteNumber(value) === undefined
+  ? undefined                     // 非法文本（NaN）或空值：不下发 NaN
+  : clampTo(value, min, max);     // 只钳 min/max，【不按 step 取整】
+```
+
+- 回调 prop 就是 Svelte 5 runes 下的事件机制（`createEventDispatcher` + `on:` 已是 legacy），与
+  `oninput` / `onchange` 同构，所以形状就是 `onvalidvalue?: (value: number | undefined) => void`。
+- 实现是 `InputNumber` 里的一个 `$derived` + 一个 `$effect`，天然覆盖「挂载初值 / 外部改值 /
+  用户输入」三条路径，不挂在 `commit()` 的各出口上。
+- **为什么不调 `validateNumeric`**：那个纯函数会先钳边界再**按 `step` 取整**。而 `step` 不参与校验
+  （见上），智能整数位/用户最大精度本来就会落在 step 网格之外（`step=0.01` 也能到 `0.008`），
+  这里取整会推翻「尊重用户最小精度」。所以 `validValue` 只钳 `min`/`max`；要 step 网格上的值，
+  调用方自己调 `validateNumeric(value, { min, max, step })`。
+- 例：`min=0 max=10` 时输入 `150`，`value` 仍是 `150`（打字不钳），`onvalidvalue` 给 `10`。
+- 转发链：`Input.svelte` 的原生分支必须把 `onvalidvalue` **显式解构掉**，否则 `{...rest}` 会把它
+  当成原生 `<input>` 的 `validvalue` 事件监听器挂上去；数值分支再显式转给 `InputSlider` → `InputNumber`。
+
+### 单位（`units` / `activeUnit`）
+
+单位表与换算纯逻辑在 [`docs/units.md`](units.md)（`src/lib/inputs/units.ts`），控件只做接线；
+`InputNumber` 把「显示单位 + 两个换向 + 解析」打包成 `bindUnit()`，不自己拼散件。
+
+```svelte
+<!-- 只给一张量纲表：显示单位 = 它的 base（kg） -->
+<Input bind:value={mass} units={STD_UNITS.mass} min={0} />
+<!-- 整张注册表 + 显式显示单位 -->
+<Input bind:value={height} units={STD_UNITS} activeUnit="cm" min={0} max={200} />
+<!-- 无换算的纯标签（% / px）：一张恒等单表，base 就是标签 -->
+<Input bind:value={pct} units={{ base: '%', units: { '%': 1 } }} />
+```
+
+| 概念 | 约定 |
+| --- | --- |
+| `units` | 一张量纲表（`STD_UNITS.mass`）或整个注册表（`STD_UNITS`）；缺省 `STD_UNITS` |
+| `activeUnit` | 显示单位 id；**缺省取量纲表的 `base`**。传注册表时必须显式给，否则无法确定量纲（等同于没有 units） |
+| `value` | 以该量纲的**基准单位**存储。显示单位 `cm` 时输入 `12` → `value === 0.12`（m） |
+| `min`/`max`/`step` | 按**显示单位**表述（显示单位 `cm` 时 `max={100}` 就是 100cm），比较 `value` 前内部换成基准单位 |
+| `onvalidvalue` | 也是基准单位（和 `value` 同单位） |
+| 显示文本 | `value` 换算到显示单位后的数值；单位作为**只读标签**留在右侧（不在 input 的 value 里） |
+
+**输入带单位的文本会就地换算**（`handleInput`，不是等失焦）：
+
+- `' 1234克 '` / `'1234 克'`（前后与中间空格都无所谓，NFKC 归一化、大小写不敏感）→ 字段立刻变成
+  `1.234`，`value` 是 `1.234` kg，`kg` 只读标签留在旁边。二次编辑只会改到 `1.234` 这个数字。
+- 认不出单位时**不换算**，文本原样保留 → 走既有的非数字路径（`:invalid` 红底 + `customValidity`），
+  所以 `'12 xyz'`、跨量纲的 `'12 cm'`（在质量字段里）都会红。
+- 粘贴同样是整段替换（粘贴的是一整个量，不是插到光标处），并且同样认单位后缀。
+- 换算走 `convertValue`（内部经基准单位），所以 `K ⇄ C ⇄ F` 这类**仿射换算**也对；不要自己乘系数。
+- `activeUnit` **实例创建后视为常量**（还没有单位切换 UI）。
+- 没有任何显示单位时（缺省注册表且无 `activeUnit`）所有换算都是恒等，行为与引入单位之前逐字一致。
+
+### 悬浮 Ctrl+C / Ctrl+V（Blender 习惯）
+
+鼠标悬浮在控件上、且焦点不在任何可编辑元素里时，`Ctrl+C` 把**显示单位下的当前值**写进系统剪贴板，
+`Ctrl+V` 把剪贴板内容粘回控件（同样认单位后缀：插 `'1234克'` 会变成 `1.234`）。
+
+- 用 `copy` / `paste` 事件实现，不走 `navigator.clipboard`：不需要权限、不依赖异步 API，页面上没有选区时照样触发。
+- 焦点在**本控件的 input** 上时（正在编辑）一律让路，保留原生的选区复制/粘贴语义。
+  焦点在其它可编辑元素（页面输入框、contenteditable）上时也不抢。
+- 禁用（`disabled`）/ 只读（`readOnly`）的控件不参与；粘贴内容解析不出数值时不动。
+- 与悬浮 Delete 共用同一个「悬浮态」窗口监听（`pointerenter` / `pointerleave`）。
 
 ### 非法文本
 
@@ -192,7 +267,7 @@ const limited = validateNumeric(value, { min: 0, max: 100, step: 0.2 }); // clam
 `InputProps`（新 props 要在原生分支显式解构掉）：
 
 ```svelte
-{#if numeric}<InputSlider bind:value {orientation} {unit} {...rest} />
+{#if numeric}<InputSlider bind:value {orientation} {units} {activeUnit} {...rest} />
 {:else if type === 'color'}<InputColor bind:value {type} {...rest} />
 {:else}<input {type} bind:value {...rest} />{/if}
 ```

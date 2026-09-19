@@ -9,14 +9,18 @@
 		value = $bindable<InputValue>(''),
 		type,
 		orientation,
-		unit,
+		// 以下三个只属于数值分支：必须显式解构掉，否则原生分支的 `{...rest}` 会把它们当成
+		// 普通 DOM 属性/事件监听器挂到原生 `<input>` 上（`units` 会变成 `units="[object Object]"`）。
+		units,
+		activeUnit,
+		onvalidvalue,
 		...rest
 	}: InputProps = $props();
 	const numeric = $derived(type === 'number' || (type === undefined && typeof value === 'number'));
 </script>
 
 {#if numeric}
-	<InputSlider bind:value {orientation} {unit} {...rest} />
+	<InputSlider bind:value {orientation} {units} {activeUnit} {onvalidvalue} {...rest} />
 {:else}
 	<input {type} bind:value {...rest} />
 {/if}

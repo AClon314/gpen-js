@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { tick } from 'svelte';
+	import { tick, untrack } from 'svelte';
 
 	import { contextMenu, type MenuItem } from '#lib/components/contextMenu/contextMenu.svelte';
 	import {
@@ -14,6 +14,7 @@
 		stepAtCaret,
 		toggleSign,
 	} from '#lib/inputs/numericCaret';
+	import { STD_UNITS, bindUnit } from '#lib/inputs/units';
 	import type { InputProps, InputValue } from '#lib/components/widgets/inputs/types';
 
 	// InputNumber 由 Input.svelte 在运行时 value 为 number 时选中。
@@ -25,42 +26,83 @@
 	type InputKeyEvent = KeyboardEvent & { currentTarget: HTMLInputElement };
 	type InputFocusEvent = FocusEvent & { currentTarget: HTMLInputElement };
 	type InputWheelEvent = WheelEvent & { currentTarget: HTMLInputElement };
+	type InputClipboardEvent = ClipboardEvent & { currentTarget: HTMLInputElement };
 	type CaretStep = { text: string; caret: number };
 
 	let {
 		value = $bindable<InputValue>(0),
 		orientation = 'horizontal',
-		unit = '',
+		units = STD_UNITS,
+		activeUnit,
 		onchange,
 		oninput,
+		onvalidvalue,
 		onkeydown,
 		onfocus,
 		onwheel,
+		onpaste,
 		class: inputClass,
 		'aria-label': ariaLabel,
 		...rest
 	}: InputProps = $props();
 
+	// 单位：`units` 给一张量纲表（或整个注册表），`activeUnit` 是显示单位（缺省取量纲表的 base）。
+	// `value` 以该量纲的**基准单位**存储，`min`/`max`/`step` 仍按显示单位表述。
+	// 没给 `activeUnit` 的注册表 → `binding` 为 `undefined` → 所有换算恒等，行为与没有 units 时一致。
+	const binding = $derived(bindUnit(units, activeUnit));
+
+	function toBase(display: number): number {
+		return binding === undefined ? display : binding.toBase(display);
+	}
+
+	function toDisplay(base: number): number {
+		return binding === undefined ? base : binding.toDisplay(base);
+	}
+
+	// 初始化文本：绑定值是基准单位，显示要换算到 `activeUnit`。
+	function initialDisplay(): InputValue {
+		const base = finiteNumber(value);
+		return base === undefined ? value : toDisplay(base);
+	}
+
 	let input = $state<HTMLInputElement | undefined>();
 	// 用户输入过的小数位数：外部改值（滑条拖拽）时用它排版，而不是总回到 step 的位数。
 	let draftDecimals: number | undefined;
-	let draft = $state(formattedText(value));
+	let draft = $state(formattedText(initialDisplay()));
 	let focusSnapshot: number | undefined;
 	let observedValue: InputValue = value;
+	let observedUnitId: string | undefined = untrack(() => binding?.unit.id);
 	// 指针悬浮在整个控件（含 ± 按钮与 unit）上；Blender 习惯：悬浮时按 Delete 重置为默认值。
 	let hovered = $state(false);
 	// 默认值取组件创建时收到的 value（还没有 bpy.props 式的属性默认值定义层，挂载初值即近似）。
-	const defaultValue = finiteNumber(value) ?? 0;
+	const defaultValue = (() => {
+		const base = finiteNumber(value);
+		return base === undefined ? 0 : toDisplay(base);
+	})();
+	// 当前值换算到显示单位（绑定值本身是基准单位）。
+	const currentDisplay = $derived.by(() => {
+		const base = finiteNumber(value);
+		return base === undefined ? undefined : toDisplay(base);
+	});
+	// 输入框旁显示的单位：显示单位的 id（`%` / `px` 这类无换算标签就用一张单表，base 即标签）。
+	const unitLabel = $derived(binding?.label ?? '');
 	const ariaValueText = $derived(
-		finiteNumber(value) !== undefined && unit ? `${value} ${unit}` : undefined,
+		currentDisplay !== undefined && unitLabel ? `${currentDisplay} ${unitLabel}` : undefined,
 	);
 	// min/max 只在**校验**时体现：报告违规给原生 constraint validation，但不改绑定值。
 	// 调用方想要限制后的值，自己调 `validateNumeric(value, {min, max, step})`。
 	// `step` 不参与校验：步进规则（智能整数位 / 用户最大精度）会故意落在 step 网格之外。
 	const invalid = $derived(draft.trim() !== '' && !Number.isFinite(Number(draft)));
+	// 校验后的值：只钳 min/max，**不按 step 取整**（step 不参与校验，见 docs/input.md）。
+	// value 非有限（非法文本 NaN / 空）→ undefined，绝不下发 NaN。
+	const validValue = $derived.by(() => {
+		const current = finiteNumber(value);
+		if (current === undefined) return undefined;
+		return clampTo(current, boundInBase(rest.min), boundInBase(rest.max));
+	});
 	const validityMessage = $derived.by(() => {
 		if (invalid) return '请输入一个数值';
-		const current = finiteNumber(value);
+		const current = currentDisplay;
 		if (current === undefined) return '';
 		const lower = numericAttribute(rest.min);
 		const upper = numericAttribute(rest.max);
@@ -68,6 +110,13 @@
 		if (upper !== undefined && current > upper) return `不能大于 ${upper}`;
 		return '';
 	});
+
+	// `min`/`max` 按显示单位表述，而 `value`/`validValue` 是基准单位：比较前换算一次
+	// （温度这类仿射换算必须走 `toBase`，不能自己乘系数）。
+	function boundInBase(bound: number | string | null | undefined): number | undefined {
+		const display = numericAttribute(bound);
+		return display === undefined ? undefined : toBase(display);
+	}
 
 	// step 的十进制位数同时是提交时的取整位数（`precision` 已并入 step）。
 	function stepDecimals(): number | undefined {
@@ -117,9 +166,10 @@
 	}
 
 	// 统一写出口：draft / 绑定值 / DOM 文本一起更新，不广播（由调用方决定是否广播）。
-	function write(element: HTMLInputElement, text: string, next: number) {
+	// `displayNext` 是**显示单位**下的数值，绑定值换算回基准单位。
+	function write(element: HTMLInputElement, text: string, displayNext: number) {
 		draft = text;
-		value = next;
+		value = toBase(displayNext);
 		element.value = text;
 	}
 
@@ -349,27 +399,80 @@
 		applyResult(element, addStepToValue(element.value, direction, amount));
 	}
 
+	// 把「数字 + 单位后缀」的文本换算到显示单位（`' 1234克 '` → `1.234`）：未知单位、多个数字
+	// 或跨量纲（质量框里粘 `12 cm`）→ `undefined`，由调用方保留原文交给 `:invalid`。
+	function convertTypedQuantity(text: string): number | undefined {
+		return binding?.parse(text);
+	}
+
+	// 纯数字文本（没有单位后缀）→ 显示单位的数值；空 / 非法 → undefined。
+	function parsePlainNumber(text: string): number | undefined {
+		const trimmed = text.trim();
+		if (trimmed === '') return undefined;
+		const next = Number(trimmed);
+		return Number.isFinite(next) ? next : undefined;
+	}
+
+	// 换算结果的文本：不能用 `formatValue`（那会按 step 的位数取整，`3ft → 91.44cm` 会被写成 `91`），
+	// 也用不上小数位缓存——`convertTypedQuantity` 已经收敛掉浮点噪音了。
+	function displayText(display: number): string {
+		const text = String(display);
+		draftDecimals = decimalPlacesInText(text);
+		return text;
+	}
+
 	function handleInput(event: InputElementEvent) {
 		const element = event.currentTarget;
+		// 边打边认：`'1234克'` / `'1234 克'` 一旦凑成一个「数字 + 已知单位」就立即换算成
+		// 显示单位的数值（`1.234`）并重写文本，右侧单位保持只读。不认识的单位不换算，
+		// 于是文本保持原样、走既有的非数字 → `:invalid` 红色状态。
+		const converted = convertTypedQuantity(element.value);
+		if (converted !== undefined) {
+			write(element, displayText(converted), converted);
+			oninput?.(event);
+			return;
+		}
 		draft = element.value;
 		const next = readInput(element);
 		if (finiteNumber(next) !== undefined) {
-			value = next;
+			value = toBase(next);
 			// 记住用户输入的小数位数（包括末尾的 0），拖拽/外部改值排版时沿用。
 			draftDecimals = decimalPlacesInText(element.value);
 		}
 		oninput?.(event);
 	}
 
+	// 粘贴「数字 + 单位」：整段替换字段内容（粘贴的是一整个量，不是插到光标处），
+	// 这是「粘贴后自动换算到当前单位」的入口；解析失败则交回原生粘贴。
+	function handlePaste(event: InputClipboardEvent) {
+		const converted = convertTypedQuantity(event.clipboardData?.getData('text') ?? '');
+		if (converted === undefined) {
+			onpaste?.(event);
+			return;
+		}
+		event.preventDefault();
+		const text = displayText(converted);
+		commit(event.currentTarget, text, converted);
+		onpaste?.(event);
+	}
+
 	function handleChange(event: InputElementEvent) {
 		const element = event.currentTarget;
+		// 手敲/粘进带单位后缀的文本（`12cm` / `12 厘米`）：换算到 activeUnit 后写入。
+		const converted = convertTypedQuantity(element.value);
+		if (converted !== undefined) {
+			write(element, displayText(converted), converted);
+			focusSnapshot = undefined;
+			onchange?.(event);
+			return;
+		}
 		const next = readInput(element);
 		if (finiteNumber(next) !== undefined) {
 			// min/max 是校验，不在提交时改值；原样写回（同值时保留用户文本）。
 			write(element, formattedText(next, element.value), next);
 		} else if (element.value.trim() === '') {
 			// 清空：回到聚焦快照（或当前值），保持「空 → 上一个有效值」的既有行为。
-			const fallback = finiteNumber(focusSnapshot) ?? finiteNumber(value) ?? 0;
+			const fallback = finiteNumber(focusSnapshot) ?? currentDisplay ?? 0;
 			write(element, formatValue(fallback), fallback);
 		} else {
 			// 非数字文本：不强改用户输入，只把绑定值标成 NaN；危险色与表单校验来自 :invalid。
@@ -390,19 +493,28 @@
 		input?.setCustomValidity(validityMessage);
 	});
 
+	// 下发校验后的值：$effect 读 `validValue` 就天然覆盖「挂载初值 / 外部改值 / 用户输入」
+	// 三条路径，不需要挂在 commit() 的各个出口上。
+	$effect(() => {
+		onvalidvalue?.(validValue);
+	});
+
 	$effect(() => {
 		const next = value;
-		if (Object.is(next, observedValue)) return;
+		const unitId = binding?.unit.id;
+		if (Object.is(next, observedValue) && unitId === observedUnitId) return;
 		observedValue = next;
+		observedUnitId = unitId;
 		// 正在编辑的文本归用户所有：只在未聚焦时镜像外部变化（含 InputSlider 的拖拽）。
 		if (input !== undefined && document.activeElement === input) return;
 		// 非法提交后绑定值是 NaN：保留用户已输入的文本，不要清空。
 		if (typeof next === 'number' && !Number.isFinite(next)) return;
-		draft = formattedText(next);
+		const base = finiteNumber(next);
+		draft = formattedText(base === undefined ? next : toDisplay(base));
 	});
 
 	// 悬浮但 input 未聚焦时按键不会进入 handleKeydown，用 window 兜底；
-	// 焦点在别的可编辑元素（页面输入框、contenteditable 等）时让路，不抢它们的 Delete。
+	// 焦点在别的可编辑元素（页面输入框、contenteditable 等）时让路，不抢它们的 Delete / 剪切板。
 	$effect(() => {
 		if (!hovered) return;
 
@@ -415,8 +527,47 @@
 			commandCommit(defaultValue);
 		};
 
+		// Blender 习惯：鼠标悬浮在控件上（且焦点不在可编辑元素里）时，Ctrl+C 复制内部值、
+		// Ctrl+V 粘回去。用 copy/paste 事件而不是 navigator.clipboard：前者不需要权限、
+		// 也不依赖异步 API，而且在没有选区的页面上照样会触发。
+		// 焦点在本控件的 input 上时（正在编辑）一律让路，保留原生的选区复制/粘贴语义。
+		const canUseWindowClipboard = (event: ClipboardEvent): HTMLInputElement | undefined => {
+			const element = input;
+			if (element === undefined || element.disabled || element.readOnly) return undefined;
+			if (event.defaultPrevented || event.target === element) return undefined;
+			if (isEditableTarget(event.target)) return undefined;
+			return element;
+		};
+
+		const handleWindowCopy = (event: ClipboardEvent) => {
+			const element = canUseWindowClipboard(event);
+			if (element === undefined) return;
+			const current = currentDisplay;
+			// 复制的是**显示单位**下的值（所见即所拷）；非法/空值没有可拷的数值。
+			if (current === undefined) return;
+			event.preventDefault();
+			event.clipboardData?.setData('text/plain', String(current));
+		};
+
+		const handleWindowPaste = (event: ClipboardEvent) => {
+			const element = canUseWindowClipboard(event);
+			if (element === undefined) return;
+			const text = event.clipboardData?.getData('text/plain') ?? '';
+			// 先试「数字 + 单位」（会换算到显示单位），再退回纯数字；都不是就不动。
+			const next = convertTypedQuantity(text) ?? parsePlainNumber(text);
+			if (next === undefined) return;
+			event.preventDefault();
+			commit(element, displayText(next), next);
+		};
+
 		window.addEventListener('keydown', handleWindowKeydown);
-		return () => window.removeEventListener('keydown', handleWindowKeydown);
+		window.addEventListener('copy', handleWindowCopy);
+		window.addEventListener('paste', handleWindowPaste);
+		return () => {
+			window.removeEventListener('keydown', handleWindowKeydown);
+			window.removeEventListener('copy', handleWindowCopy);
+			window.removeEventListener('paste', handleWindowPaste);
+		};
 	});
 </script>
 
@@ -447,7 +598,7 @@
 		role="spinbutton"
 		class={`input-field${inputClass ? ` ${inputClass}` : ''}`}
 		aria-label={ariaLabel}
-		aria-valuenow={finiteNumber(value)}
+		aria-valuenow={currentDisplay}
 		aria-valuemin={numericAttribute(rest.min)}
 		aria-valuemax={numericAttribute(rest.max)}
 		aria-valuetext={ariaValueText}
@@ -455,12 +606,13 @@
 		value={draft}
 		oninput={handleInput}
 		onchange={handleChange}
+		onpaste={handlePaste}
 		onfocus={handleFocus}
 		onkeydown={handleKeydown}
 		onwheel={handleWheel}
 	/>
-	{#if unit}
-		<span class="input-unit" aria-hidden="true">{unit}</span>
+	{#if unitLabel}
+		<span class="input-unit" aria-hidden="true">{unitLabel}</span>
 	{/if}
 	<button
 		class="input-step input-step--up"

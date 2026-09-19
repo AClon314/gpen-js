@@ -24,7 +24,9 @@
 	let {
 		value = $bindable<InputValue>(0),
 		orientation = 'horizontal',
-		unit = '',
+		units,
+		activeUnit,
+		onvalidvalue,
 		...rest
 	}: InputProps = $props();
 
@@ -257,7 +259,7 @@
 			<span class="slider-zone" class:active={candidate === downRule}></span>
 		{/each}
 	</div>
-	<InputNumber bind:value {orientation} {unit} {...rest} />
+	<InputNumber bind:value {orientation} {units} {activeUnit} {onvalidvalue} {...rest} />
 </div>
 
 <style>

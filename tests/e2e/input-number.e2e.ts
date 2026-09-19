@@ -460,3 +460,137 @@ test.describe("gpen-input-slider (vertical)", () => {
     expect(metrics.widget).toBeLessThanOrEqual(metrics.card);
   });
 });
+
+test.describe("gpen-input-number units", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/demo/widgets");
+  });
+
+  /** Paste `text` into the field through a real `paste` event (clipboard API needs permissions). */
+  async function paste(field: Locator, text: string) {
+    await field.evaluate((element, value) => {
+      const data = new DataTransfer();
+      data.setData("text/plain", value);
+      element.dispatchEvent(
+        new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }),
+      );
+    }, text);
+  }
+
+  test("value stays in the base unit while the field shows the active unit", async ({ page }) => {
+    const field = page.getByLabel("长度");
+    // activeUnit="cm"、初值 0.12 m → 显示 12 cm
+    await expect(field).toHaveValue("12");
+    await expect(page.locator(".demo-card", { has: field }).locator("output")).toHaveText("0.12 m");
+
+    await field.fill("200");
+    await field.blur();
+    await expect(page.locator(".demo-card", { has: field }).locator("output")).toHaveText("2 m");
+  });
+
+  test("a bare dimension table defaults the display unit to its base", async ({ page }) => {
+    const field = page.getByLabel("质量");
+
+    // units={STD_UNITS.mass} → 显示单位 kg，右侧是只读标签
+    await expect(field).toHaveValue("1.234");
+    await expect(field.locator("xpath=..//span[contains(@class,'input-unit')]")).toHaveText("kg");
+  });
+
+  test("typing a quantity converts as soon as the unit is complete", async ({ page }) => {
+    const field = page.getByLabel("质量");
+
+    // trim + split：前后空格、数字与单位之间的空格都无所谓
+    await field.fill("1234克");
+    await expect(field).toHaveValue("1.234");
+
+    await field.fill(" 1234 克 ");
+    await expect(field).toHaveValue("1.234");
+
+    // 二次编辑只改数字：单位是独立的只读标签，不在 input 的值里
+    await field.fill("2.5");
+    await expect(field).toHaveValue("2.5");
+    await expect(field.locator("xpath=..//span[contains(@class,'input-unit')]")).toHaveText("kg");
+  });
+
+  test("an unsupported unit is left alone and falls into the invalid state", async ({ page }) => {
+    const field = page.getByLabel("质量");
+
+    await field.fill("12 xyz");
+    await expect(field).toHaveValue("12 xyz");
+    await expect(field).toHaveJSProperty("validity.customError", true);
+
+    // 跨量纲同样不换算（质量字段里的长度单位）
+    await field.fill("12 cm");
+    await expect(field).toHaveValue("12 cm");
+    await expect(field).toHaveJSProperty("validity.customError", true);
+  });
+
+  test("pasting a quantity converts it into the display unit", async ({ page }) => {
+    const field = page.getByLabel("长度");
+
+    await paste(field, "12 cm");
+    await expect(field).toHaveValue("12");
+
+    await paste(field, "1 in");
+    await expect(field).toHaveValue("2.54");
+
+    await paste(field, "  12 厘米 ");
+    await expect(field).toHaveValue("12");
+
+    // 跨量纲（质量）被拒：不做换算，字段保持原样（合成的 paste 事件不会触发浏览器默认插入）
+    await paste(field, "2 kg");
+    await expect(field).toHaveValue("12");
+  });
+
+  test("typing a unit suffix converts on commit", async ({ page }) => {
+    const field = page.getByLabel("长度");
+
+    await field.fill("3ft");
+    await expect(field).toHaveValue("91.44");
+  });
+});
+
+test.describe("gpen-input-number value clipboard", () => {
+  test.use({ permissions: ["clipboard-read", "clipboard-write"] });
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/demo/widgets");
+  });
+
+  test("Ctrl+C copies the hovered value, Ctrl+V pastes it back", async ({ page }) => {
+    const field = page.getByLabel("强度");
+
+    // 悬浮但**不聚焦**：焦点仍在 body
+    await field.hover();
+    await page.keyboard.press("Control+c");
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("42");
+
+    await page.evaluate(() => navigator.clipboard.writeText("77"));
+    await page.keyboard.press("Control+v");
+    await expect(field).toHaveValue("77");
+    await expect(page.locator(".demo-card", { has: field }).locator("output")).toHaveText("77%");
+  });
+
+  test("a hovered paste understands a unit suffix", async ({ page }) => {
+    const field = page.getByLabel("质量");
+
+    await field.hover();
+    await page.evaluate(() => navigator.clipboard.writeText("1234克"));
+    await page.keyboard.press("Control+v");
+    await expect(field).toHaveValue("1.234");
+  });
+
+  test("the focused input keeps the native clipboard behaviour", async ({ page }) => {
+    const field = page.getByLabel("强度");
+
+    await field.click();
+    await field.press("Control+a");
+    await page.keyboard.press("Control+c");
+    // 原生复制的是被选中的文本；粘贴也走原生（把选区替换成剪贴板内容）
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("42");
+    await field.press("Control+a");
+    await field.press("Delete");
+    await field.press("Control+v");
+    await expect(field).toHaveValue("42");
+  });
+});
