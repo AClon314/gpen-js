@@ -43,14 +43,14 @@ themeTokens()["--gpen-panel-accent"]; // 响应式读取
 
 ## token 分组
 
-| 组             | token                                                                                    | 用在哪                                                        |
-| -------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| 排版 / 基准    | `--gpen-font-sans` / `-mono` / `-size` / `-line-height` / `-char-width`                  | 所有组件                                                      |
-| 面板表面       | `--gpen-panel-background` / `-foreground` / `-muted` / `-border` / `-accent` / `-shadow` | 面板本体、控件、菜单                                          |
-| 工作区外壳     | `--gpen-chrome-background` / `--gpen-chrome-background-subtle`                           | 菜单栏、状态栏、标题栏（tab 条）、工具条                      |
-| 面板内部次级面 | `--gpen-panel-background-raised` / `-hover` / `--gpen-panel-selection`                   | 卡片、胶囊按钮、输入、选中行                                  |
-| 视口浮层       | `--gpen-viewport-overlay-background` / `-foreground`                                     | 坐标轴 gizmo、viewport 角标（浮在宿主网页上，不随配色方案变） |
-| 形状           | `--gpen-radius` / `-sm`                                                                  | 控件圆角                                                      |
+| 组             | token                                                                                    | 用在哪                                   |
+| -------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------- |
+| 排版 / 基准    | `--gpen-font-sans` / `-mono` / `-size` / `-line-height` / `-char-width`                  | 所有组件                                 |
+| 面板表面       | `--gpen-panel-background` / `-foreground` / `-muted` / `-border` / `-accent` / `-shadow` | 面板本体、控件、菜单                     |
+| 工作区外壳     | `--gpen-chrome-background` / `--gpen-chrome-background-subtle`                           | 菜单栏、状态栏、标题栏（tab 条）、工具条 |
+| 面板内部次级面 | `--gpen-panel-background-raised` / `-hover` / `--gpen-panel-selection`                   | 卡片、胶囊按钮、输入、选中行             |
+| 视口浮层       | `--gpen-viewport-overlay-background` / `-foreground`                                     | 小地图（浮在宿主网页上，不随配色方案变） |
+| 形状           | `--gpen-radius` / `-sm`                                                                  | 控件圆角                                 |
 
 `--gpen-workspace-background` 供工作区容器使用，默认 `transparent`：工作区铺满 `visualViewport`，
 视口那一格是真正的“洞”，宿主网页从那里透出来，所以**容器不能有底色**，底色由各面板自己画

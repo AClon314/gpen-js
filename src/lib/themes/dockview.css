@@ -66,6 +66,19 @@
 	color: var(--gpen-panel-foreground);
 }
 
+/* 视口那一组是 overlay 上真正的“洞”：宿主网页从它中间透出来，所以整组不画底色、
+ * 也不接指针；标题栏、sash、小地图再各自 opt-in 回来（见 GpenWorkspace.markHoleGroup，
+ * 标记按面板 id 打，不依赖面板内容挂载成功）。 */
+.gpen-dockview .dv-groupview.gpen-hole {
+	background-color: transparent;
+	pointer-events: none;
+}
+
+.gpen-dockview .dv-groupview.gpen-hole > .dv-tabs-and-actions-container,
+.gpen-dockview .dv-groupview.gpen-hole .minimap {
+	pointer-events: auto;
+}
+
 /* --- 标题栏：当作 Blender 的 area header ---------------------------------- */
 
 .gpen-dockview .dv-tabs-and-actions-container {

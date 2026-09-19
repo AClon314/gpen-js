@@ -140,6 +140,7 @@
 			}
 			// 尺寸落定后再落一次布局：`setSize` 之后的变更事件是在 dockview 还在
 			// 100×100 时发出的，那一次会被 capture 的尺寸守卫挡掉。
+			markHoleGroup();
 			if (layoutDirty) captureDockviewLayout();
 		});
 	}
@@ -176,6 +177,20 @@
 		if (!layout) return;
 		workspaceState.panelLayout = layout;
 		layoutDirty = false;
+	}
+
+	/**
+	 * 视口那一组是 overlay 上真正的“洞”：整组透明、且不接指针（见 themes/dockview.css
+	 * 的 `.gpen-hole`）。以前只靠 `:has(.blender-panel-viewport)` 判断，面板内容一旦缺失
+	 * （组件抛错、还没挂载），洞就会退回不透明的 chrome 底色——所以这里按面板 id 打标记。
+	 * 每次布局变更都重算一次（幂等、很便宜）。
+	 */
+	function markHoleGroup() {
+		const instance = dockview;
+		if (!instance) return;
+		for (const group of instance.groups) {
+			group.element.classList.toggle('gpen-hole', group.activePanel?.id === 'viewport');
+		}
 	}
 
 	/** 存储里的布局是否是“按真实尺寸排过”的那份（老版本可能存过 100×100 的）。 */
@@ -539,6 +554,7 @@
 		// 都要记下来：只订前者的话，用户拖过的面板宽度根本不会被持久化。
 		const onLayoutEvent = () => {
 			layoutDirty = true;
+			markHoleGroup();
 			captureDockviewLayout();
 		};
 		layoutSubscriptions = [
@@ -557,6 +573,7 @@
 			buildDefaultLayout();
 			applyDefaultSizes = true;
 		}
+		markHoleGroup();
 		captureDockviewLayout();
 
 		disposeTabMenu = registerMenuItems(WORKSPACE_TAB_MENU_ID, tabMenuItems);
@@ -664,20 +681,14 @@
 	/* T3: the overlay and workspace shell opt out of hit testing. Non-viewport
 	 * groups, tabs, sashes, and controls opt back in, leaving the transparent
 	 * viewport content available to the webpage for click/wheel/touch events.
-	 * A child such as the axis gizmo may opt in without making the whole hole
-	 * opaque. */
+	 * A child such as the viewport minimap may opt in without making the whole
+	 * hole opaque. */
 	:global(.dockview-container .dv-groupview) {
 		pointer-events: auto;
 	}
 
-	:global(.dockview-container .dv-groupview:has(.blender-panel-viewport)) {
-		pointer-events: none;
-		/* 洞：这一组不画底色，宿主网页直接透出来。 */
-		background-color: transparent;
-	}
-
-	:global(.dockview-container .dv-groupview:has(.blender-panel-viewport) > .dv-tabs-and-actions-container),
-	:global(.dockview-container .dv-groupview:has(.blender-panel-viewport) .axis-gizmo),
+	/* 视口那一组的“洞”样式（`.gpen-hole`）在 themes/dockview.css 里，由
+	 * markHoleGroup() 按面板 id 打标记——不依赖面板内容是否挂载成功。 */
 	:global(.dockview-container .dv-sash),
 	:global(.dockview-container .dv-resize-handle),
 	:global(.dockview-container .dv-drop-target-container) {

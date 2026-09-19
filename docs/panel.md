@@ -18,7 +18,10 @@
   它们的标题要么和内容重复、要么窄到放不下；其余面板把 tab 条当 Blender 的 area header 用
   （中文标题、无关闭按钮、活动项 accent 下划线，右键仍出 dock/view 菜单）。
 - **视口 = 洞**：`blender-panel-viewport` 所在组 `pointer-events: none` + 透明背景，
-  只有 axis gizmo、tab 条、sash、drop overlay 各自 opt-in，宿主网页从洞里拿到指针事件。
+  只有小地图（`MiniMap`，右上角）、tab 条、sash、drop overlay 各自 opt-in，
+  宿主网页从洞里拿到指针事件。这一组由 `markHoleGroup()` 按面板 id 打 `.gpen-hole` 标记
+  ——不能用 `:has(.blender-panel-viewport)`：面板内容一旦缺失（组件报错 / 还没挂载），
+  洞就会退回不透明的 chrome 底色。
 - **工具条**为 62px 宽的 rail（`2.4lh` 方形按钮）；图标用 Spectrum workflow 图标，
   和取色器同一套视觉语言。rail 里**只有绘图工具**：`TOOL_IDS` 不含「交还网页」，
   那个动作是工作区的最小化。
