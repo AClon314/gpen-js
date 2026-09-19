@@ -22,6 +22,13 @@
 
 `createRuntimeStorage()` 的选择顺序为 userscript → VS Code → WebExtension → 普通网页。返回值始终是同样的对象结构：`storage.kv` 和 `storage.blob`。
 
+工作区偏好（`uiScale` / `activeTool` / 浮球位置 / dockview 布局快照）也走这条链：
+`components/gpenWorkspaceState.ts` 的 `createRuntimeGpenWorkspaceStateStorage()` 把
+`kv.workspace` 当作后端，普通网页就是 IndexedDB，monkey / VS Code / WebExtension 宿主
+用各自的 KV（不再直连 localStorage）。旧版本存在 localStorage 的 `gpen.workspaceState`
+与 `gpen.uiScale` 只在首次读取时迁移一次；IndexedDB 不可用时整套自动回落到
+localStorage 适配器。
+
 普通网页、WebExtension 和 userscript 的 Blob 默认使用 `targetDomain` 提供的 `/storage-broker` 页面，将 Blob 保存到 OPFS；默认 `targetDomain` 为 `https://xxx.github.com`。部署时应确保目标 origin 提供该页面，也可以通过 `brokerPath` 修改路径。OPFS broker 初始化失败时，Blob 会使用当前 origin 的 IndexedDB。
 
 ## 基本用法

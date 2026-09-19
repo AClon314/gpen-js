@@ -37,7 +37,9 @@
 - **默认尺寸**在首次 layout 之后用 `group.api.setSize()` 显式设置：`addPanel` 的
   `initialWidth` / `initialHeight` 只对“新建组”的面板生效，split 出来的组会退回组最小值。
 - **持久化**：`panelLayout` 存 dockview 的 `toJSON()`，`uiScale` / `activeTool` / 浮球位置
-  存在同一个 `gpen.workspaceState` 记录里（见 `components/gpenWorkspaceState.ts`）。
+  存在同一个 `workspace` 记录里（见 `components/gpenWorkspaceState.ts`）。后端是
+  `createRuntimeStorage()` 的 KV（普通网页 = IndexedDB，见 [`storage.md`](storage.md)）；
+  旧版 localStorage 的 `gpen.workspaceState` 只在首次读取时迁移一次。
   记忆布局有三个必须守住的点（踩过坑，都是"面板越还原越大 / 越还原越空"的来源）：
   1. **只在真实尺寸下取快照**：刚挂载时 dockview 还停在它自己的默认尺寸（100×100），
      此时每个面板都卡在最小值，`toJSON()` 存下来就是一个坏布局，下次还原会被摊回真实尺寸；

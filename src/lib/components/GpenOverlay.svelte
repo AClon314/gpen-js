@@ -10,7 +10,7 @@
 	import GpenWorkspace from './GpenWorkspace.svelte';
 	import {
 		createDefaultGpenWorkspaceState,
-		createLocalStorageGpenWorkspaceStateStorage,
+		createRuntimeGpenWorkspaceStateStorage,
 		normalizeGpenWorkspaceState,
 		serializeGpenWorkspaceState
 	} from './gpenWorkspaceState';
@@ -21,7 +21,9 @@
 	let storageReady = $state(false);
 	let infiniteCanvas: ReturnType<typeof applyFakeInfiniteCanvas> | undefined;
 
-	const workspaceStorage = createLocalStorageGpenWorkspaceStateStorage();
+	// 偏好走后端无关的 KV（monkey / vscode / IndexedDB），不再直连 localStorage；
+	// 旧 localStorage 数据由适配器在首次读取时迁移。
+	const workspaceStorage = createRuntimeGpenWorkspaceStateStorage();
 	const EDGE_MARGIN = 0.75; // rem gap between the ball and the visible viewport edges
 	const BALL_DRAG_THRESHOLD = 8; // CSS px, filters touch/mouse jitter from drags
 	const instanceId = createInstanceId();
@@ -111,6 +113,10 @@
 	onDestroy(() => {
 		infiniteCanvas?.destroy();
 		infiniteCanvas = undefined;
+		// Release the runtime KV connection (IndexedDB) so repeated embed mounts
+		// do not leak it. The adapter itself falls back to localStorage when the
+		// backend is unavailable, so this is best-effort.
+		void workspaceStorage.close?.();
 	});
 
 	// `position: fixed` 在 pinch 缩放后就不再跟着可视区走了，所以 overlay 用绝对定位，

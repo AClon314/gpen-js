@@ -1,4 +1,9 @@
 import type { JsonValue, Storage } from "../bindings/storage/index.js";
+import {
+  createRuntimeStorage,
+  type HookedBlobBackend,
+  type RuntimeStorageOptions,
+} from "../bindings/storage/index.js";
 
 export const GPEN_WORKSPACE_STATE_KEY = "gpen.workspaceState";
 export const GPEN_UI_SCALE_KEY = "gpen.uiScale";
@@ -62,6 +67,8 @@ export type GpenWorkspaceStatePatch = Partial<GpenWorkspaceState>;
 export interface GpenWorkspaceStateStorage {
   load(): Promise<GpenWorkspaceStatePatch | undefined>;
   save(state: GpenWorkspaceStateSnapshot): Promise<void>;
+  /** 释放后端持有资源（IndexedDB 连接等）；localStorage 适配器是 no-op。 */
+  close?(): void | Promise<void>;
 }
 
 export type GpenWorkspaceStorageRecord = {
@@ -157,42 +164,57 @@ export function serializeGpenWorkspaceState(state: GpenWorkspaceState): GpenWork
 }
 
 /**
- * The current web adapter. It keeps the old uiScale key in sync so existing
- * users migrate without losing their setting. All component code talks to the
- * GpenWorkspaceStateStorage interface rather than localStorage directly.
+ * 读取旧版 localStorage 里的工作区偏好。
+ *
+ * 旧实现把整个 state 写在 `gpen.workspaceState`（JSON），更早的版本只有一个
+ * `gpen.uiScale` 字符串。两者都读，后者作为前者的缺省补充。
+ */
+export function readLegacyLocalStorageGpenWorkspaceStatePatch():
+  | GpenWorkspaceStatePatch
+  | undefined {
+  try {
+    const local = globalThis.localStorage;
+    if (!local) return undefined;
+    const encodedState = local.getItem(GPEN_WORKSPACE_STATE_KEY);
+    const legacyScale = local.getItem(GPEN_UI_SCALE_KEY);
+    let parsed: GpenWorkspaceStatePatch | undefined;
+
+    if (encodedState !== null) {
+      const value: unknown = JSON.parse(encodedState);
+      if (isRecord(value)) parsed = value as GpenWorkspaceStatePatch;
+    }
+
+    if (parsed && parsed.uiScale === undefined && legacyScale !== null) {
+      const scale = Number(legacyScale);
+      if (Number.isFinite(scale)) parsed = { ...parsed, uiScale: scale };
+    }
+
+    if (parsed) return parsed;
+    if (legacyScale === null) return undefined;
+
+    const scale = Number(legacyScale);
+    return Number.isFinite(scale) ? { uiScale: scale } : undefined;
+  } catch (error) {
+    console.debug("[gpen] ignored rejection: workspace state localStorage load", error);
+    return undefined;
+  }
+}
+
+/**
+ * 旧版适配器：直接读写 localStorage（含旧 key）。
+ *
+ * 现在只作为两件事存在：新 RuntimeStorage 适配器的**迁移来源**，以及
+ * IndexedDB 不可用时的兼容边界。
  */
 export function createLocalStorageGpenWorkspaceStateStorage(): GpenWorkspaceStateStorage {
   return {
     async load() {
-      try {
-        const local = globalThis.localStorage;
-        const encodedState = local.getItem(GPEN_WORKSPACE_STATE_KEY);
-        const legacyScale = local.getItem(GPEN_UI_SCALE_KEY);
-        let parsed: GpenWorkspaceStatePatch | undefined;
-
-        if (encodedState !== null) {
-          const value: unknown = JSON.parse(encodedState);
-          if (isRecord(value)) parsed = value as GpenWorkspaceStatePatch;
-        }
-
-        if (parsed && parsed.uiScale === undefined && legacyScale !== null) {
-          const scale = Number(legacyScale);
-          if (Number.isFinite(scale)) parsed = { ...parsed, uiScale: scale };
-        }
-
-        if (parsed) return parsed;
-        if (legacyScale === null) return undefined;
-
-        const scale = Number(legacyScale);
-        return Number.isFinite(scale) ? { uiScale: scale } : undefined;
-      } catch (error) {
-        console.debug("[gpen] ignored rejection: workspace state localStorage load", error);
-        return undefined;
-      }
+      return readLegacyLocalStorageGpenWorkspaceStatePatch();
     },
     async save(state) {
       try {
         const local = globalThis.localStorage;
+        if (!local) return;
         const snapshot = serializeGpenWorkspaceState(state);
         local.setItem(GPEN_WORKSPACE_STATE_KEY, JSON.stringify(snapshot));
         // Compatibility with the pre-state-object implementation.
@@ -225,4 +247,111 @@ export function createKvGpenWorkspaceStateStorage(
 
 export function cloneGpenPanelLayout(value: unknown): GpenPanelLayout | null {
   return normalizePanelLayout(value);
+}
+
+/**
+ * 把主 KV 适配器包一层：首次读取时把旧 localStorage 数据迁移过去。
+ *
+ * 迁移只发生一次（KV 里有 `workspace` 就完全忽略旧 key），旧 key 保留不删
+ * ——它们是迁移来源，不是当前事实来源。`legacy` 可注入，便于单测。
+ */
+export function createMigratingGpenWorkspaceStateStorage(
+  storage: GpenWorkspaceStateStorage,
+  legacy: GpenWorkspaceStateStorage = createLocalStorageGpenWorkspaceStateStorage(),
+): GpenWorkspaceStateStorage {
+  return {
+    async load() {
+      const stored = await storage.load();
+      if (stored) return stored;
+
+      const old = await legacy.load();
+      if (!old) return undefined;
+
+      const migrated = normalizeGpenWorkspaceState(old);
+      try {
+        await storage.save(migrated);
+      } catch (error) {
+        console.debug("[gpen] ignored rejection: workspace state migration", error);
+        return migrated;
+      }
+      return migrated;
+    },
+    async save(state) {
+      await storage.save(state);
+    },
+    close() {
+      return storage.close?.();
+    },
+  };
+}
+
+/**
+ * 工作区偏好的默认后端：`createRuntimeStorage()` 的 KV 分区。
+ *
+ * monkey / vscode / WebExtension 宿主走各自的 KV（不再直连 localStorage）；
+ * 普通网页退到 IndexedDB。IndexedDB 不可用时（加载抛错）自动回落到旧
+ * localStorage 适配器，旧 key 继续可读可写。
+ */
+export function createRuntimeGpenWorkspaceStateStorage(
+  options: RuntimeStorageOptions<GpenWorkspaceStorageRecord> = {},
+): GpenWorkspaceStateStorage {
+  const legacy = createLocalStorageGpenWorkspaceStateStorage();
+  const runtime = createRuntimeWorkspaceStorage(options);
+  let kv = runtime.kv;
+
+  return {
+    async load() {
+      if (kv) {
+        try {
+          return await kv.load();
+        } catch (error) {
+          console.debug("[gpen] ignored rejection: workspace state kv load", error);
+          kv = undefined;
+          return await legacy.load();
+        }
+      }
+      return await legacy.load();
+    },
+    async save(state) {
+      if (kv) {
+        try {
+          await kv.save(state);
+          return;
+        } catch (error) {
+          console.debug("[gpen] ignored rejection: workspace state kv save", error);
+          kv = undefined;
+          await legacy.save(state);
+          return;
+        }
+      }
+      await legacy.save(state);
+    },
+    close() {
+      const closing = kv?.close?.();
+      void runtime.storage?.close?.();
+      return closing;
+    },
+  };
+}
+
+/** Create the runtime KV adapter, degraded to "no KV" when creation fails. */
+function createRuntimeWorkspaceStorage(
+  options: RuntimeStorageOptions<GpenWorkspaceStorageRecord>,
+): {
+  storage?: Storage<GpenWorkspaceStorageRecord, HookedBlobBackend>;
+  kv?: GpenWorkspaceStateStorage;
+} {
+  try {
+    const storage = createRuntimeStorage<GpenWorkspaceStorageRecord>(options);
+    return {
+      storage,
+      kv: createMigratingGpenWorkspaceStateStorage(
+        createKvGpenWorkspaceStateStorage(storage),
+        createLocalStorageGpenWorkspaceStateStorage(),
+      ),
+    };
+  } catch (error) {
+    console.debug("[gpen] ignored rejection: workspace state runtime storage", error);
+    return {};
+  }
 }

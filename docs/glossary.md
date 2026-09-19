@@ -24,7 +24,7 @@
 | --- | --- | --- |
 | OPFS | **O**rigin **P**rivate **F**ile **S**ystem | 每个 origin 一块沙箱文件系统（`navigator.storage.getDirectory()`）；broker 把 blob 存这里 |
 | IndexedDB | — | 浏览器里的结构化本地数据库（KV / Blob 后端之一） |
-| localStorage | — | 同步的字符串 KV（本项目存 `gpen.workspaceState`） |
+| localStorage | — | 同步的字符串 KV（旧版工作区偏好曾存这里；现在仅作为迁移来源） |
 | ns | namespace（命名空间） | 数据的逻辑分区键；**由服务端按「已认证身份 + 数据集」派生**目录，如 `users/<sub>/datasets/<id>` |
 | Blob | binary large object | 二进制对象（文件/图片等） |
 | KV | key–value | 键值存储（`storage.kv`） |
