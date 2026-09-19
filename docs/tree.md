@@ -2,7 +2,8 @@
 
 目标：`areas/Outliner.svelte` 里的图层树，要能承载 **多选 / 拖拽排序与入组 / 内联重命名 /
 上千节点虚拟化**，并且**高可扩展**（行内容、展开箭头、拖拽把手都由调用方渲染）。
-本文是选型调研 + 接口草案，**尚未实现**。
+本文是选型调研 + 接口设计。**行为层与 Outliner 已实现**（纯函数入口 `src/lib/layers/tree/`，
+见 §七「实现现状」）；虚拟化与懒加载仍是后续工作。
 
 调研原件（未跟踪的草稿，细节更全）：`tmp/tree-reactaria.md`（52 KB，含源码级扩展点索引）、
 `tmp/tree-webawesome.md`、`tmp/tree-elementplus.md`。
@@ -143,3 +144,105 @@ function applyDrop(tree: UiLayerTreeNode[], keys: Key[], target: DropTarget): Op
    `slot="children"`，让父级默认 slot 只装该行的内容 —— 我们用 snippet 方案后不需要这招，但值得记住。
 5. **懒加载**：我们的图层树来自内存中的协议文档（`buildLayerTree`），暂时没有分页需求；
    若将来接大文档，按「哨兵 + 幂等加载」设计。
+
+## 七、实现现状
+
+### 7.1 文件
+
+| 文件 | 内容 |
+| --- | --- |
+| `src/lib/layers/tree/types.ts` | `TreeKey` / `TreeRow` / `DropTarget` / `RowLayout`（纯数据） |
+| `src/lib/layers/tree/rows.ts` | `flattenRows` / `visibleRows` / `rowIndex` / `rowByKey` |
+| `src/lib/layers/tree/keyboard.ts` | `nextFocusKey` |
+| `src/lib/layers/tree/selection.ts` | `selectionAfter` |
+| `src/lib/layers/tree/typeahead.ts` | `typeaheadKey` |
+| `src/lib/layers/tree/search.ts` | `searchRows`（供将来的过滤框用，UI 尚未接） |
+| `src/lib/layers/tree/dropTarget.ts` | `dropTargetFromPoint` / `rowAtPoint` |
+| `src/lib/layers/tree/drop.ts` | `applyDrop` / `TreeOp` |
+
+`index.ts` 统一导出，并由 `src/lib/layers/index.ts` 再导出（`#lib/layers/tree/index.js` 可导入）。
+文档层配套新增：`layerOps.renameNode` / `layerOps.moveNodes`（`MoveNodeOp`）。
+测试：`tests/tree.test.ts`（38 例）、`tests/e2e/outliner.e2e.ts`（3 例）。
+
+### 7.2 实际签名（与 §五 草案的差异都写在注释与下文）
+
+```ts
+type TreeKey = number;                       // = UiLayerTreeNode.node_index
+interface TreeRow { key; parentKey: number | null; level: number;  // 1 基
+                    hasChildren: boolean; textValue: string; data: UiLayerTreeNode }
+type DropTarget = { type: 'root' }
+                | { type: 'item'; key: TreeKey; position: 'on' | 'before' | 'after' }
+interface RowLayout { rowHeight: number; indent: number; scrollTop: number }
+
+flattenRows(root: UiLayerTreeNode | null): TreeRow[]
+visibleRows(root: UiLayerTreeNode | null, expanded: ReadonlySet<TreeKey>): TreeRow[]
+rowIndex(rows: readonly TreeRow[], key: TreeKey): number          // -1 = 不可见
+rowByKey(rows: readonly TreeRow[], key: TreeKey): TreeRow | undefined
+nextFocusKey(rows, current: TreeKey | undefined, move: 'up'|'down'|'left'|'right'|'home'|'end'): TreeKey | undefined
+selectionAfter(rows, selected: ReadonlySet<TreeKey>, key, modifiers: { shift: boolean; ctrl: boolean }): Set<TreeKey>
+typeaheadKey(rows, from: TreeKey | undefined, query: string): TreeKey | undefined
+searchRows(rows, query: string): TreeRow[]
+dropTargetFromPoint(rows, point: {x;y}, layout: RowLayout, isValid: (t: DropTarget) => boolean): DropTarget | null
+applyDrop(tree: UiLayerTreeNode, keys: TreeKey[], target: DropTarget): TreeOp[]
+type TreeOp = { kind: 'move'; key: TreeKey; parentKey: TreeKey; beforeKey?: TreeKey }
+
+// 文档层（src/lib/layers/layerOps.ts）
+renameNode(document: GpenT, nodeIndex: number, name: string): GpenT
+moveNodes(document: GpenT, ops: readonly MoveNodeOp[]): GpenT
+interface MoveNodeOp { nodeIndex: number; parentNodeIndex: number; beforeNodeIndex?: number }
+```
+
+约定（都已写进源码注释、并有单测固定）：
+
+- **root 行**永远可见、`level = 1`；只有展开集合里的组才有子树进入 `visibleRows`。
+- `nextFocusKey` 用「**返回当前 key**」表示结构变化：`left` = 折叠展开中的行，`right` = 展开
+  折叠中的行；边界无操作（首行 `up`）也返回当前 key。组件靠自己的展开状态区分二者。
+- `selectionAfter` 的 **anchor** 是传入集合迭代序里的最后一个可见项（= 上一次操作最后选中的行），
+  范围只在**可见行**上取；`shift + ctrl` 时 **ctrl 切换优先**（同一 reducer 里单一语义）。
+- `dropTargetFromPoint`：行的上/下 25% = `before`/`after`，中间 50% = `on`；
+  **叶子行的中间带落成 `after`**（叶子不能入组）；指针在行自身缩进左侧
+  （`x < (level-1) * indent`）时也落成 `after`（Blender 的「同级重排」手势）；
+  根行的 `before` 收敛为 `on`；最后一行之下 = `{type:'root'}`（追加到根组）。
+- `applyDrop` 只产 op、不改数据，并主动跳过**自身 / 自己的后代 / 原地**的 key。
+- `moveNodes` 做邻接向量手术（先 detach 再 attach，`childRange` 与 `childIndices` 同步伸缩，
+  同时更新 `nodes[].parentIndex` 与载荷 `parentIndex`）；移入自身子树、移动到非直属父级、
+  移动根节点都抛 `RangeError`。
+
+### 7.3 组件接线
+
+- `areas/Outliner.svelte` props 是**受控三件套**：`tree`、`selectedKeys`/`defaultSelectedKeys`/
+  `onSelectionChange`、`activeKey`/`onActivate`、`expandedKeys`/`defaultExpandedKeys`/
+  `onExpandedChange`、`onRename`、`onMove`。语义：受控值存在时它就是真相（`default*` 只作初值，
+  用 `untrack` 显式标注），回调**总是**触发。
+- `GpenWorkspace.svelte` 持有 `GpenT` 文档作为**唯一真相**，`layerTree` 由文档 `$derived` 得来；
+  Outliner 的 props 是一个 `$state` 代理对象，所以 dockview 用 `mount()` 只在 init 传一次 props 之后，
+  后续赋值仍能推给面板（重命名 / 移动 / active 都走这条）。
+- 行布局把 `level` 算进内缩（行内 `padding-left: calc((level-1) * 2ch + 1ch)`）；
+  行高固定 `2lh` 且无 gap，命中测试才能用定高 `rowHeight`（缩进用 `1ch` 探针量成 px）。
+- 重命名：独立 UI state（不进 tree state）+ 原生 `<input>`，F2 / 双击进入，Enter / blur 提交、
+  Esc 取消，提交走 `layerOps.renameNode`。
+- 拖拽：**原生 HTML5 DnD**（`draggable` + `dragstart/dragover/drop`），落点用
+  `dropTargetFromPoint` 解析、`applyDrop` 产 op、`layerOps.moveNodes` 落库；
+  `isValid` 在 UI 层否决「拖进自己子树」。
+
+### 7.4 故意没做 / 打折的地方
+
+- **虚拟化**：没做。行是定高、无 gap 的 DOM，几百行没问题；上千行按 §3 的 `RowLayout` 换
+  外部布局器即可（行为层已经完全不依赖 DOM）。
+- **懒加载、悬停自动展开、拖拽预览 / 落点指示线之外的视觉**：没做。
+- **搜索框 UI**：`searchRows` 已实现并有单测，但没有渲染过滤框（不在本任务范围）。
+- **a11y 留空项**：`aria-setsize`/`aria-posinset` 未给（扁平行靠 `aria-level` 表达层级）；
+  `aria-busy` 无加载态；展开箭头是 `tabindex="-1"` 的按钮（不占 Tab 序，键盘用 ←/→）；
+  拖拽没有键盘等价操作。`aria-multiselectable` 恒为 `"true"`（多选一直可用），
+  而不是「选中多于一项时才加」。
+- **行内操作按钮**（可见性 / 收藏 / 锁定）已从静态占位里删掉：它们需要写 `LayerFlagsT`，
+  而默认文档的 `flags` 是 `null`，补一条协议写路径才能做，留给后续任务。
+
+### 7.5 §六 待决问题的现状
+
+1. **多选语义**：`active`（= 文档 `activeNodeIndex`，点击 / Enter 更新）与 `selectedKeys`（UI 多选）
+   已分离；ctrl 取消选中时不改 active。
+2. **虚拟化 vs 重命名**：未虚拟化，无冲突。
+3. **拖到 dockview / overlay / 画布**：未支持，仅面板内。
+4. **slot 分流技巧**：不需要（行为层与渲染层已解耦）。
+5. **懒加载**：未做（见上）。

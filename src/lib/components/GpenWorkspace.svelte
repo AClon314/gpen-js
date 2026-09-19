@@ -11,10 +11,17 @@
 		type IContentRenderer,
 		type SerializedDockview
 	} from 'dockview';
-	import { MimeType } from 'gpen-protocol/flatbuffers';
+	import { MimeType, type GpenT } from 'gpen-protocol/flatbuffers';
 	import { createDefaultGpen } from '../protocol/defaults';
 	import { buildLayerTree } from '../layers/layerAdapter';
-	import type { UiLayerTree } from '../layers/types';
+	import {
+		moveNodes,
+		renameNode,
+		setActiveNode,
+		type MoveNodeOp
+	} from '../layers/layerOps';
+	import type { UiLayerTree, UiLayerTreeNode } from '../layers/types';
+	import type { TreeKey, TreeOp } from '../layers/tree/index.js';
 	import { applyInfiniteCanvas, guessWebLayer, type InfiniteCanvas } from '../canvas/index';
 	import { createLayerView, type LayerView } from '../layers/layerView';
 	import {
@@ -60,7 +67,10 @@
 	// oxlint-disable-next-line no-unassigned-vars
 	let container: HTMLDivElement;
 	let dockview: ReturnType<typeof createDockview> | undefined;
-	let layerTree: UiLayerTree | undefined;
+	/// 文档是真相，图层树只是它的派生视图：移动/重命名都只改文档（layerOps），
+	/// 再由文档重建树 —— 树里的 `children` 与协议的邻接向量永远不会脱节。
+	let gpenDocument = $state.raw<GpenT | undefined>(undefined);
+	const layerTree = $derived(gpenDocument ? buildLayerTree(gpenDocument) : undefined);
 	/// 图层视图：Web 图层（element）或未来的 gpen 画布（canvas）。
 	let layerView = $state<LayerView | undefined>(undefined);
 	let infiniteCanvas: InfiniteCanvas | undefined;
@@ -117,6 +127,91 @@
 
 	function updateExternalZoom() {
 		externalZoomFactor = readGpenViewportZoomFactor();
+	}
+
+	/**
+	 * dockview 用 `mount()` 起面板，props 只在 init 时传一次。这个对象是 `$state`
+	 * 代理，所以之后对字段的赋值会推给子组件；Outliner 侧对应的是「受控三件套」
+	 * （受控值优先、回调总是触发，见 docs/tree.md §3.4）。
+	 */
+	const outlinerProps = $state<{
+		tree: UiLayerTree | undefined;
+		selectedKeys: ReadonlySet<TreeKey>;
+		activeKey: TreeKey | undefined;
+		expandedKeys: ReadonlySet<TreeKey>;
+		onSelectionChange: (keys: Set<TreeKey>) => void;
+		onActivate: (key: TreeKey) => void;
+		onExpandedChange: (keys: Set<TreeKey>) => void;
+		onRename: (key: TreeKey, name: string) => void;
+		onMove: (ops: TreeOp[]) => void;
+	}>({
+		tree: undefined,
+		selectedKeys: new Set<TreeKey>(),
+		activeKey: undefined,
+		expandedKeys: new Set<TreeKey>(),
+		onSelectionChange: (keys) => {
+			outlinerProps.selectedKeys = keys;
+		},
+		onActivate: (key) => activateLayerNode(key),
+		onExpandedChange: (keys) => {
+			outlinerProps.expandedKeys = keys;
+		},
+		onRename: (key, name) => renameLayerNode(key, name),
+		onMove: (ops) => moveLayerNodes(ops)
+	});
+
+	let expandedInitialized = false;
+
+	// 文档 → 子组件 props 的单向同步（树、active、首次的展开集合）。
+	$effect(() => {
+		const tree = layerTree;
+		outlinerProps.tree = tree;
+		outlinerProps.activeKey = tree?.active_node?.node_index;
+		if (!expandedInitialized && tree) {
+			expandedInitialized = true;
+			outlinerProps.expandedKeys = groupKeys(tree.root);
+		}
+	});
+
+	function groupKeys(root: UiLayerTreeNode | null): Set<TreeKey> {
+		const keys = new Set<TreeKey>();
+		const visit = (node: UiLayerTreeNode): void => {
+			if (node.children.length > 0) keys.add(node.node_index);
+			for (const child of node.children) visit(child);
+		};
+		if (root) visit(root);
+		return keys;
+	}
+
+	function activateLayerNode(key: TreeKey) {
+		if (!gpenDocument || gpenDocument.activeNodeIndex === key) return;
+		gpenDocument = setActiveNode(gpenDocument, key);
+	}
+
+	function renameLayerNode(key: TreeKey, name: string) {
+		if (!gpenDocument) return;
+		try {
+			gpenDocument = renameNode(gpenDocument, key, name);
+		} catch (error) {
+			console.debug('[gpen] ignored rejection: GpenWorkspace renameNode', error);
+			return;
+		}
+	}
+
+	/** `TreeOp`（UI 层，key 命名）→ `MoveNodeOp`（文档层，index 命名）。 */
+	function moveLayerNodes(ops: TreeOp[]) {
+		if (!gpenDocument || ops.length === 0) return;
+		const moves: MoveNodeOp[] = ops.map((op) => {
+			const move: MoveNodeOp = { nodeIndex: op.key, parentNodeIndex: op.parentKey };
+			if (op.beforeKey !== undefined) move.beforeNodeIndex = op.beforeKey;
+			return move;
+		});
+		try {
+			gpenDocument = moveNodes(gpenDocument, moves);
+		} catch (error) {
+			console.debug('[gpen] ignored rejection: GpenWorkspace moveNodes', error);
+			return;
+		}
 	}
 
 	// 工作区铺满 overlay：可用尺寸就是父层的 padding box，所以 clientWidth /
@@ -480,6 +575,7 @@
 	function componentProps(name: string): Record<string, unknown> | undefined {
 		if (name === 'tools') return { state: workspaceState, onSelectTool: selectTool };
 		if (name === 'viewport') return { viewState: hostViewState, onRotate: rotateHostView };
+		if (name === 'outliner') return outlinerProps;
 		if (name === 'menu') {
 			return {
 				state: workspaceState,
@@ -551,7 +647,7 @@
 		// Build a default document (webpage layer selected, tool/session + workspace
 		// context) so the timeline/layer views have real data to render. Later the
 		// document is wired to gpenBinary save/load; here it seeds the shell UI.
-		layerTree = buildLayerTree(createDefaultGpen(window.location.href));
+		gpenDocument = createDefaultGpen(window.location.href);
 
 		// Guess the host web layer **once**, before the camera spacer exists: the
 		// spacer is a body child with a huge area, and re-guessing later would use

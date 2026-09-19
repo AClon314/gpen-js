@@ -12,9 +12,26 @@ import {
 import { NONE_INDEX } from "../protocol/constants";
 import { isDrawableLayer } from "../protocol/defaults";
 
+/**
+ * Options for creating a drawing layer.
+ */
 export interface CreateDrawingLayerOptions {
   /** Insert the new layer immediately after this layer in its group. */
   afterNodeIndex?: number;
+}
+
+/**
+ * One structural move of a node inside the document (sibling order and
+ * parentage). Node indexes are `Gpen.nodes` indexes and stay stable across a
+ * move, so a batch of these can be applied in order.
+ */
+export interface MoveNodeOp {
+  /** Node to move (an existing non-root node). */
+  nodeIndex: number;
+  /** Destination group node index. */
+  parentNodeIndex: number;
+  /** Insert before this sibling; omitted appends at the end of the group. */
+  beforeNodeIndex?: number;
 }
 
 const LAYER_NODE_KIND = LayerTreeNodeKind.LAYER_TREE_NODE_KIND_LAYER_UNSPECIFIED;
@@ -133,6 +150,175 @@ function cloneGroupWithRange(group: LayerGroupT, start: number, len: number): La
   return Object.assign(new LayerGroupT(), group, {
     childRange: new IndexRangeT(start, len),
   });
+}
+
+/**
+ * Rename a node and its protocol payload (layer or group) together, so the
+ * `nodes` and `layers`/`groups` tables never disagree about a name. Returns a
+ * new document; the active node is not touched.
+ */
+export function renameNode(document: GpenT, nodeIndex: number, name: string): GpenT {
+  const node = document.nodes[nodeIndex];
+  if (!node) throw new RangeError(`cannot rename unknown node ${nodeIndex}`);
+
+  const nodes = document.nodes.map((candidate, index) =>
+    index === nodeIndex ? Object.assign(new LayerTreeNodeT(), candidate, { name }) : candidate,
+  );
+  if (node.type === LAYER_NODE_KIND) {
+    const layers = document.layers.map((layer, index) =>
+      index === node.itemIndex ? Object.assign(new LayerT(), layer, { name }) : layer,
+    );
+    return Object.assign(new GpenT(), document, { nodes, layers });
+  }
+  const groups = document.groups.map((group, index) =>
+    index === node.itemIndex ? Object.assign(new LayerGroupT(), group, { name }) : group,
+  );
+  return Object.assign(new GpenT(), document, { nodes, groups });
+}
+
+/**
+ * Apply structural moves to the adjacency model.
+ *
+ * The child vector is the only source of sibling order, so a move is: detach
+ * the node from its parent's range (shrinking it and shifting every later
+ * range back), then insert it into the destination range (growing it and
+ * shifting every later range forward). The node's `parentIndex` is updated in
+ * `nodes` and in its payload, which keeps `buildLayerTree` consistent with the
+ * moved adjacency.
+ *
+ * Ops are applied in order and each op is validated against the document as it
+ * is after the previous ones. Moving a node into its own subtree is rejected
+ * with a `RangeError` — the UI must veto that target before calling.
+ */
+export function moveNodes(document: GpenT, ops: readonly MoveNodeOp[]): GpenT {
+  let next = document;
+  for (const op of ops) {
+    if (!Number.isSafeInteger(op.nodeIndex) || !Number.isSafeInteger(op.parentNodeIndex))
+      throw new RangeError(`invalid move: ${op.nodeIndex} -> ${op.parentNodeIndex}`);
+    if (isInSubtree(next, op.nodeIndex, op.parentNodeIndex))
+      throw new RangeError(`cannot move node ${op.nodeIndex} into its own subtree`);
+    next = attachChild(
+      detachChild(next, op.nodeIndex),
+      op.nodeIndex,
+      op.parentNodeIndex,
+      op.beforeNodeIndex,
+    );
+  }
+  return next;
+}
+
+/** Remove a node from its parent's range. */
+function detachChild(document: GpenT, childNodeIndex: number): GpenT {
+  const node = document.nodes[childNodeIndex];
+  if (!node) throw new RangeError(`cannot move unknown node ${childNodeIndex}`);
+  if (node.parentIndex === NONE_INDEX)
+    throw new RangeError(`cannot move the root node ${childNodeIndex}`);
+
+  const parentNodeIndex = node.parentIndex;
+  const { groupIndex, start, len } = groupRange(document, parentNodeIndex);
+  const position = document.childIndices.indexOf(childNodeIndex, start);
+  if (position < start || position >= start + len)
+    throw new RangeError(
+      `node ${childNodeIndex} is not an immediate child of group ${parentNodeIndex}`,
+    );
+
+  const childIndices = [
+    ...document.childIndices.slice(0, position),
+    ...document.childIndices.slice(position + 1),
+  ];
+  const groups = document.groups.map((group, index) => {
+    const range = group.childRange;
+    if (!range) return group;
+    if (index === groupIndex) return cloneGroupWithRange(group, start, len - 1);
+    if (range.start > position) return cloneGroupWithRange(group, range.start - 1, range.len);
+    return group;
+  });
+  return Object.assign(new GpenT(), document, { childIndices, groups });
+}
+
+/** Insert an already detached node into a destination group. */
+function attachChild(
+  document: GpenT,
+  childNodeIndex: number,
+  parentNodeIndex: number,
+  beforeNodeIndex: number | undefined,
+): GpenT {
+  const node = document.nodes[childNodeIndex];
+  if (!node) throw new RangeError(`cannot move unknown node ${childNodeIndex}`);
+
+  const { groupIndex, start, len } = groupRange(document, parentNodeIndex);
+  let position: number;
+  if (beforeNodeIndex === undefined) {
+    position = start + len;
+  } else {
+    position = document.childIndices.indexOf(beforeNodeIndex, start);
+    if (position < start || position >= start + len)
+      throw new RangeError(
+        `node ${beforeNodeIndex} is not an immediate child of group ${parentNodeIndex}`,
+      );
+  }
+
+  const childIndices = [
+    ...document.childIndices.slice(0, position),
+    childNodeIndex,
+    ...document.childIndices.slice(position),
+  ];
+  const groups = document.groups.map((group, index) => {
+    const range = group.childRange;
+    let next = group;
+    if (index === groupIndex) next = cloneGroupWithRange(next, start, len + 1);
+    else if (range && range.start >= position)
+      next = cloneGroupWithRange(next, range.start + 1, range.len);
+    if (node.type === GROUP_NODE_KIND && index === node.itemIndex)
+      next = Object.assign(new LayerGroupT(), next, { parentIndex: parentNodeIndex });
+    return next;
+  });
+  const nodes = document.nodes.map((candidate, index) =>
+    index === childNodeIndex
+      ? Object.assign(new LayerTreeNodeT(), candidate, { parentIndex: parentNodeIndex })
+      : candidate,
+  );
+  const layers =
+    node.type === LAYER_NODE_KIND
+      ? document.layers.map((layer, index) =>
+          index === node.itemIndex
+            ? Object.assign(new LayerT(), layer, { parentIndex: parentNodeIndex })
+            : layer,
+        )
+      : document.layers;
+  return Object.assign(new GpenT(), document, { nodes, layers, groups, childIndices });
+}
+
+/** Locate a group node's slice of the shared child vector. */
+function groupRange(
+  document: GpenT,
+  groupNodeIndex: number,
+): { groupIndex: number; start: number; len: number } {
+  const node = document.nodes[groupNodeIndex];
+  if (!node || node.type !== GROUP_NODE_KIND)
+    throw new RangeError(`node ${groupNodeIndex} is not a group`);
+  const group = document.groups[node.itemIndex];
+  const range = group?.childRange;
+  if (!group || !range || !validRange(range, document.childIndices.length))
+    throw new RangeError(`group node ${groupNodeIndex} has no valid child range`);
+  return { groupIndex: node.itemIndex, start: range.start, len: range.len };
+}
+
+/** True when `candidateNodeIndex` is `ancestorNodeIndex` or below it. */
+function isInSubtree(
+  document: GpenT,
+  ancestorNodeIndex: number,
+  candidateNodeIndex: number,
+): boolean {
+  let cursor = candidateNodeIndex;
+  for (let guard = 0; guard <= document.nodes.length; guard += 1) {
+    if (cursor === ancestorNodeIndex) return true;
+    const node = document.nodes[cursor];
+    if (!node || node.parentIndex === NONE_INDEX) return false;
+    cursor = node.parentIndex;
+  }
+  // Malformed parent cycle: refuse the move instead of walking forever.
+  return true;
 }
 
 function validRange(range: IndexRangeT, childIndicesLength: number): boolean {
