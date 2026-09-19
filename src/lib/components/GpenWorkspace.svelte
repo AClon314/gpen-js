@@ -12,7 +12,16 @@
 		type SerializedDockview
 	} from 'dockview';
 	import { MimeType, type GpenT, type StrokeT } from 'gpen-protocol/flatbuffers';
+	import { EraserMode, type BrushSettingsT, type EraserSettingsT } from 'gpen-protocol/flatbuffers';
 	import { createDefaultGpen } from '../protocol/defaults';
+	import { encodeGpen } from '../protocol/codec';
+	import { createRuntimeUploadDownloadSelector } from '#lib/bindings/upDownloader';
+	import {
+		loadPreferences,
+		preferences as preferencesState,
+		resetPreferences,
+		updatePreferences
+	} from './gpenPreferencesState.svelte';
 	import { buildLayerTree } from '../layers/layerAdapter';
 	import {
 		ensureDrawableActiveLayer,
@@ -21,8 +30,8 @@
 		setActiveNode,
 		type MoveNodeOp
 	} from '../layers/layerOps';
-	import { appendStroke } from '../layers/strokeOps';
-	import { createEditHistory } from '../history';
+	import { appendStroke, createStroke, eraseHard, eraseSoft, eraseStrokes, type StrokePointInput } from '../layers/strokeOps';
+	import { createEditHistory, type CommitOptions } from '../history';
 	import {
 		createGpenBinaryStore,
 		createRuntimeStorage,
@@ -50,13 +59,26 @@
 		type GpenWorkspaceState
 	} from './gpenWorkspaceState';
 	import { readGpenViewportZoomFactor } from './gpenViewport';
+	import {
+		brushRadiusOf,
+		defaultToolbarState,
+		ensureToolbarState,
+		eraserRadiusOf,
+		readToolbarState,
+		toolIdName,
+		writeBrushSettings,
+		writeEraserSettings,
+		writeToolbarState
+	} from './toolbarOps';
 	import { observeViewport } from '#lib/visualViewport';
 	import {
+		menuState,
 		open as openMenu,
 		registerMenuItems,
 		type MenuItem
 	} from './contextMenu/contextMenu.svelte';
 	import BlenderOutliner from './areas/Outliner.svelte';
+	import BlenderPreferences from './areas/Preferences.svelte';
 	import BlenderProperties from './areas/Properties.svelte';
 	import BlenderStatusBar from './areas/StatusBar.svelte';
 	import BlenderTimeline from './areas/Timeline.svelte';
@@ -115,6 +137,8 @@
 	const historyState = $state({ undoDepth: 0, redoDepth: 0 });
 	/// 用户是否动过文档：`load` 返回时据此决定要不要用存档覆盖默认文档。
 	let documentEdited = false;
+	/// 一次橡皮拖动开始时的文档：连续擦除用 `coalesceWith` 合成一条 undo。
+	let eraseGestureStart: GpenT | undefined;
 	let runtimeStorage: Storage<GpenKvRoot, HookedBlobBackend> | undefined;
 	let gpenStore: GpenBinaryStore | undefined;
 	/// load 结束后才允许落盘（否则默认文档会在 load 之前覆盖存储里的那份）。
@@ -133,6 +157,16 @@
 	let mounted = false;
 
 	const STATUS_BAR_PANEL_ID = 'statusbar';
+	const PREFERENCES_PANEL_ID = 'preferences';
+	const PREFERENCES_WIDTH = 420;
+	const PREFERENCES_HEIGHT = 520;
+	/** 浮动面板与工作区边缘的最小间距（px）。 */
+	const FLOAT_MARGIN = 16;
+
+	/// 落盘状态（设置面板只读诊断）。
+	let storageStatus = $state('未保存');
+	/// 导出走运行时选择器（monkey 宿主用 `GM_download`，普通网页用原生下载）。
+	const upDownloader = createRuntimeUploadDownloadSelector();
 
 	let viewportWidth = $state(0);
 	let viewportHeight = $state(0);
@@ -170,6 +204,63 @@
 
 	function selectTool(tool: GpenToolId) {
 		workspaceState.activeTool = tool;
+		// 同步一份到协议 `ToolbarState.activeToolId`（handoff §6.1）：UI 真值仍是
+		// `workspaceState.activeTool`，文档里只存镜像，不反向覆盖用户的选择。
+		const current = gpenDocument;
+		if (current) {
+			const state = ensureToolbarState(current);
+			if (state.activeToolId !== toolIdName(tool)) {
+				gpenDocument = writeToolbarState(
+					current,
+					Object.assign(state, { activeToolId: toolIdName(tool) })
+				);
+			}
+		}
+	}
+
+	/**
+	 * 画笔 / 橡皮设置写入协议 `ToolbarState`（不可变文档，算一次编辑）。
+	 *
+	 * ⚠️ **必须丢弃“值没变”的写入**：`InputSlider` 在 `$effect` 里发 `onvalidvalue`，
+	 * 而文档一改就重渲滑条、重发同一个值——没有这层守卫就是一个
+	 * `effect_update_depth_exceeded` 死循环（实测过），而且每次聚焦滑条都会
+	 * 往 undo 里塞一条空记录。
+	 */
+	function changeBrush(patch: Partial<BrushSettingsT>) {
+		const current = gpenDocument;
+		if (!current) return;
+		const brush = readToolbarState(current)?.brush ?? undefined;
+		const changed = changedFields(patch, brush);
+		if (Object.keys(changed).length === 0) return;
+		const next = writeBrushSettings(current, changed);
+		pushUndo(current);
+		assignDocument(next);
+	}
+
+	function changeEraser(patch: Partial<EraserSettingsT>) {
+		const current = gpenDocument;
+		if (!current) return;
+		const eraser = readToolbarState(current)?.eraser ?? undefined;
+		const changed = changedFields(patch, eraser);
+		if (Object.keys(changed).length === 0) return;
+		const next = writeEraserSettings(current, changed);
+		pushUndo(current);
+		assignDocument(next);
+	}
+
+	/**
+	 * 丢掉与现有值相等的字段（`Object.is`，所以 `NaN` 也不等于 `NaN` 以外的任何值）。
+	 * 设置类写入的统一前置：值没变就不该产生新文档、新 undo 条目。
+	 */
+	function changedFields<T extends object>(patch: Partial<T>, current: T | undefined): Partial<T> {
+		const result: Record<string, unknown> = {};
+		for (const [key, value] of Object.entries(patch)) {
+			if (value === undefined) continue;
+			const existing = (current as Record<string, unknown> | undefined)?.[key];
+			if (Object.is(existing, value)) continue;
+			result[key] = value;
+		}
+		return result as Partial<T>;
 	}
 
 	function updateExternalZoom() {
@@ -212,20 +303,75 @@
 
 	/**
 	 * 视口面板的 props：与 outlinerProps 同一套路（`$state` 代理跨 dockview
-	 * `mount()` 同步）。画布需要文档（重绘）+ layerView（坐标映射）+ onStroke。
-	 */
-	const viewportProps = $state<{
+	 * `mount()` 同步）。画布需要文档（重绘）+ layerView（坐标映射）+ onStroke，
+	 * 以及当前工具与画笔 / 橡皮参数（真值来自协议 `ToolbarState`）。
+	 */	const viewportProps = $state<{
 		viewState: { rotation: number };
 		onRotate: (degrees: number) => void;
 		document: GpenT | undefined;
 		layerView: LayerView | undefined;
-		onStroke: (stroke: StrokeT) => void;
+		onStroke: (points: StrokePointInput[]) => void;
+		onErase: (point: { x: number; y: number }) => void;
+		activeTool: GpenToolId;
+		brush: BrushSettingsT | undefined;
+		eraser: EraserSettingsT | undefined;
 	}>({
 		viewState: hostViewState,
 		onRotate: rotateHostView,
 		document: undefined,
 		layerView: undefined,
-		onStroke: commitStroke
+		onStroke: commitStroke,
+		onErase: commitErase,
+		activeTool: 'brush',
+		brush: undefined,
+		eraser: undefined
+	});
+
+	/**
+	 * 偏好面板的 props。同样是 `$state` 代理（跨 dockview `mount()` 同步），
+	 * 但里面**没有本地副本**：偏好层来自 `gpenPreferencesState`，工具层来自文档，
+	 * 布局层来自 `workspaceState`，面板只读它们并把改动回调出去。
+	 */
+	const preferencesProps = $state<{
+		preferences: ReturnType<typeof preferencesState>;
+		uiScale: number;
+		onChangeUiScale: (delta: number) => void;
+		onResetUiScale: () => void;
+		brush: BrushSettingsT | undefined;
+		eraser: EraserSettingsT | undefined;
+		onChangeBrush: (patch: Partial<BrushSettingsT>) => void;
+		onChangeEraser: (patch: Partial<EraserSettingsT>) => void;
+		onChangePreferences: typeof updatePreferences;
+		onResetPreferences: () => void;
+		onResetPanelLayout: () => void;
+		documentId: string;
+		storageStatus: string;
+		onClearDocument: () => void;
+	}>({
+		preferences: preferencesState(),
+		uiScale: UI_SCALE_DEFAULT,
+		onChangeUiScale: changeUiScale,
+		onResetUiScale: resetUiScale,
+		brush: undefined,
+		eraser: undefined,
+		onChangeBrush: changeBrush,
+		onChangeEraser: changeEraser,
+		onChangePreferences: updatePreferences,
+		onResetPreferences: resetPreferencesAndTool,
+		onResetPanelLayout: resetPanelLayout,
+		documentId: GPEN_DOCUMENT_ID,
+		storageStatus: '未保存',
+		onClearDocument: clearDocument
+	});
+
+	// 偏好 / 工具 / 布局三层 → 偏好面板 props。
+	$effect(() => {
+		preferencesProps.preferences = preferencesState();
+		preferencesProps.uiScale = workspaceState.uiScale;
+		const state = gpenDocument ? readToolbarState(gpenDocument) : undefined;
+		preferencesProps.brush = state?.brush ?? undefined;
+		preferencesProps.eraser = state?.eraser ?? undefined;
+		preferencesProps.storageStatus = storageStatus;
 	});
 
 	let expandedInitialized = false;
@@ -245,6 +391,14 @@
 	$effect(() => {
 		viewportProps.document = gpenDocument;
 		viewportProps.layerView = layerView;
+	});
+
+	// 当前工具与画笔 / 橡皮参数 → 视口 props（工具轨 / 设置面板改了要立即生效）。
+	$effect(() => {
+		const state = gpenDocument ? readToolbarState(gpenDocument) : undefined;
+		viewportProps.activeTool = workspaceState.activeTool;
+		viewportProps.brush = state?.brush ?? undefined;
+		viewportProps.eraser = state?.eraser ?? undefined;
 	});
 
 	// 文档变化 → debounce 落盘。`documentReady` 之前不写：load 是异步的，
@@ -317,9 +471,9 @@
 	}
 
 	/** 提交前把当前文档推进历史（环形缓冲 + 预算），并清空重做栈。 */
-	function pushUndo(previous: GpenT | undefined) {
+	function pushUndo(previous: GpenT | undefined, options?: CommitOptions<GpenT>) {
 		if (!previous) return;
-		history.commit(previous);
+		history.commit(previous, options);
 		syncHistoryState();
 	}
 
@@ -347,13 +501,23 @@
 	}
 
 	/**
-	 * 画布提交一笔：确保 active layer 可画（必要时自动建 `Stroke-N`）→ appendStroke。
+	 * 画布提交一笔：确保 active layer 可画（必要时自动建 `Stroke-N`）→ `createStroke`
+	 * （半径 / 颜色 / 不透明度来自协议 `ToolbarState.brush`）→ `appendStroke`。
+	 *
+	 * 采样点由画布给（图层局部坐标）；这里才把它们变成协议数据，因为画笔参数是
+	 * 文档级的（`GpenWorkspace` 拥有文档，画布只拥有指针）。
 	 * 失败只记日志：笔迹丢了比把异常抛回 pointer 事件里更安全。
 	 */
-	function commitStroke(stroke: StrokeT) {
+	function commitStroke(points: StrokePointInput[]) {
 		const current = gpenDocument;
-		if (!current) return;
+		if (!current || points.length === 0) return;
 		try {
+			const state = ensureToolbarState(current);
+			const brush = state.brush ?? undefined;
+			const stroke = createStroke(points, {
+				radius: brushRadiusOf(brush),
+				opacity: brush?.drawStrength ?? undefined
+			});
 			const next = appendStroke(ensureDrawableActiveLayer(current), stroke);
 			pushUndo(current);
 			assignDocument(next);
@@ -361,6 +525,43 @@
 			console.debug('[gpen] ignored rejection: GpenWorkspace commitStroke', error);
 			return;
 		}
+	}
+
+	/**
+	 * 橡皮：按 `EraserSettings.mode` 选算法（STROKE / SOFT / HARD）。
+	 *
+	 * `mode` 是唯一真值——`EraserTarget` 已 deprecated（见 handoff §3.2），
+	 * 这里**不读 `target`**。橡皮笔是「拖动即擦」的连续手势：每次 pointermove
+	 * 都会改文档，所以用 `coalesceWith` 把一次拖动合并成一条 undo 记录。
+	 */
+	function commitErase(point: { x: number; y: number }) {
+		const current = gpenDocument;
+		if (!current) return;
+		const eraser = ensureToolbarState(current).eraser ?? undefined;
+		const radius = eraserRadiusOf(eraser);
+		if (!(radius > 0)) return;
+
+		let next: GpenT;
+		// 橡皮模式：协议枚举的 0 值叫 `ERASER_MODE_SOFT_UNSPECIFIED`（不是 `..._SOFT`），
+		// 因为 0 同时要当 protobuf 的 unspecified 哨兵；SOFT 就是 0。
+		switch (eraser?.mode) {
+			case EraserMode.ERASER_MODE_SOFT_UNSPECIFIED:
+				next = eraseSoft(current, point, radius, eraser?.strength ?? 1);
+				break;
+			case EraserMode.ERASER_MODE_STROKE:
+				next = eraseStrokes(current, point, radius);
+				break;
+			default:
+				next = eraseHard(current, point, radius);
+				break;
+		}
+		if (next === current) return;
+		// 拖动中的连续擦除合成一条 undo：`coalesceWith` 用「本次拖动开始时的文档」
+		// 替换刚推入的那条，所以 Ctrl+Z 一次退回拖动之前。
+		const gestureStart = eraseGestureStart ?? current;
+		eraseGestureStart = gestureStart;
+		pushUndo(current, { coalesceWith: () => gestureStart });
+		assignDocument(next);
 	}
 
 	/**
@@ -382,7 +583,15 @@
 			statusBarVisible: () => dockview?.getPanel(STATUS_BAR_PANEL_ID) !== undefined,
 			save: () => void commitDocumentNow(),
 			toggleFullscreen: () => void toggleFullscreen(),
-			fullscreen: () => typeof document !== 'undefined' && document.fullscreenElement !== null
+			fullscreen: () => typeof document !== 'undefined' && document.fullscreenElement !== null,
+			openPreferences,
+			openAbout,
+			newDocument,
+			openDocument: () => void openStoredDocument(),
+			openRecent: () => void openStoredDocument(),
+			saveCopy: () => void saveCopy(),
+			exportJson,
+			closeWorkspace: () => onClose?.()
 		});
 		const disposeBindings = registerWorkspaceKeyBindings();
 		const removeDispatcher = installKeymapDispatcher();
@@ -406,10 +615,175 @@
 		if (!store) return;
 		try {
 			await store.commit();
+			storageStatus = '已保存';
 		} catch (error) {
 			console.debug('[gpen] ignored rejection: GpenWorkspace explicit save', error);
+			storageStatus = '保存失败';
 			return;
 		}
+	}
+
+	/**
+	 * 清空当前文档（设置面板的「清空」）：回到默认文档，可 Ctrl+Z 退回。
+	 * 不删存储里的 blob——下一次 debounce 落盘会把它覆盖成默认文档，语义更接近
+	 * Blender 的「恢复默认」而不是「删除文件」。
+	 */
+	function clearDocument(): void {
+		const current = gpenDocument;
+		if (!current) return;
+		pushUndo(current);
+		assignDocument(createDefaultGpen(window.location.href));
+	}
+
+	/** 「新建」：新文档（可 Ctrl+Z 退回），并把工具栏设置带回默认值。 */
+	function newDocument(): void {
+		const current = gpenDocument;
+		const fresh = createDefaultGpen(window.location.href);
+		// `pushUndo` 而不是 `history.clear()`：新建是**用户操作**，Ctrl+Z 应该能退回
+		// （只有 mount 时读到存档才清历史，那次不是用户操作）。
+		if (current) pushUndo(current);
+		assignDocument(writeToolbarState(fresh, defaultToolbarState()));
+		documentEdited = true;
+		storageStatus = '新建文档（未保存）';
+	}
+
+	/**
+	 * 「打开」/「打开最近文件」：从 gpenBinary 重新读 `gpen-main`。
+	 * 两个菜单项指向同一件事：本轮只存一份文档（多文档要协议级的文档目录），
+	 * 所以不做“文件选择器”这种假 UI。
+	 */
+	async function openStoredDocument(): Promise<void> {
+		const store = gpenStore;
+		if (!store) return;
+		try {
+			const loaded = await store.load(GPEN_DOCUMENT_ID);
+			const current = gpenDocument;
+			if (current) pushUndo(current);
+			assignDocument(loaded);
+			documentEdited = true;
+			storageStatus = '已从存储载入';
+		} catch (error) {
+			console.debug('[gpen] ignored rejection: GpenWorkspace openStoredDocument', error);
+			storageStatus = '没有可打开的存档';
+			return;
+		}
+	}
+
+	/** 「保存副本」：把当前文档写到 `gpen-<时间戳>` 下，并切过去。 */
+	async function saveCopy(): Promise<void> {
+		const store = gpenStore;
+		const current = gpenDocument;
+		if (!store || !current) return;
+		const id = `gpen-${new Date().toISOString().replace(/[:.]/g, '-')}`;
+		try {
+			await store.save(id, current);
+			await store.commit();
+			storageStatus = `副本已保存：${id}`;
+		} catch (error) {
+			console.debug('[gpen] ignored rejection: GpenWorkspace saveCopy', error);
+			storageStatus = '保存副本失败';
+			return;
+		}
+	}
+
+	/** 「导出 JSON」：把文档编码成 FlatBuffer 后下载。 */
+	function exportJson(): void {
+		const current = gpenDocument;
+		if (!current) return;
+		try {
+			const bytes = encodeGpen(current);
+			const blob = new Blob([new Uint8Array(bytes)], { type: 'application/octet-stream' });
+			void upDownloader.download(blob, `${GPEN_DOCUMENT_ID}.gpen.json`).catch((error: unknown) => {
+				console.debug('[gpen] ignored rejection: GpenWorkspace exportJson', error);
+				return;
+			});
+		} catch (error) {
+			console.debug('[gpen] ignored rejection: GpenWorkspace exportJson encode', error);
+			return;
+		}
+	}
+
+	/** 「关于」：只弹一条版本信息（没有模态框体系，用 alert 最诚实）。 */
+	function openAbout(): void {
+		if (typeof window === 'undefined') return;
+		window.alert(
+			`gpen ${__GPEN_VERSION__}\n\n` +
+				'绘制在网页之上的 grease-pencil 画布。\n' +
+				`文档：${GPEN_DOCUMENT_ID}`
+		);
+	}
+
+	/** 恢复默认偏好 + 画笔 / 橡皮设置（设置面板的重置）。 */
+	function resetPreferencesAndTool(): void {
+		const reset = resetPreferences();
+		const current = gpenDocument;
+		if (!current) return;
+		const defaults = defaultToolbarState();
+		const state = ensureToolbarState(current);
+		pushUndo(current);
+		assignDocument(
+			writeToolbarState(
+				current,
+				Object.assign(state, { brush: defaults.brush, eraser: defaults.eraser })
+			)
+		);
+		// 主题 / 语言的重置由 `$effect` 同步到 DOM。
+		void reset;
+	}
+
+	/**
+	 * Escape 的优先级：菜单 > 浮动面板 > 工作区。
+	 *
+	 * 用**捕获阶段**（而不是冒泡）是为了不受注册顺序影响：`GpenOverlay` 的
+	 * `<svelte:window onkeydown>` 与右键菜单的 `document` 监听都在冒泡阶段，
+	 * 捕获阶段先到，所以这里能抢在“关工作区”之前把浮动的偏好面板收掉。
+	 * 菜单开着时不插手（那一层由 `contextMenu.svelte.ts` 自己处理）。
+	 */
+	function handleEscapePriority(event: KeyboardEvent): void {
+		if (event.key !== 'Escape' || menuState.visible) return;
+		const panel = dockview?.getPanel(PREFERENCES_PANEL_ID);
+		if (!panel) return;
+		event.preventDefault();
+		event.stopPropagation();
+		dockview?.removePanel(panel);
+	}
+
+	/**
+	 * 打开偏好设置：幂等的**浮动** dockview 面板。
+	 *
+	 * 已存在就 `setActive()`（不开第二个）；不存在才 `addPanel` + `addFloatingGroup`
+	 * （dockview 8.2 的 `addFloatingGroup(item, { position, width, height, dragHandle })`）。
+	 * `dragHandle: 'titlebar'` 保留面板标题栏作为拖动手柄，所以它不进
+	 * `:has(.blender-panel-...) { display: none }` 那组。
+	 */
+	function openPreferences(): void {
+		const instance = dockview;
+		if (!instance) return;
+		const existing = instance.getPanel(PREFERENCES_PANEL_ID);
+		if (existing) {
+			existing.api.setActive();
+			return;
+		}
+		const panel = instance.addPanel({
+			id: PREFERENCES_PANEL_ID,
+			component: PREFERENCES_PANEL_ID,
+			title: '偏好设置',
+			initialWidth: PREFERENCES_WIDTH,
+			initialHeight: PREFERENCES_HEIGHT
+		});
+		if (!panel) return;
+		// `position` 的类型是 `AnchorPosition`（四个角），**没有** `'center'`：
+		// 传 `'center'` 会编译报错，运行时也会落回默认左上角。所以按容器尺寸自己算居中
+		// 坐标（dockview 的 `floatingGroupBounds: 'boundedWithinViewport'` 会再夹一次）。
+		const width = Math.min(PREFERENCES_WIDTH, Math.max(240, instance.width - 2 * FLOAT_MARGIN));
+		const height = Math.min(PREFERENCES_HEIGHT, Math.max(200, instance.height - 2 * FLOAT_MARGIN));
+		instance.addFloatingGroup(panel, {
+			x: Math.max(FLOAT_MARGIN, Math.round((instance.width - width) / 2)),
+			y: Math.max(FLOAT_MARGIN, Math.round((instance.height - height) / 2)),
+			width,
+			height,
+			dragHandle: 'titlebar'
+		});
 	}
 
 	async function toggleFullscreen(): Promise<void> {
@@ -719,7 +1093,10 @@
 		timeline: BlenderTimeline,
 		outliner: BlenderOutliner,
 		properties: BlenderProperties,
-		statusbar: BlenderStatusBar
+		statusbar: BlenderStatusBar,
+		// 偏好设置：**浮动**面板，不进 `buildDefaultLayout`（否则默认布局变大，
+		// 老用户存下的布局里也没有它）。
+		preferences: BlenderPreferences
 	};
 
 	// Open the owning panel in a separate browser window (like an OAuth popup).
@@ -833,6 +1210,7 @@
 		if (name === 'tools') return { state: workspaceState, onSelectTool: selectTool };
 		if (name === 'viewport') return viewportProps;
 		if (name === 'outliner') return outlinerProps;
+		if (name === 'preferences') return preferencesProps;
 		if (name === 'statusbar') {
 			return {
 				state: historyState,
@@ -845,8 +1223,8 @@
 				state: workspaceState,
 				onChangeUiScale: changeUiScale,
 				onResetUiScale: resetUiScale,
-				onResetPanelLayout: resetPanelLayout,
 				onToggleImmersive: toggleImmersive,
+				onOpenPreferences: openPreferences,
 				onMinimize,
 				onClose
 			};
@@ -985,6 +1363,8 @@
 
 		disposeTabMenu = registerMenuItems(WORKSPACE_TAB_MENU_ID, tabMenuItems);
 		container.addEventListener('contextmenu', handleTabContextMenu);
+		// 捕获阶段：Esc 先收浮动面板，别让它直接关掉整个工作区。
+		window.addEventListener('keydown', handleEscapePriority, { capture: true });
 		disposeCommands = registerCommands();
 
 		const onViewportChange = () => {
@@ -1017,6 +1397,7 @@
 		for (const subscription of layoutSubscriptions) subscription.dispose();
 		layoutSubscriptions = [];
 		container.removeEventListener('contextmenu', handleTabContextMenu);
+		window.removeEventListener('keydown', handleEscapePriority, { capture: true });
 		disposeCommands?.();
 		disposeCommands = undefined;
 		disposeTabMenu?.();

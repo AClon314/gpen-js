@@ -8,15 +8,23 @@
 	import '../app.css';
 	import favicon from '#lib/assets/favicon.svg';
 	import ContextMenu from '#lib/components/contextMenu/ContextMenu.svelte';
-	import { initTheme } from '#lib/themes/theme.svelte';
+	import { initTheme, setThemePreference } from '#lib/themes/theme.svelte';
+	import { loadPreferences, preferences } from '#lib/components/gpenPreferencesState.svelte';
 	import '#lib/components/contextMenu/contextMenu.svelte';
 
 	let { children } = $props();
 	let overlay: ReturnType<typeof mount> | undefined;
 
 	onMount(() => {
-		// JS reads the static --gpen-* tokens and takes over their control.
+		// JS reads the static --gpen-* tokens and takes over their control. The
+		// persisted theme preference is applied first (and again once the KV read
+		// settles) so the workspace never flashes the wrong scheme.
 		initTheme();
+		void loadPreferences().then((loaded) => setThemePreference(loaded.theme));
+		// Keep the DOM attribute in sync when the settings panel changes it.
+		$effect.root(() => {
+			$effect(() => setThemePreference(preferences().theme));
+		});
 		overlay = mount(GpenOverlay, { target: document.body });
 	});
 

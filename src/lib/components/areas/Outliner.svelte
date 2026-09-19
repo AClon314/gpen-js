@@ -124,9 +124,18 @@
 		renameInput.select();
 	});
 
-	// 外部请求（F2 / 菜单）进入重命名：只读请求号，所以这不会因其它状态变化而重跑。
+	// 外部请求（F2 / 菜单）进入重命名。
+	//
+	// ⚠️ 读请求号的同时要**读 renamingKey**：`renameRequest` 是外部计数，只依赖它
+	// 的话，取消/提交后本 effect 不会重跑；一旦它因为别的依赖变化而重跑，就会把
+	// 刚退出的编辑态又拉回来（表现是「提交后输入框还开着」，实测踩到过）。
+	// 用 `lastRenameRequest` 记下已处理过的请求号，同一请求只响应一次。
+	let lastRenameRequest = 0;
 	$effect(() => {
-		if (renameRequest <= 0) return;
+		const request = renameRequest;
+		void renamingKey;
+		if (request <= 0 || request === lastRenameRequest) return;
+		lastRenameRequest = request;
 		const key = tabbableKey;
 		if (key !== undefined) startRename(key);
 	});

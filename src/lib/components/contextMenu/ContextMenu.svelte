@@ -12,6 +12,7 @@
 		isMenuSeparator,
 		nextMenuIndex,
 		resolveMenuChildren,
+		resolveMenuKeyBind,
 		resolveMenuDisabled,
 		resolveMenuLabel,
 		visibleMenuItems,
@@ -235,9 +236,11 @@
 			{@const disabled = resolveMenuDisabled(item)}
 			{@const children = renderChildren(item)}
 			{@const hasChildren = children.length > 0}
-			{@const keyBind = formatKeyBind(item.keyBind)}
+			{@const keyBind = formatKeyBind(resolveMenuKeyBind(item))}
+			{@const title = typeof item.title === 'string' ? item.title : undefined}
 			<!-- 子菜单是 menuitem 的**兄弟**而不是子孙：否则父项的 accessible name
-			     会把整棵子菜单的文字都吞进去（a11y 与测试定位都会被污染）。 -->
+			     会把整棵子菜单的文字都吞进去（a11y 与测试定位都会被污染）。
+			     灰掉的项靠 `title` 说明原因（handoff：不许留“点了没反应”）。 -->
 			<div class="contextMenu-row">
 				<div
 					role="menuitem"
@@ -246,6 +249,7 @@
 					data-menu-path={pathKey(itemPath)}
 					aria-disabled={disabled}
 					aria-haspopup={hasChildren ? 'menu' : undefined}
+					title={title}
 					tabindex={disabled ? -1 : 0}
 					onclick={(event) => handleItemClick(event, item, itemPath)}
 					onmouseenter={() => handleItemHover(itemPath, children)}

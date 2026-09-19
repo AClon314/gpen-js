@@ -73,3 +73,49 @@ export function clearGpenTokens(target: HTMLElement | undefined = defaultTarget(
   if (target === undefined) return;
   for (const name of GPEN_TOKENS) target.style.removeProperty(name);
 }
+
+/**
+ * The three theme states the settings panel exposes.
+ *
+ * `'system'` is **not** a pair of resolved tokens: it means "let the platform
+ * decide", so it has to stay distinguishable from a user-forced light/dark.
+ */
+export type GpenThemePreference = "system" | "light" | "dark";
+
+/** Attribute the static CSS keys off (see `themes/day-night.css`). */
+export const GPEN_THEME_ATTRIBUTE = "data-gpen-theme";
+
+/**
+ * Apply a theme preference by writing (or removing) one attribute.
+ *
+ * The token values themselves never change: every theme-dependent token is a
+ * single `light-dark(light, dark)` declaration and `color-scheme` picks a side.
+ * So `'light'`/`'dark'` force `color-scheme` through the attribute rules, and
+ * `'system'` removes the attribute, which returns the root to
+ * `color-scheme: light dark`.
+ *
+ * Rejected alternative: JS writing the resolved token values (which is what
+ * `setThemeTokens` is for). That duplicates the palette in TypeScript and, more
+ * importantly, cannot express "system" — reading back the tokens loses the
+ * information that the user never made a choice.
+ *
+ * Returns whether the preference was applied.
+ */
+export function applyThemePreference(
+  preference: GpenThemePreference,
+  target: HTMLElement | undefined = defaultTarget(),
+): boolean {
+  if (target === undefined) return false;
+  if (preference === "system") target.removeAttribute(GPEN_THEME_ATTRIBUTE);
+  else target.setAttribute(GPEN_THEME_ATTRIBUTE, preference);
+  return true;
+}
+
+/** Read back the attribute; `'system'` when it is absent or unrecognized. */
+export function readThemePreference(
+  target: HTMLElement | undefined = defaultTarget(),
+): GpenThemePreference {
+  if (target === undefined) return "system";
+  const value = target.getAttribute(GPEN_THEME_ATTRIBUTE);
+  return value === "light" || value === "dark" ? value : "system";
+}

@@ -87,3 +87,58 @@ button.gpen-pill:focus-visible {
 	outline: 2px solid var(--gpen-panel-accent);
 	outline-offset: 1px;
 }
+
+/*
+ * 「标签 + 控件」的偏好 / 属性行。
+ *
+ * 从 `Properties.svelte` 提出来（原本是它的局部样式）：设置面板与属性面板的
+ * 行结构完全一样，各写一份会改一处漏一处。第二列必须 `minmax(0, 1fr)`——
+ * `1fr` 的最小值是 min-content，滑条/下拉自身的 min-content 宽度会把卡片撑破。
+ */
+.property-row {
+	display: grid;
+	grid-template-columns: minmax(8ch, auto) minmax(0, 1fr);
+	align-items: center;
+	gap: 1ch;
+	padding: 0.45lh 1ch;
+}
+
+.property-row + .property-row {
+	border-top: 1px solid color-mix(in srgb, var(--gpen-panel-border) 60%, transparent);
+}
+
+.property-label {
+	color: var(--gpen-panel-muted);
+}
+
+/* 设置 / 属性面板共用的分组卡片。 */
+.property-card {
+	border: 1px solid var(--gpen-panel-border);
+	border-radius: var(--gpen-radius);
+	background: var(--gpen-panel-background-raised);
+	overflow: hidden;
+}
+
+.card-head {
+	display: flex;
+	align-items: center;
+	gap: 0.75ch;
+	min-height: 2.2lh;
+	padding: 0 0.75ch 0 1ch;
+	border-bottom: 1px solid var(--gpen-panel-border);
+	background: color-mix(in srgb, var(--gpen-panel-border) 35%, transparent);
+}
+
+.card-head h2 {
+	margin: 0;
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.card-menu {
+	width: 1.8lh;
+	height: 1.8lh;
+	margin-left: auto;
+	padding: 0;
+	color: var(--gpen-panel-muted);
+}

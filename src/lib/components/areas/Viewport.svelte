@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
-	import type { GpenT, StrokeT } from 'gpen-protocol/flatbuffers';
+	import type { BrushSettingsT, EraserSettingsT, GpenT } from 'gpen-protocol/flatbuffers';
 	import { observeViewport, viewportSize } from '#lib/visualViewport';
 	import type { LayerView } from '#lib/layers/layerView';
-	import { strokesOfDocument } from '#lib/layers/strokeOps';
+	import { strokesOfDocument, type StrokePointInput } from '#lib/layers/strokeOps';
+	import { brushRadiusOf, color4ToCss, eraserRadiusOf } from '../toolbarOps';
+	import type { GpenToolId } from '../gpenWorkspaceState';
 	import { createStrokeCanvas, type StrokeCanvasHandle } from '#lib/canvas/strokeCanvas';
 	import MiniMap from '../MiniMap.svelte';
 
@@ -18,7 +20,11 @@
 		onRotate,
 		document: gpenDocument,
 		layerView,
-		onStroke
+		onStroke,
+		onErase,
+		activeTool = 'brush',
+		brush,
+		eraser
 	}: {
 		/** 共享视图状态（`$state` 代理：跨组件传引用才保持响应）。 */
 		viewState?: { rotation: number };
@@ -28,8 +34,16 @@
 		document?: GpenT;
 		/** 图层视图：画布用它把图层局部坐标映射成 client 坐标（含旋转）。 */
 		layerView?: LayerView;
-		/** 一笔画完（pointerup / pointercancel）后回调。 */
-		onStroke?: (stroke: StrokeT) => void;
+		/** 一笔画完（pointerup / pointercancel）后回调，给的是图层局部采样点。 */
+		onStroke?: (points: StrokePointInput[]) => void;
+		/** 橡皮拖动中每个采样点回调（图层局部坐标）。 */
+		onErase?: (point: { x: number; y: number }) => void;
+		/** 当前工具 id（`brush` / `eraser` …）。 */
+		activeTool?: GpenToolId;
+		/** 协议 `ToolbarState.brush`（画笔半径 / 颜色来源）。 */
+		brush?: BrushSettingsT;
+		/** 协议 `ToolbarState.eraser`（橡皮半径来源）。 */
+		eraser?: EraserSettingsT;
 	} = $props();
 
 	const strokes = $derived(gpenDocument ? strokesOfDocument(gpenDocument) : []);
@@ -67,6 +81,9 @@
 		const _strokes = strokes;
 		const _rotation = viewState.rotation;
 		const _view = layerView;
+		// 工具切换 / 画笔参数变化也要重绘：进行中的笔迹预览用当前半径与颜色。
+		const _tool = activeTool;
+		const _brush = brush;
 		strokeCanvas?.redraw();
 	});
 
@@ -77,7 +94,12 @@
 				canvas,
 				strokes: () => strokes,
 				view: () => layerView,
-				onStroke: (stroke) => onStroke?.(stroke)
+				onStroke: (points) => onStroke?.(points),
+				onErase: (point) => onErase?.(point),
+				activeTool: () => activeTool,
+				brushRadius: () =>
+					activeTool === 'eraser' ? eraserRadiusOf(eraser) : brushRadiusOf(brush),
+				brushColor: () => (brush?.color ? color4ToCss(brush.color) : undefined)
 			});
 		}
 		// 滚动 / 缩放 / 软键盘都会改可视区：合并到 rAF 后重读一次（observeViewport 已经做了批量）。

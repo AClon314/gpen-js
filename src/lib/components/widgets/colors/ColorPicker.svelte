@@ -19,6 +19,14 @@
 		disabled?: boolean;
 		/** 无障碍标签前缀（面积图的 X/Y 轴与色相条各自加后缀）。 */
 		label?: string;
+		/**
+		 * 颜色变化回调（拖动中与提交都触发）。
+		 *
+		 * 受控用法用 `bind:value`；但**文档是真相**的场景（画笔颜色写进协议
+		 * `ToolbarState`）需要“回调”而不是双向绑定：值从 `$state` 代理进来，
+		 * 改动回调出去，中间不存副本。
+		 */
+		onchange?: (value: string) => void;
 		class?: string;
 		style?: string;
 	}
@@ -27,6 +35,7 @@
 		value = $bindable('#ff0000'),
 		disabled = false,
 		label = '颜色',
+		onchange,
 		class: className,
 		style,
 	}: ColorPickerProps = $props();
@@ -74,6 +83,9 @@
 		value = hex;
 		observedValue = hex;
 		push(hex);
+		// 回调总是触发（受控三件套约定）：`bind:value` 与 `onchange` 可以同时用，
+		// 后者负责把值写进真正的真相源（协议文档）。
+		onchange?.(hex);
 	}
 
 	$effect(() => {

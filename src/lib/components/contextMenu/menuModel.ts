@@ -59,6 +59,18 @@ export function resolveMenuLabel(item: MenuItem): string {
 }
 
 /**
+ * 快捷键**提示**：节点自己写了就用它，否则回退到命令注册表的 `keyBind`。
+ *
+ * 只用于显示（真正的匹配在 keymap）；但取值同源是重点：菜单不重复写一遍
+ * "Ctrl+S"，命令改了绑定菜单就跟着改。
+ */
+export function resolveMenuKeyBind(item: MenuItem): string | readonly string[] | undefined {
+  if (item.keyBind !== undefined) return item.keyBind;
+  const command = item.command === undefined ? undefined : getCommand(item.command);
+  return command?.keyBind;
+}
+
+/**
  * 节点是否禁用：节点自己的 `disabled` 与命令注册表的 `enabled` 合并，
  * 任一说「不可用」就是禁用。谓词抛错按 `false` 处理（见 predicates.ts）。
  */

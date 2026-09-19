@@ -5,6 +5,7 @@
 	import '@spectrum-web-components/icons-workflow/icons/sp-icon-full-screen-exit.js';
 	import '@spectrum-web-components/icons-workflow/icons/sp-icon-full-screen.js';
 	import '@spectrum-web-components/icons-workflow/icons/sp-icon-minimize.js';
+	import '@spectrum-web-components/icons-workflow/icons/sp-icon-settings.js';
 
 	import { onDestroy, onMount } from 'svelte';
 	import {
@@ -18,9 +19,9 @@
 		contextMenu,
 		menuState,
 		openAt,
-		registerMenuItems,
-		type MenuItem
+		registerMenuItems
 	} from '../contextMenu/contextMenu.svelte';
+	import { GPEN_MENU_BAR, GPEN_MENU_IDS, menuProvider } from '../menuBar';
 
 	// 标题栏 = 菜单行（应用菜单 + 工作区切换 + 界面缩放 + 关闭）+ 工具设置行。
 	// 缩放 / 关闭这两个动作属于工作区外壳，由 GpenOverlay → GpenWorkspace 传进来，
@@ -29,76 +30,88 @@
 		state,
 		onChangeUiScale,
 		onResetUiScale,
-		onResetPanelLayout,
 		onToggleImmersive,
 		onMinimize,
-		onClose
+		onClose,
+		onOpenPreferences
 	}: {
 		state?: GpenWorkspaceState;
 		onChangeUiScale?: (delta: number) => void;
 		onResetUiScale?: () => void;
-		onResetPanelLayout?: () => void;
 		onToggleImmersive?: () => void;
 		onMinimize?: () => void;
 		onClose?: () => void;
+		onOpenPreferences?: () => void;
 	} = $props();
 
-	const menuItems = ['文件', '编辑', '渲染', '帮助', '切换', '实用工具', '设置'];
 	const uiScale = $derived(state?.uiScale ?? 1);
 
 	/**
-	 * 窗口菜单改用和右键菜单同一套 `contextMenu`（不再是原生 `<select>`）：
-	 * 菜单节点就是命令本身，与 `menus`/`commands` 分家的约定一致（handoff T1），
-	 * 样式 / 键盘导航 / 深色 token 全部复用 `ContextMenu.svelte`，不再有
-	 * 「选完复位 select.value」那种状态技巧。
+	 * 每个菜单一个具名注册表（`registerMenuItems`），按钮只关联名字 + 在点击时用
+	 * 按钮矩形锚定菜单（`openAt`）——和上一轮「窗口」菜单完全同一套，只是现在
+	 * 菜单内容来自 `menuBar.ts` 的命令 id 列表。
+	 *
+	 * 卸载时逐个 `dispose()`：面板被关掉 / 重排时不能留下悬空注册表。
 	 */
-	const WINDOW_MENU_ID = 'gpen-window-menu';
+	const menuDisposers: (() => void)[] = [];
 
-	function windowMenuItems(): MenuItem[] {
-		return [
-			{
-				id: 'gpen.reset_panel_layout',
-				label: '重置面板布局',
-				order: 10,
-				action: () => onResetPanelLayout?.()
-			}
-		];
-	}
+	onMount(() => {
+		for (const { id } of GPEN_MENU_BAR) {
+			const provider = menuProvider(id);
+			if (provider) menuDisposers.push(registerMenuItems(id, provider));
+		}
+		// 齿轮按钮用的是同一个「偏好设置」命令，但菜单 id 独立（与其它菜单平级）。
+		const settingsProvider = menuProvider(GPEN_MENU_IDS.settings);
+		if (settingsProvider) menuDisposers.push(registerMenuItems(GPEN_MENU_IDS.settings, settingsProvider));
+	});
 
-	function openWindowMenu(event: MouseEvent) {
+	function openMenuFromButton(event: MouseEvent, id: string) {
 		const anchor = event.currentTarget;
 		if (!(anchor instanceof HTMLElement)) return;
-		openAt(WINDOW_MENU_ID, anchor);
+		openAt(id, anchor);
 	}
-
-	// 具名注册：provider 由注册表持有（`use:contextMenu` 只关联 DOM），
-	// 所以菜单可以在别处枚举 / 被命令面板复用。
-	onMount(() => registerMenuItems(WINDOW_MENU_ID, windowMenuItems));
 
 	// 面板被关掉 / 重排时菜单可能还开着：卸载时顺手收起。
 	onDestroy(() => {
-		if (menuState.visible && menuState.id === WINDOW_MENU_ID) close();
+		for (const dispose of menuDisposers) dispose();
+		menuDisposers.length = 0;
+		const openId = menuState.id;
+		if (menuState.visible && openId !== null && isGpenMenu(openId)) close();
 	});
+
+	function isGpenMenu(id: string): boolean {
+		return id.startsWith('gpen-');
+	}
 </script>
 
 <div class="blender-panel blender-panel-menu" aria-label="菜单栏和工具设置">
 	<div class="menu-row">
 		<span class="app-mark" aria-hidden="true">✦</span>
 		<nav class="menu-items" aria-label="主菜单">
-			{#each menuItems as item}
-				<button class="gpen-panel-button menu-item" type="button">{item}</button>
+			{#each GPEN_MENU_BAR as menu (menu.id)}
+				<!-- `use:contextMenu` 只把按钮关联到具名注册表（provider 由 `registerMenuItems`
+				     持有），点击时按按钮矩形锚定菜单。 -->
+				<button
+					class="gpen-panel-button menu-item"
+					type="button"
+					aria-haspopup="menu"
+					aria-label={`${menu.label}菜单`}
+					title={`${menu.label}菜单`}
+					use:contextMenu={menu.id}
+					onclick={(event) => openMenuFromButton(event, menu.id)}
+				>{menu.label}</button>
 			{/each}
-			<!-- 窗口：`use:contextMenu` 只把按钮关联到具名注册表（provider 由下面
-			     `registerMenuItems` 持有），点击时按按钮矩形锚定菜单。 -->
 			<button
-				class="gpen-panel-button menu-item menu-window"
+				class="gpen-panel-button menu-item menu-settings"
 				type="button"
 				aria-haspopup="menu"
-				aria-label="窗口菜单"
-				title="窗口菜单"
-				use:contextMenu={WINDOW_MENU_ID}
-				onclick={openWindowMenu}
-			>窗口</button>
+				aria-label="设置菜单"
+				title="偏好设置"
+				use:contextMenu={GPEN_MENU_IDS.settings}
+				onclick={(event) => openMenuFromButton(event, GPEN_MENU_IDS.settings)}
+			>
+				<sp-icon-settings></sp-icon-settings>
+			</button>
 		</nav>
 
 		<span class="title-bar-actions">
@@ -234,8 +247,17 @@
 	/* 菜单栏上的菜单按钮：与右键菜单同一套交互，只是永远显示自己的标签。
 	 * 展开时给一点按下感（`aria-expanded` 由 ContextMenu 之外的状态驱动不了，
 	 * 所以只用 :active / :focus-visible）。 */
-	.menu-window:active {
+	.menu-item:active {
 		background: var(--gpen-panel-selection);
+	}
+
+	/* 齿轮按钮只放图标，用 2.4lh 方形对齐其它菜单项的文字高度。 */
+	.menu-settings {
+		display: inline-grid;
+		place-items: center;
+		width: 2.4lh;
+		height: 1.9lh;
+		padding: 0;
 	}
 
 	/* 菜单项贴在一起，焦点环外扩会和邻项重叠，所以画在内侧。 */

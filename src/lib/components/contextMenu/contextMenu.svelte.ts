@@ -356,7 +356,12 @@ if (typeof document !== "undefined" && typeof window !== "undefined") {
     close();
   });
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") close();
+    if (event.key !== "Escape" || !menuState.visible) return;
+    // Escape belongs to the menu that is open: without stopping propagation the
+    // workspace's own Escape handler ("close the workspace") would run in the
+    // same keystroke, so dismissing a menu would throw the whole workspace away.
+    event.stopPropagation();
+    close();
   });
   // 嵌套滚动容器也要收起菜单，所以这一条保持捕获阶段。
   window.addEventListener("scroll", close, true);

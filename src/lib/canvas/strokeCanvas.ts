@@ -20,7 +20,7 @@ import { type StrokeT } from "gpen-protocol/flatbuffers";
 import { PointerType } from "gpen-protocol/flatbuffers";
 
 import type { LayerPoint, LayerView } from "../layers/layerView";
-import { createStroke, type StrokePointInput } from "../layers/strokeOps";
+import type { StrokePointInput } from "../layers/strokeOps";
 import { observeViewport } from "../visualViewport";
 
 /** CSS custom property read for the stroke color (falls back to the token default). */
@@ -37,7 +37,19 @@ export interface StrokeCanvasDeps {
   /** Current layer view used for layer-local ↔ client mapping. */
   view: () => LayerView | undefined;
   /** Called once per committed stroke; the caller persists / undoes it. */
-  onStroke: (stroke: StrokeT) => void;
+  onStroke: (points: StrokePointInput[]) => void;
+  /**
+   * Called once per sampled erase position while the eraser tool is active.
+   * The canvas only reports the layer-local point; the caller owns the
+   * document and the erase algorithm (see `GpenWorkspace.commitErase`).
+   */
+  onErase?: (point: LayerPoint) => void;
+  /** Active tool; `eraser` turns the pointer stream into erase samples. */
+  activeTool?: () => string;
+  /** Brush radius in layer-local units (diameter → radius already applied). */
+  brushRadius?: () => number;
+  /** Brush color as a CSS color; falls back to the `--gpen-*` token. */
+  brushColor?: () => string | undefined;
   /** CSS custom property holding the stroke color. */
   colorToken?: string;
   /** Sampling distance in client pixels. */
@@ -80,6 +92,10 @@ export function createStrokeCanvas(deps: StrokeCanvasDeps): StrokeCanvasHandle {
   let inProgress: StrokePointInput[] = [];
   let activePointerId: number | undefined;
   let destroyed = false;
+  /** Eraser: last reported position, so a drag does not spam identical samples. */
+  let lastErase: LayerPoint | undefined;
+
+  const isEraser = (): boolean => deps.activeTool?.() === "eraser";
 
   const toLayer = (client: LayerPoint): LayerPoint => {
     const view = deps.view();
@@ -91,6 +107,8 @@ export function createStrokeCanvas(deps: StrokeCanvasDeps): StrokeCanvasHandle {
   };
 
   function resolveColor(): string {
+    const explicit = deps.brushColor?.();
+    if (explicit) return explicit;
     const computed = typeof getComputedStyle === "function" ? getComputedStyle(canvas) : undefined;
     const value = computed?.getPropertyValue(colorToken).trim();
     return value && value.length > 0 ? value : STROKE_FALLBACK_COLOR;
@@ -158,7 +176,9 @@ export function createStrokeCanvas(deps: StrokeCanvasDeps): StrokeCanvasHandle {
   function drawInProgress(color: string): void {
     if (inProgress.length === 0) return;
     const points = inProgress.map((point) => toClient({ x: point.x, y: point.y }));
-    const radii = inProgress.map((point) => point.radius ?? 2);
+    // 正在画的笔迹用当前画笔半径预览（否则会先按默认 2px 画、落笔后跳变）。
+    const previewRadius = deps.brushRadius?.() ?? 2;
+    const radii = inProgress.map((point) => point.radius ?? previewRadius);
     drawPolyline(points, radii, color);
   }
 
@@ -187,7 +207,13 @@ export function createStrokeCanvas(deps: StrokeCanvasDeps): StrokeCanvasHandle {
     if (event.pointerType === "mouse" && event.button !== 0) return;
     event.preventDefault();
     activePointerId = event.pointerId;
-    inProgress = [sample(event)];
+    if (isEraser()) {
+      const point = toLayer({ x: event.clientX, y: event.clientY });
+      lastErase = point;
+      deps.onErase?.(point);
+    } else {
+      inProgress = [sample(event)];
+    }
     if (typeof canvas.setPointerCapture === "function") {
       try {
         canvas.setPointerCapture(event.pointerId);
@@ -203,6 +229,16 @@ export function createStrokeCanvas(deps: StrokeCanvasDeps): StrokeCanvasHandle {
 
   function onPointerMove(event: PointerEvent): void {
     if (destroyed || activePointerId !== event.pointerId) return;
+    if (isEraser()) {
+      const point = toLayer({ x: event.clientX, y: event.clientY });
+      // Same debounce as drawing: erase samples closer than `minDistance`
+      // would repeat identical hit tests (and identical documents).
+      if (lastErase && distance(point, lastErase) < minDistance) return;
+      lastErase = point;
+      deps.onErase?.(point);
+      redraw();
+      return;
+    }
     const next = sample(event);
     const last = inProgress[inProgress.length - 1];
     if (last && distance(next, last) < minDistance) return;
@@ -215,6 +251,7 @@ export function createStrokeCanvas(deps: StrokeCanvasDeps): StrokeCanvasHandle {
     const points = inProgress;
     inProgress = [];
     activePointerId = undefined;
+    lastErase = undefined;
     if (
       typeof canvas.hasPointerCapture === "function" &&
       canvas.hasPointerCapture(event.pointerId)
@@ -223,7 +260,7 @@ export function createStrokeCanvas(deps: StrokeCanvasDeps): StrokeCanvasHandle {
     }
     // pointerup and pointercancel both commit: a cancelled gesture still made
     // ink the user can see, and dropping it silently would be surprising.
-    if (points.length > 0) deps.onStroke(createStroke(points));
+    if (points.length > 0) deps.onStroke(points);
     redraw();
   }
 
@@ -252,6 +289,7 @@ export function createStrokeCanvas(deps: StrokeCanvasDeps): StrokeCanvasHandle {
       resizeObserver = undefined;
       inProgress = [];
       activePointerId = undefined;
+      lastErase = undefined;
     },
   };
 }

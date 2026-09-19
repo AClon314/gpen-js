@@ -1,40 +1,67 @@
 /*
  * 白天 / 夜间主题 token（--gpen-*）。
  *
- * 静态 CSS 是当前唯一来源：`:root`（网页）与 `:host`（embed 的 ShadowRoot）各声明一份，
- * 夜间用 `prefers-color-scheme: dark` 覆盖。组件用 var(--gpen-*) 消费；需要局部变体时
- * 覆盖变量本身，而不是加“传具体值”的 props。
+ * 三态：`system`（跟随系统）/ `light` / `dark`。
  *
+ * 机制：每个随主题变化的 token 用 `light-dark(浅色, 深色)` 声明一次，`color-scheme` 决定
+ * 取哪一支。`system` = `color-scheme: light dark`（跟系统走），`light` / `dark` 由 JS 在
+ * 根元素（网页是 `<html>`，embed 是 `:host`）上写 `data-gpen-theme="light|dark"` 属性，
+ * 下面两条规则把 `color-scheme` 钉死。**没有 `@media (prefers-color-scheme: dark)` 块**：
+ * 那个媒体查询无法被属性覆盖，会把手动 light 在深色系统上顶回去。
+ *
+ * 兼容：不支持 `light-dark()` 的浏览器会丢掉那一行，回落到它上面那行普通值（只出浅色）
+ * ——降级但不破版。`--gpen-workspace-background` 与视口浮层 token 是**故意不随主题**的
+ * （工作区是透明的洞，浮层底下是别人的网页，不能假设配色），所以保持普通值。
+ *
+ * 组件用 var(--gpen-*) 消费；需要局部变体时覆盖变量本身，而不是加“传具体值”的 props。
  * 长度约定见 AGENTS.md：横向尺寸/间距用 ch，纵向（尤其 height/行高）用 lh；
  * 字号 / 边框宽度 / 圆角 / 阴影等非布局长度保留 px。
+ *
+ * 细节与 JS 侧（`theme.ts` / `theme.svelte.ts`）见 docs/theme.md。
  */
 
 :root,
 :host {
+	color-scheme: light dark;
+
 	/* typography + layout；所有布局尺寸都从后两个 token 派生：
-	 * --gpen-line-height 也直接当 line-height 用（决定 1lh 的大小）。 */
+	 * --gpen-line-height 也直接当 line-height 用（决定 1lh 的大小）。
+	 * 这几个不随主题变，所以是普通值。 */
 	--gpen-font-sans: system-ui, sans-serif;
 	--gpen-font-mono: ui-monospace, monospace;
 	--gpen-font-size: 13px;
 	--gpen-line-height: 1; /* 行高：水平数值控件高度 = 2lh */
 	--gpen-char-width: 3; /* 竖向控件宽度（ch 数）与相关横向尺寸的基准 */
 
-	/* workspace + panel palette */
+	/* workspace + panel palette
+	 * 每行两条声明：先给不支持 `light-dark()` 的浏览器一个普通值，再给支持的浏览器
+	 * 完整的三态值（后者胜出）。 */
 	--gpen-workspace-background: transparent;
 	--gpen-panel-background: #ffffff;
+	--gpen-panel-background: light-dark(#ffffff, #1e293b);
 	--gpen-panel-border: #cbd5e1;
+	--gpen-panel-border: light-dark(#cbd5e1, #334155);
 	--gpen-panel-foreground: #1e293b;
+	--gpen-panel-foreground: light-dark(#1e293b, #e2e8f0);
 	--gpen-panel-muted: #64748b;
+	--gpen-panel-muted: light-dark(#64748b, #94a3b8);
 	--gpen-panel-accent: #4f46e5;
+	--gpen-panel-accent: light-dark(#4f46e5, #818cf8);
 	--gpen-panel-shadow: 0 2px 8px rgb(15 23 42 / 0.12);
+	--gpen-panel-shadow: light-dark(0 2px 8px rgb(15 23 42 / 0.12), 0 2px 8px rgb(0 0 0 / 0.45));
 
 	/* workspace chrome：工作区外壳（菜单栏 / 标题栏 / 状态栏）与面板内部的次级表面。
 	 * 面板本体用 --gpen-panel-background，chrome 比它暗一档，形成"外壳包住面板"的层次。 */
 	--gpen-chrome-background: #e6eaf1;
+	--gpen-chrome-background: light-dark(#e6eaf1, #101827);
 	--gpen-chrome-background-subtle: #dde3ec;
+	--gpen-chrome-background-subtle: light-dark(#dde3ec, #1a2436);
 	--gpen-panel-background-raised: #f1f4f9;
+	--gpen-panel-background-raised: light-dark(#f1f4f9, #334155);
 	--gpen-panel-background-hover: #e5eaf3;
+	--gpen-panel-background-hover: light-dark(#e5eaf3, #2a3546);
 	--gpen-panel-selection: #dbe3fb;
+	--gpen-panel-selection: light-dark(#dbe3fb, #2f3a63);
 
 	/* viewport 里浮在宿主网页上的物件（小地图、角标）：始终按深色半透明绘制，
 	 * 因为底下是别人的网页，不能假设配色。 */
@@ -44,27 +71,20 @@
 
 	/* semantic */
 	--gpen-danger: #d24b4b;
+	--gpen-danger: light-dark(#d24b4b, #7f1d1d);
 
 	/* shape（非布局长度，保留 px） */
 	--gpen-radius: 4px;
 	--gpen-radius-sm: 3px;
 }
 
-@media (prefers-color-scheme: dark) {
-	:root,
-	:host {
-		--gpen-panel-background: #1e293b;
-		--gpen-panel-border: #334155;
-		--gpen-panel-foreground: #e2e8f0;
-		--gpen-panel-muted: #94a3b8;
-		--gpen-panel-accent: #818cf8;
-		--gpen-panel-shadow: 0 2px 8px rgb(0 0 0 / 0.45);
-		--gpen-danger: #7f1d1d;
+/* 手动主题：JS 只写这一个属性（见 themes/theme.ts 的 applyThemePreference）。 */
+:root[data-gpen-theme='light'],
+:host([data-gpen-theme='light']) {
+	color-scheme: light;
+}
 
-		--gpen-chrome-background: #101827;
-		--gpen-chrome-background-subtle: #1a2436;
-		--gpen-panel-background-raised: #334155;
-		--gpen-panel-background-hover: #2a3546;
-		--gpen-panel-selection: #2f3a63;
-	}
+:root[data-gpen-theme='dark'],
+:host([data-gpen-theme='dark']) {
+	color-scheme: dark;
 }

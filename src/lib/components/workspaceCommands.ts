@@ -32,6 +32,22 @@ export interface WorkspaceCommandDeps {
   save(): void;
   toggleFullscreen(): void;
   fullscreen(): boolean;
+  /** Open the floating preferences panel (idempotent). */
+  openPreferences(): void;
+  /** Show the version (the help menu's "about"). */
+  openAbout(): void;
+  /** Replace the document with a fresh default one (undoable). */
+  newDocument(): void;
+  /** Reopen the stored document, discarding in-memory changes. */
+  openDocument(): void;
+  /** Reopen the most recently saved document (only `gpen-main` exists today). */
+  openRecent(): void;
+  /** Save the current document under a new id (copy). */
+  saveCopy(): void;
+  /** Download the document as a FlatBuffer (`.gpen.json`). */
+  exportJson(): void;
+  /** Close the workspace (give the page back). */
+  closeWorkspace(): void;
 }
 
 export const GPEN_COMMAND_IDS = {
@@ -43,6 +59,14 @@ export const GPEN_COMMAND_IDS = {
   toggleStatusBar: "gpen.toggle_statusbar",
   toggleFullscreen: "gpen.toggle_fullscreen",
   save: "gpen.save",
+  saveCopy: "gpen.save_copy",
+  newDocument: "gpen.new",
+  openDocument: "gpen.open",
+  openRecent: "gpen.open_recent",
+  exportJson: "gpen.export_json",
+  closeWorkspace: "gpen.close_workspace",
+  about: "gpen.about",
+  openPreferences: "gpen.open_preferences",
   reportIssue: "gpen.report_issue",
   openDocs: "gpen.open_docs",
 } as const;
@@ -61,6 +85,11 @@ function openExternal(url: string): void {
     console.debug("[gpen] ignored rejection: openExternal", error);
     return;
   }
+}
+
+/** Build-time version constant (`vite.config.ts` `define`); safe in tests. */
+function gpenVersion(): string {
+  return typeof __GPEN_VERSION__ === "string" ? __GPEN_VERSION__ : "unknown";
 }
 
 /** Register every built-in command. Returns a disposer for all of them. */
@@ -117,6 +146,52 @@ export function registerWorkspaceCommands(deps: WorkspaceCommandDeps): () => voi
       run: () => deps.save(),
     }),
     registerCommand({
+      id: GPEN_COMMAND_IDS.newDocument,
+      label: "新建",
+      keyBind: "Ctrl+N",
+      run: () => deps.newDocument(),
+    }),
+    registerCommand({
+      id: GPEN_COMMAND_IDS.openDocument,
+      label: "打开…",
+      keyBind: "Ctrl+O",
+      run: () => deps.openDocument(),
+    }),
+    registerCommand({
+      id: GPEN_COMMAND_IDS.openRecent,
+      label: "打开最近文件",
+      keyBind: "Shift+Ctrl+O",
+      run: () => deps.openRecent(),
+    }),
+    registerCommand({
+      id: GPEN_COMMAND_IDS.saveCopy,
+      label: "保存副本…",
+      keyBind: "Shift+Ctrl+S",
+      run: () => deps.saveCopy(),
+    }),
+    registerCommand({
+      id: GPEN_COMMAND_IDS.exportJson,
+      label: "导出 JSON",
+      run: () => deps.exportJson(),
+    }),
+    registerCommand({
+      id: GPEN_COMMAND_IDS.closeWorkspace,
+      label: "退出",
+      keyBind: "Ctrl+Q",
+      run: () => deps.closeWorkspace(),
+    }),
+    registerCommand({
+      id: GPEN_COMMAND_IDS.about,
+      label: () => `关于 gpen（v${gpenVersion()}）`,
+      run: () => deps.openAbout(),
+    }),
+    registerCommand({
+      id: GPEN_COMMAND_IDS.openPreferences,
+      label: "偏好设置",
+      keyBind: "Ctrl+Alt+U",
+      run: () => deps.openPreferences(),
+    }),
+    registerCommand({
       id: GPEN_COMMAND_IDS.reportIssue,
       label: "报告问题",
       run: () => openExternal(GPEN_ISSUE_URL),
@@ -147,6 +222,11 @@ export function registerWorkspaceKeyBindings(): () => void {
     registerKeyBinding({ key: ["Ctrl+Shift+Z", "Ctrl+Y"], command: GPEN_COMMAND_IDS.redo }),
     registerKeyBinding({ key: "F2", command: GPEN_COMMAND_IDS.renameActive }),
     registerKeyBinding({ key: "Ctrl+S", command: GPEN_COMMAND_IDS.save }),
+    registerKeyBinding({ key: "Ctrl+N", command: GPEN_COMMAND_IDS.newDocument }),
+    registerKeyBinding({ key: "Ctrl+O", command: GPEN_COMMAND_IDS.openDocument }),
+    registerKeyBinding({ key: "Ctrl+Shift+O", command: GPEN_COMMAND_IDS.openRecent }),
+    registerKeyBinding({ key: "Ctrl+Shift+S", command: GPEN_COMMAND_IDS.saveCopy }),
+    registerKeyBinding({ key: "Ctrl+Alt+U", command: GPEN_COMMAND_IDS.openPreferences }),
   ];
   return () => {
     for (const dispose of disposers) dispose();
