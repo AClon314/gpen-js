@@ -466,6 +466,11 @@ test.describe("gpen-input-number units", () => {
     await page.goto("/demo/widgets");
   });
 
+  /** 字段是否处于红底非法态：`:invalid` 与 `validity.customError` 同源。 */
+  async function isInvalid(field: Locator) {
+    return field.evaluate((element) => element.matches(":invalid"));
+  }
+
   /** Paste `text` into the field through a real `paste` event (clipboard API needs permissions). */
   async function paste(field: Locator, text: string) {
     await field.evaluate((element, value) => {
@@ -496,17 +501,30 @@ test.describe("gpen-input-number units", () => {
     await expect(field.locator("xpath=..//span[contains(@class,'input-unit')]")).toHaveText("kg");
   });
 
-  test("typing a quantity converts as soon as the unit is complete", async ({ page }) => {
+  test("converts a typed quantity on blur, not while typing", async ({ page }) => {
     const field = page.getByLabel("质量");
 
-    // trim + split：前后空格、数字与单位之间的空格都无所谓
-    await field.fill("1234克");
-    await expect(field).toHaveValue("1.234");
+    // 真键击（不会触发 change）：输入完单位也不换算，文本原样留着
+    await field.click();
+    await field.press("Control+a");
+    await field.pressSequentially("1234g");
+    await expect(field).toHaveValue("1234g");
+    // 编辑中：既不换算，也不标红（单位是对的，只是还没提交）
+    expect(await isInvalid(field)).toBe(false);
 
+    // 失焦 = 提交 → 1.234 kg，单位是独立的只读标签
+    await field.blur();
+    await expect(field).toHaveValue("1.234");
+    await expect(field.locator("xpath=..//span[contains(@class,'input-unit')]")).toHaveText("kg");
+
+    // trim + split 在提交时做：前后空格、数字与单位之间的空格都无所谓
     await field.fill(" 1234 克 ");
+    await expect(field).toHaveValue(" 1234 克 ");
+    expect(await isInvalid(field)).toBe(false);
+    await field.blur();
     await expect(field).toHaveValue("1.234");
 
-    // 二次编辑只改数字：单位是独立的只读标签，不在 input 的值里
+    // 二次编辑只改数字
     await field.fill("2.5");
     await expect(field).toHaveValue("2.5");
     await expect(field.locator("xpath=..//span[contains(@class,'input-unit')]")).toHaveText("kg");
@@ -517,12 +535,16 @@ test.describe("gpen-input-number units", () => {
 
     await field.fill("12 xyz");
     await expect(field).toHaveValue("12 xyz");
-    await expect(field).toHaveJSProperty("validity.customError", true);
+    // 单位错 → 红底
+    expect(await isInvalid(field)).toBe(true);
+    await field.blur();
+    await expect(field).toHaveValue("12 xyz");
+    expect(await isInvalid(field)).toBe(true);
 
-    // 跨量纲同样不换算（质量字段里的长度单位）
+    // 跨量纲（质量字段里的长度单位）同样算「单位错」→ 不换算、标红
     await field.fill("12 cm");
     await expect(field).toHaveValue("12 cm");
-    await expect(field).toHaveJSProperty("validity.customError", true);
+    expect(await isInvalid(field)).toBe(true);
   });
 
   test("pasting a quantity converts it into the display unit", async ({ page }) => {
@@ -542,10 +564,15 @@ test.describe("gpen-input-number units", () => {
     await expect(field).toHaveValue("12");
   });
 
-  test("typing a unit suffix converts on commit", async ({ page }) => {
+  test("a typed unit suffix survives until commit", async ({ page }) => {
     const field = page.getByLabel("长度");
 
     await field.fill("3ft");
+    await expect(field).toHaveValue("3ft");
+    expect(await isInvalid(field)).toBe(false);
+
+    // 失焦才换算到显示单位 cm
+    await field.blur();
     await expect(field).toHaveValue("91.44");
   });
 });

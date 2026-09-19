@@ -41,6 +41,7 @@
 		onfocus,
 		onwheel,
 		onpaste,
+		onblur,
 		class: inputClass,
 		'aria-label': ariaLabel,
 		...rest
@@ -92,7 +93,14 @@
 	// min/max 只在**校验**时体现：报告违规给原生 constraint validation，但不改绑定值。
 	// 调用方想要限制后的值，自己调 `validateNumeric(value, {min, max, step})`。
 	// `step` 不参与校验：步进规则（智能整数位 / 用户最大精度）会故意落在 step 网格之外。
-	const invalid = $derived(draft.trim() !== '' && !Number.isFinite(Number(draft)));
+	// 非法 = 既不是纯数字、也不是「数字 + 已知单位」的量。
+	// 合法但**尚未提交**的量（`1234g` / `1234 克`）是中性的：不换算，也**不标红**；
+	// 只有单位错（`12 xyz`）或压根不是数字（`1.2.3`）才进红色 `:invalid` 状态。
+	const invalid = $derived(
+		draft.trim() !== '' &&
+			!Number.isFinite(Number(draft)) &&
+			convertTypedQuantity(draft) === undefined,
+	);
 	// 校验后的值：只钳 min/max，**不按 step 取整**（step 不参与校验，见 docs/input.md）。
 	// value 非有限（非法文本 NaN / 空）→ undefined，绝不下发 NaN。
 	const validValue = $derived.by(() => {
@@ -423,15 +431,8 @@
 
 	function handleInput(event: InputElementEvent) {
 		const element = event.currentTarget;
-		// 边打边认：`'1234克'` / `'1234 克'` 一旦凑成一个「数字 + 已知单位」就立即换算成
-		// 显示单位的数值（`1.234`）并重写文本，右侧单位保持只读。不认识的单位不换算，
-		// 于是文本保持原样、走既有的非数字 → `:invalid` 红色状态。
-		const converted = convertTypedQuantity(element.value);
-		if (converted !== undefined) {
-			write(element, displayText(converted), converted);
-			oninput?.(event);
-			return;
-		}
+		// 输入过程中**不换算**：`1234g` / `1234 克` 属于未提交的编辑态，换算一律等到提交出口
+		// （失焦 / Enter，见 `commitTypedQuantity`）。此处只同步纯数字的绑定值。
 		draft = element.value;
 		const next = readInput(element);
 		if (finiteNumber(next) !== undefined) {
@@ -442,8 +443,17 @@
 		oninput?.(event);
 	}
 
-	// 粘贴「数字 + 单位」：整段替换字段内容（粘贴的是一整个量，不是插到光标处），
-	// 这是「粘贴后自动换算到当前单位」的入口；解析失败则交回原生粘贴。
+	// 把「数字 + 单位后缀」的文本换算成显示单位的数值并写回（`' 1234克 '` → `1.234`）。
+	// 幂等：换算后的文本不再带单位，再调一次直接 `false`。
+	function commitTypedQuantity(element: HTMLInputElement): boolean {
+		const converted = convertTypedQuantity(element.value);
+		if (converted === undefined) return false;
+		write(element, displayText(converted), converted);
+		return true;
+	}
+
+	// 粘贴是**显式赋值**（不是在编辑中的文本），所以照旧立即换算：
+	// 悬浮 Ctrl+V 时控件根本没有焦点，不会再有 blur 来触发提交。
 	function handlePaste(event: InputClipboardEvent) {
 		const converted = convertTypedQuantity(event.clipboardData?.getData('text') ?? '');
 		if (converted === undefined) {
@@ -451,17 +461,27 @@
 			return;
 		}
 		event.preventDefault();
-		const text = displayText(converted);
-		commit(event.currentTarget, text, converted);
+		draftDecimals = undefined;
+		commit(event.currentTarget, displayText(converted), converted);
 		onpaste?.(event);
+	}
+
+	// 失焦 = 提交：手敲的单位后缀在这里换算。
+	// 浏览器只对「被用户改过」的字段补发 `change`，程序化改写文本的字段不会，
+	// 所以这里主动做一次，并补一个 `input` 让消费方知道绑定值变了。
+	function handleBlur(event: InputFocusEvent) {
+		const element = event.currentTarget;
+		if (commitTypedQuantity(element)) {
+			focusSnapshot = undefined;
+			element.dispatchEvent(new Event('input', { bubbles: true }));
+		}
+		onblur?.(event);
 	}
 
 	function handleChange(event: InputElementEvent) {
 		const element = event.currentTarget;
-		// 手敲/粘进带单位后缀的文本（`12cm` / `12 厘米`）：换算到 activeUnit 后写入。
-		const converted = convertTypedQuantity(element.value);
-		if (converted !== undefined) {
-			write(element, displayText(converted), converted);
+		// Enter（以及已被标脏的失焦）同样走提交换算；已换算过的文本再进这里是空操作。
+		if (commitTypedQuantity(element)) {
 			focusSnapshot = undefined;
 			onchange?.(event);
 			return;
@@ -607,6 +627,7 @@
 		oninput={handleInput}
 		onchange={handleChange}
 		onpaste={handlePaste}
+		onblur={handleBlur}
 		onfocus={handleFocus}
 		onkeydown={handleKeydown}
 		onwheel={handleWheel}
