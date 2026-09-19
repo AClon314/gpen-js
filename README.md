@@ -38,8 +38,9 @@ bun run dev
 - [Dropzone](docs/dropzone.md)：拖放相关说明
 - [Input](docs/input.md)：输入控件：`Input` 分发壳与 `InputNumber` / `InputSlider`（步进、校验、单位、内联宽度、悬浮剪贴板；含原生优先的例外与自研代价）
 - [CodeMirror](docs/codemirror.md)：CodeMirror 6 数值插件（`numberStepper` / `numberScrubber`）与接线范式
-- [Code editor](docs/code-editor.md)
-- [Color](docs/color.md)：颜色控件：Spectrum Web Components 的取色器（体积成本与四个踩坑）：`CodeEditor` 组件（CM 文档 ⇄ 表单值同步、镜像 textarea、无障碍、缺口与代价）
+- [Code editor](docs/code-editor.md)：`CodeEditor` 组件（CM 文档 ⇄ 表单值同步、镜像 textarea、无障碍、缺口与代价）
+- [Color](docs/color.md)：颜色控件：Spectrum Web Components 的取色器（体积成本与四个踩坑）
+- [Tree](docs/tree.md)：图层树（Outliner）选型结论与接口设计：自研 + 借 React Aria 的扩展点（slot / 受控三件套 / 拖拽纯数据契约 / 虚拟化）
 - [Units](docs/units.md)：单位模型（注册表 / 量纲表、换算与别名、`bindUnit`）
 - [Build targets](docs/build-targets.md)：userscript / 浏览器扩展 / npm / VS Code 多目标构建与自动化测试可行性方案
 
