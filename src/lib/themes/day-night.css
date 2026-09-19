@@ -17,7 +17,7 @@
 	--gpen-font-mono: ui-monospace, monospace;
 	--gpen-font-size: 13px;
 	--gpen-line-height: 1; /* 行高：水平数值控件高度 = 2lh */
-	--gpen-char-width: 6; /* 竖向控件宽度（ch 数）与相关横向尺寸的基准 */
+	--gpen-char-width: 3; /* 竖向控件宽度（ch 数）与相关横向尺寸的基准 */
 
 	/* workspace + panel palette */
 	--gpen-workspace-background: transparent;
