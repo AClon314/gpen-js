@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { mount, onDestroy, onMount, unmount, type Component } from 'svelte';
 	import 'dockview/dist/styles/dockview.css';
+	// 必须在 dockview 自带样式之后引入：本文件把 `--dv-*` 映射到 `--gpen-*`。
+	import '#lib/themes/dockview.css';
 	import {
 		createDockview,
 		type CreateComponentOptions,
@@ -16,9 +18,7 @@
 		createDefaultGpenWorkspaceState,
 		normalizeUiScale,
 		UI_SCALE_DEFAULT,
-		UI_SCALE_MAX,
-		UI_SCALE_MIN,
-		UI_SCALE_STEP,
+		type GpenPanelLayout,
 		type GpenToolId,
 		type GpenWorkspaceState
 	} from './gpenWorkspaceState';
@@ -36,7 +36,19 @@
 	import BlenderTopBar from './areas/TopBar.svelte';
 	import BlenderViewport from './areas/Viewport.svelte';
 
-	let { state: providedState }: { state?: GpenWorkspaceState } = $props();
+	let {
+		state: providedState,
+		minimized = false,
+		onClose,
+		onMinimize
+	}: {
+		state?: GpenWorkspaceState;
+		/** 最小化时工作区只是被隐藏，**不卸载**——dockview 实例和面板尺寸都留着，
+		 * 否则每次还原都要拿存储里的布局重建，尺寸会被重新分摊而失真。 */
+		minimized?: boolean;
+		onClose?: () => void;
+		onMinimize?: () => void;
+	} = $props();
 	let localState = $state(createDefaultGpenWorkspaceState());
 	const workspaceState = $derived(providedState ?? localState);
 
@@ -46,10 +58,13 @@
 	let layerTree: UiLayerTree | undefined;
 	let tabMenuPanelId: string | undefined;
 	let disposeTabMenu: (() => void) | undefined;
-	let layoutSubscription: { dispose(): void } | undefined;
+	let layoutSubscriptions: { dispose(): void }[] = [];
 	let viewportResizeObserver: ResizeObserver | undefined;
 	let removeViewportListeners: (() => void) | undefined;
 	let layoutFrame: number | undefined;
+	let applyDefaultSizes = false;
+	let pendingRestore = false;
+	let layoutDirty = false;
 	let mounted = false;
 
 	let viewportWidth = $state(0);
@@ -77,28 +92,18 @@
 
 	function selectTool(tool: GpenToolId) {
 		workspaceState.activeTool = tool;
-		if (tool === 'mouse') {
-			// Removing the workspace from hit testing is what gives the webpage
-			// pointer, touch, and keyboard control. Blur avoids leaving a toolbar
-			// button as the soft-keyboard/focus owner.
-			workspaceState.collapsed = true;
-			const active = document.activeElement;
-			if (active instanceof HTMLElement) active.blur();
-		} else {
-			workspaceState.collapsed = false;
-		}
 	}
 
 	function updateExternalZoom() {
 		externalZoomFactor = readGpenViewportZoomFactor();
 	}
 
+	// 工作区铺满 overlay：可用尺寸就是父层的 padding box，所以 clientWidth /
+	// clientHeight 可以直接用（overlay 不设内边距）。
 	function measureViewport() {
 		const parent = container.parentElement;
-		const width = parent?.clientWidth ?? window.innerWidth;
-		const height = parent?.clientHeight ?? window.innerHeight;
-		viewportWidth = Math.max(0, width);
-		viewportHeight = Math.max(0, height);
+		viewportWidth = Math.max(0, parent?.clientWidth ?? window.innerWidth);
+		viewportHeight = Math.max(0, parent?.clientHeight ?? window.innerHeight);
 	}
 
 	function layoutDockview() {
@@ -115,24 +120,189 @@
 			layoutFrame = undefined;
 			measureViewport();
 			layoutDockview();
+			// Both of these need a laid-out grid: dockview ignores size requests
+			// made before the first layout pass (the grid falls back to each
+			// group's minimum), and a restored layout applied before the container
+			// has its real size gets its panel sizes redistributed — which is how
+			// a stored layout ends up "growing" panels.
+			if (pendingRestore) {
+				pendingRestore = false;
+				if (!restoreDockviewLayout()) {
+					buildDefaultLayout();
+					applyDefaultSizes = true;
+					scheduleLayout();
+					return;
+				}
+			}
+			if (applyDefaultSizes) {
+				applyDefaultSizes = false;
+				resizeDefaultPanels();
+			}
+			// 尺寸落定后再落一次布局：`setSize` 之后的变更事件是在 dockview 还在
+			// 100×100 时发出的，那一次会被 capture 的尺寸守卫挡掉。
+			if (layoutDirty) captureDockviewLayout();
 		});
 	}
 
+	/**
+	 * `initialWidth` / `initialHeight` on addPanel only apply when the panel
+	 * creates its group; panels that split an existing group keep the group
+	 * minimum instead. Set every default size explicitly, once the grid exists.
+	 */
+	function resizeDefaultPanels() {
+		dockview?.getPanel('menu')?.group.api.setSize({ height: 66 });
+		dockview?.getPanel('tools')?.group.api.setSize({ width: 62 });
+		dockview?.getPanel('outliner')?.group.api.setSize({ width: 300 });
+		dockview?.getPanel('timeline')?.group.api.setSize({ height: 190 });
+		dockview?.getPanel('statusbar')?.group.api.setSize({ height: 24 });
+	}
+
+	/** 低于这个尺寸的布局不是“用户的布局”，见 `captureDockviewLayout`。 */
+	const MIN_LAYOUT_DIMENSION = 120;
+
 	function captureDockviewLayout() {
-		const layout = cloneGpenPanelLayout(dockview?.toJSON());
-		if (layout) workspaceState.panelLayout = layout;
+		const instance = dockview;
+		// 一个没有任何面板的布局不是“用户的布局”：它只会在重建的中途或渲染异常时
+		// 出现，存下去就等于把工作区锁死成空白。
+		if (!instance || instance.panels.length === 0) return;
+		// 只有“按真实容器尺寸排过的布局”才值得存。刚挂载时 dockview 还停在它自己的
+		// 默认尺寸（100×100），那时每个面板都卡在最小值；把这时的 toJSON() 存下来，
+		// 下次还原就会被摊回真实尺寸 —— 面板越开越大就是这么来的。
+		const width = layoutWidth;
+		const height = layoutHeight;
+		if (width === undefined || height === undefined) return;
+		if (Math.abs(instance.width - width) > 1 || Math.abs(instance.height - height) > 1) return;
+		const layout = cloneGpenPanelLayout(instance.toJSON());
+		if (!layout) return;
+		workspaceState.panelLayout = layout;
+		layoutDirty = false;
+	}
+
+	/** 存储里的布局是否是“按真实尺寸排过”的那份（老版本可能存过 100×100 的）。 */
+	function isUsablePanelLayout(layout: GpenPanelLayout): boolean {
+		const grid = (layout as { grid?: { width?: unknown; height?: unknown } }).grid;
+		if (typeof grid !== 'object' || grid === null) return false;
+		const { width, height } = grid;
+		return (
+			typeof width === 'number' &&
+			typeof height === 'number' &&
+			width >= MIN_LAYOUT_DIMENSION &&
+			height >= MIN_LAYOUT_DIMENSION
+		);
 	}
 
 	function restoreDockviewLayout(): boolean {
-		if (!dockview || !workspaceState.panelLayout) return false;
+		const instance = dockview;
+		const stored = workspaceState.panelLayout;
+		if (!instance || !stored) return false;
+		if (!isUsablePanelLayout(stored)) {
+			// 坏布局直接丢掉，让调用方重建默认布局。
+			workspaceState.panelLayout = null;
+			return false;
+		}
 		try {
-			dockview.fromJSON(workspaceState.panelLayout as unknown as SerializedDockview);
-			return true;
+			instance.fromJSON(stored as unknown as SerializedDockview);
 		} catch (error) {
 			console.debug('[gpen] ignored rejection: GpenWorkspace layout restore', error);
 			workspaceState.panelLayout = null;
 			return false;
 		}
+		// 存储里的布局可能是空的（见 captureDockviewLayout）：`fromJSON` 不会抛，
+		// 但结果是一个没有面板的 workspace，所以这里当成恢复失败处理。
+		if (instance.panels.length === 0) {
+			instance.clear();
+			workspaceState.panelLayout = null;
+			return false;
+		}
+		return true;
+	}
+
+	/**
+	 * Build outward from the viewport so every surrounding panel occupies its own
+	 * dockview group and stays resizable. Sizes are CSS px at the workspace's own
+	 * (unzoomed) scale: the tool strip is a rail, the right column is the
+	 * layer/property work area, and the top / bottom strips are chrome whose
+	 * height follows their content.
+	 */
+	function buildDefaultLayout() {
+		if (!dockview) return;
+		dockview.addPanel({
+			id: 'viewport',
+			component: 'viewport',
+			title: '视口',
+			minimumWidth: 240,
+			minimumHeight: 160
+		});
+		dockview.addPanel({
+			id: 'menu',
+			component: 'menu',
+			title: '菜单',
+			position: { referencePanel: 'viewport', direction: 'above' },
+			initialHeight: 66,
+			minimumHeight: 28
+		});
+		dockview.addPanel({
+			id: 'tools',
+			component: 'tools',
+			title: '工具',
+			position: { referencePanel: 'viewport', direction: 'left' },
+			initialWidth: 62,
+			minimumWidth: 52
+		});
+		dockview.addPanel({
+			id: 'timeline',
+			component: 'timeline',
+			title: '时间轴',
+			position: { referencePanel: 'viewport', direction: 'below' },
+			initialHeight: 190,
+			minimumHeight: 48
+		});
+		dockview.addPanel({
+			id: 'outliner',
+			component: 'outliner',
+			title: '场景集合',
+			position: { referencePanel: 'viewport', direction: 'right' },
+			initialWidth: 300,
+			minimumWidth: 160
+		});
+		dockview.addPanel({
+			id: 'properties',
+			component: 'properties',
+			title: '属性',
+			position: { referencePanel: 'outliner', direction: 'below' },
+			initialHeight: 320
+		});
+		dockview.addPanel({
+			id: 'statusbar',
+			component: 'statusbar',
+			title: '状态栏',
+			position: { referencePanel: 'timeline', direction: 'below' },
+			initialHeight: 24,
+			minimumHeight: 22
+		});
+
+		// Dockview groups have a 100px default minimum of their own. Relax the
+		// chrome / rail groups so the requested initial sizes can take effect.
+		dockview.getPanel('menu')?.group.api.setConstraints({ minimumHeight: 28 });
+		dockview.getPanel('timeline')?.group.api.setConstraints({ minimumHeight: 48 });
+		dockview.getPanel('statusbar')?.group.api.setConstraints({ minimumHeight: 22 });
+		dockview.getPanel('tools')?.group.api.setConstraints({ minimumWidth: 52 });
+	}
+
+	/**
+	 * Drop the persisted layout and rebuild the default one — the escape hatch
+	 * for a workspace whose saved layout no longer matches the current panels.
+	 */
+	function resetPanelLayout() {
+		const instance = dockview;
+		if (!instance) return;
+		workspaceState.panelLayout = null;
+		instance.clear();
+		buildDefaultLayout();
+		// `clear()` + re-add happens before the next layout pass, so the explicit
+		// sizes have to run on that pass (same as the first mount).
+		applyDefaultSizes = true;
+		scheduleLayout();
 	}
 
 	// CSS `zoom` has to counteract the external browser/pinch factor before the
@@ -148,10 +318,10 @@
 	});
 
 	const panelLabels: Record<string, string> = {
-		menu: 'menu',
-		tools: 'tools',
-		viewport: 'viewport',
-		timeline: 'timeline'
+		menu: '菜单',
+		tools: '工具',
+		viewport: '视口',
+		timeline: '时间轴'
 	};
 
 	const panelComponents: Record<string, Component<any>> = {
@@ -266,6 +436,26 @@
 		return list;
 	}
 
+	/**
+	 * The menu panel hosts the whole title bar (menus, ui scale, close), and the
+	 * tool strip owns the active tool, so both need callbacks. The other panels
+	 * keep their own local state and are mounted without props.
+	 */
+	function componentProps(name: string): Record<string, unknown> | undefined {
+		if (name === 'tools') return { state: workspaceState, onSelectTool: selectTool };
+		if (name === 'menu') {
+			return {
+				state: workspaceState,
+				onChangeUiScale: changeUiScale,
+				onResetUiScale: resetUiScale,
+				onResetPanelLayout: resetPanelLayout,
+				onMinimize,
+				onClose
+			};
+		}
+		return undefined;
+	}
+
 	function createComponent({ id, name }: CreateComponentOptions): IContentRenderer {
 		const Component = panelComponents[name];
 		const element = document.createElement('div');
@@ -278,11 +468,10 @@
 				element,
 				init() {
 					if (!mountedComponent) {
-						const props =
-							name === 'tools'
-								? { state: workspaceState, onSelectTool: selectTool }
-								: undefined;
-						mountedComponent = mount(Component, { target: element, props });
+						mountedComponent = mount(Component, {
+							target: element,
+							props: componentProps(name)
+						});
 					}
 				},
 				dispose() {
@@ -339,87 +528,35 @@
 			popoutUrl: `${window.location.origin}${window.location.pathname}`,
 			theme: {
 				name: 'gpen',
-				className: 'dockview-theme-light',
+				// dockview 自带主题提供结构默认值（sash 尺寸、drop preview），
+				// `gpen-dockview` 再把颜色 / 标题栏指回 --gpen-* token。
+				className: 'dockview-theme-light gpen-dockview',
 				colorScheme: 'light',
 				tabGroupIndicator: 'none'
 			}
 		});
-		layoutSubscription = dockview.onDidMutateLayout(() => captureDockviewLayout());
+		// 结构变更（onDidMutateLayout）和尺寸变更（onDidLayoutChange，sash 拖动走这条）
+		// 都要记下来：只订前者的话，用户拖过的面板宽度根本不会被持久化。
+		const onLayoutEvent = () => {
+			layoutDirty = true;
+			captureDockviewLayout();
+		};
+		layoutSubscriptions = [
+			dockview.onDidMutateLayout(onLayoutEvent),
+			dockview.onDidLayoutChange(onLayoutEvent)
+		];
 		measureViewport();
 		layoutDockview();
 
-		const restoredLayout = restoreDockviewLayout();
-		if (!restoredLayout) {
-				// Build outward from the viewport so every surrounding panel occupies its
-			// own dockview group and remains resizable by the user.
-			// Panels resize freely like Blender. dockview still needs a small
-			// non-zero minimum so the grid never collapses to a zero-size panel on
-			// first layout; the values are small enough to keep resizing unconstrained.
-			dockview.addPanel({
-				id: 'viewport',
-				component: 'viewport',
-				title: 'viewport',
-				minimumWidth: 240,
-				minimumHeight: 160
-			});
-			dockview.addPanel({
-				id: 'menu',
-				component: 'menu',
-				title: 'menu',
-				position: { referencePanel: 'viewport', direction: 'above' },
-				initialHeight: 42,
-				minimumHeight: 28
-			});
-			dockview.addPanel({
-				id: 'tools',
-				component: 'tools',
-				title: 'tools',
-				position: { referencePanel: 'viewport', direction: 'left' },
-				initialWidth: 208,
-				minimumWidth: 96
-			});
-			dockview.addPanel({
-				id: 'timeline',
-				component: 'timeline',
-				title: 'timeline',
-				position: { referencePanel: 'viewport', direction: 'below' },
-				initialHeight: 180,
-				minimumHeight: 48
-			});
-			dockview.addPanel({
-				id: 'outliner',
-				component: 'outliner',
-				title: 'outliner',
-				position: { referencePanel: 'viewport', direction: 'right' },
-				initialWidth: 280,
-				minimumWidth: 160
-			});
-			dockview.addPanel({
-				id: 'properties',
-				component: 'properties',
-				title: 'properties',
-				position: { referencePanel: 'outliner', direction: 'below' },
-				initialHeight: 300
-			});
-			dockview.addPanel({
-				id: 'statusbar',
-				component: 'statusbar',
-				title: 'statusbar',
-				position: { referencePanel: 'timeline', direction: 'below' },
-				initialHeight: 26,
-				minimumHeight: 22
-			});
+		// The stored layout is applied in the first animation-frame pass instead of
+		// here: at this point the container has not been sized yet (the overlay is
+		// positioned from `visualViewport` in an effect that has not run), so
+		// dockview would fit the restored tree into a wrong dimension.
+		pendingRestore = workspaceState.panelLayout !== null;
+		if (!pendingRestore) {
+			buildDefaultLayout();
+			applyDefaultSizes = true;
 		}
-
-		// Dockview groups have a 100px default minimum of their own. Relax only
-		// the compact Blender chrome groups so the requested initial heights can
-		// take effect without changing the panel constraints above.
-		dockview.getPanel('menu')?.group.api.setConstraints({ minimumHeight: 28 });
-		dockview.getPanel('timeline')?.group.api.setConstraints({ minimumHeight: 48 });
-		dockview.getPanel('statusbar')?.group.api.setConstraints({ minimumHeight: 22 });
-		dockview.getPanel('menu')?.group.api.setSize({ height: 58 });
-		dockview.getPanel('timeline')?.group.api.setSize({ height: 180 });
-		dockview.getPanel('statusbar')?.group.api.setSize({ height: 26 });
 		captureDockviewLayout();
 
 		disposeTabMenu = registerMenuItems(WORKSPACE_TAB_MENU_ID, tabMenuItems);
@@ -456,8 +593,8 @@
 		removeViewportListeners = undefined;
 		viewportResizeObserver?.disconnect();
 		viewportResizeObserver = undefined;
-		layoutSubscription?.dispose();
-		layoutSubscription = undefined;
+		for (const subscription of layoutSubscriptions) subscription.dispose();
+		layoutSubscriptions = [];
 		container.removeEventListener('contextmenu', handleTabContextMenu);
 		disposeTabMenu?.();
 		disposeTabMenu = undefined;
@@ -469,27 +606,11 @@
 <div
 	bind:this={container}
 	class="dockview-container"
+	class:minimized
 	style:width={containerWidth}
 	style:height={containerHeight}
 	style:zoom={workspaceZoom}
->
-	<div class="ui-scale-control" role="group" aria-label="界面缩放">
-		<button
-			type="button"
-			aria-label="缩小界面"
-			disabled={workspaceState.uiScale <= UI_SCALE_MIN}
-			onclick={() => changeUiScale(-UI_SCALE_STEP)}
-		>−</button>
-		<output aria-label="当前界面缩放" aria-live="polite">{workspaceState.uiScale.toFixed(2)}×</output>
-		<button
-			type="button"
-			aria-label="放大界面"
-			disabled={workspaceState.uiScale >= UI_SCALE_MAX}
-			onclick={() => changeUiScale(UI_SCALE_STEP)}
-		>+</button>
-		<button type="button" aria-label="重置界面缩放" onclick={resetUiScale}>重置</button>
-	</div>
-</div>
+></div>
 
 <style>
 	:global(html),
@@ -506,9 +627,12 @@
 		top: 0;
 		left: 0;
 		box-sizing: border-box;
-		/* 这四个变量与 app.css :root 的全局 token 值一致，直接用全局值。 */
 		z-index: 0;
 		overflow: hidden;
+		/* 工作区铺满整个 overlay（没有外边距 / 圆角），面板一直贴到视口边缘。
+		 * 容器本身不能有底色——视口那一格是真正的洞（宿主网页从那里透出来），
+		 * 底色只能由各个面板自己画：`--dv-group-view-background-color` 指回 chrome
+		 * 底色，只有视口那一组把它改回 transparent。 */
 		background: var(--gpen-workspace-background);
 		color: var(--gpen-panel-foreground);
 		font-family: var(--gpen-font-sans);
@@ -519,54 +643,20 @@
 		pointer-events: none;
 	}
 
-	.ui-scale-control {
-		position: absolute;
-		top: 0.5lh;
-		right: 1.25ch;
-		z-index: 20;
-		display: flex;
-		align-items: center;
-		gap: 0.5ch;
-		padding: 0.25lh 0.5ch;
-		border: 1px solid var(--gpen-panel-border);
-		border-radius: 0.35rem;
-		background: rgb(255 255 255 / 0.94);
-		box-shadow: 0 2px 8px rgb(15 23 42 / 0.12);
-		color: var(--gpen-panel-foreground);
+	/* 最小化只是隐藏，不卸载：dockview 的实例、面板尺寸和浮动组都原样留着，
+	 * 还原时不需要从存储里重建布局（那正是尺寸失真的来源）。
+	 *
+	 * 隐藏必须显式写到整棵子树：dockview 会给 `.dv-view` 挂一个 `visible` class，
+	 * 而 Tailwind 的 `.visible` 工具类正好也是 `visibility: visible`，于是它把继承下来
+	 * 的 hidden 顶掉了。组件样式不在 `@layer utilities` 里，所以这里能压过它。 */
+	.dockview-container.minimized,
+	.dockview-container.minimized :global(*) {
+		visibility: hidden;
 	}
 
-	.ui-scale-control button {
-		min-width: 4.25ch;
-		height: 1.5lh;
-		padding: 0 1ch;
-		border: 1px solid var(--gpen-panel-border);
-		border-radius: var(--gpen-radius);
-		background: var(--gpen-panel-background);
-		color: inherit;
-		font: inherit;
-		cursor: pointer;
-	}
-
-	.ui-scale-control button:hover:not(:disabled) {
-		background: #e9eef5;
-	}
-
-	.ui-scale-control button:disabled {
-		opacity: 0.45;
-		cursor: not-allowed;
-	}
-
-	.ui-scale-control output {
-		min-width: 8.5ch;
-		font-variant-numeric: tabular-nums;
-		text-align: center;
-	}
-
-	/* Dockview paints its shell and groups with theme variables by default. Keep
-	 * those layers transparent so only the panel components paint their own
-	 * surfaces; the viewport can then reveal the page gradient underneath. */
+	/* dockview 的 shell 和 content 层不上色，由面板组件自己画表面。
+	 * group 层保留 `--dv-group-view-background-color`（= chrome 底色）。 */
 	:global(.dockview-container .dv-dockview),
-	:global(.dockview-container .dv-groupview),
 	:global(.dockview-container .dv-content-container) {
 		background-color: transparent;
 	}
@@ -582,22 +672,25 @@
 
 	:global(.dockview-container .dv-groupview:has(.blender-panel-viewport)) {
 		pointer-events: none;
+		/* 洞：这一组不画底色，宿主网页直接透出来。 */
+		background-color: transparent;
 	}
 
 	:global(.dockview-container .dv-groupview:has(.blender-panel-viewport) > .dv-tabs-and-actions-container),
 	:global(.dockview-container .dv-groupview:has(.blender-panel-viewport) .axis-gizmo),
 	:global(.dockview-container .dv-sash),
 	:global(.dockview-container .dv-resize-handle),
-	:global(.dockview-container .dv-drop-target-container),
-	.ui-scale-control {
+	:global(.dockview-container .dv-drop-target-container) {
 		pointer-events: auto;
 	}
 
-	/* The menu and status bar are chrome rather than dockable work areas. Keep
-	 * their compact requested heights usable by removing only those two tab
-	 * strips; the remaining panels retain their tab title bars for context menus. */
+	/* Chrome panels are not dockable work areas: their title bar would only
+	 * repeat what the panel already shows, and the tool rail is too narrow for a
+	 * title. Removing the strip keeps their full height for content; the tab
+	 * context menu (float / popout / close) stays available on the other panels. */
 	:global(.dockview-container .dv-groupview:has(.blender-panel-menu) > .dv-tabs-and-actions-container),
-	:global(.dockview-container .dv-groupview:has(.blender-panel-statusbar) > .dv-tabs-and-actions-container) {
+	:global(.dockview-container .dv-groupview:has(.blender-panel-statusbar) > .dv-tabs-and-actions-container),
+	:global(.dockview-container .dv-groupview:has(.blender-panel-tools) > .dv-tabs-and-actions-container) {
 		display: none;
 	}
 

@@ -1,26 +1,85 @@
 <script lang="ts">
-	const frames = [1, 24, 48, 72, 96, 120, 144, 192, 216];
+	import '@spectrum-web-components/icons-workflow/icons/sp-icon-fast-forward.js';
+	import '@spectrum-web-components/icons-workflow/icons/sp-icon-play.js';
+	import '@spectrum-web-components/icons-workflow/icons/sp-icon-rewind.js';
+
+	// 静态占位的时间轴：帧列宽固定（`--frame-width`），标尺、关键帧、播放头都按同一个
+	// 宽度换算位置，所以缩放面板宽度时三者不会错位。
+	const COLUMN_FRAMES = 12; // 每 COLUMN_FRAMES 帧标一个数字（CSS 侧用 --frames-per-tick 对齐）
+	const COLUMN_COUNT = 8; // 标尺上画多少列
+	const frames = Array.from({ length: COLUMN_COUNT }, (_, index) => index * COLUMN_FRAMES + 1);
+
+	const firstFrame = 1;
+	const lastFrame = 250;
+	const currentFrame = 24;
+	const fps = 24;
+
+	const layers = [
+		{ id: 'summary', name: '汇总', active: false, summary: true, weight: '' },
+		{ id: 'stroke', name: 'Stroke', active: true, weight: '1.00' },
+		{ id: 'fills', name: 'Fills', active: false, weight: '1.00' }
+		// 行高固定 2lh，和右侧帧网格逐行对齐；默认面板高度按 3 行算，
+		// 再多就要滚动（layer-list 已设 overflow-y: auto）。
+	];
+
+	// 关键帧按帧号放，左侧偏移用帧号换算，确保和标尺同一坐标系。
+	const keyframes = [1, 25, 73, 121];
+	const playheadFrame = currentFrame;
 </script>
 
-<div class="blender-panel blender-panel-timeline" aria-label="时间轴和图层">
-	<div class="timeline-toolbar"><span class="editor-label">时间轴</span><span>视图</span><span>选择</span><span>标记</span><span class="toolbar-spacer"></span><span>▣</span><span>⚙</span></div>
+<div
+	class="blender-panel blender-panel-timeline"
+	aria-label="时间轴和图层"
+	style:--frames-per-tick={COLUMN_FRAMES}
+>
+	<div class="timeline-toolbar">
+		<span class="editor-chip">时间轴</span>
+		<button type="button">视图</button>
+		<button type="button">选择</button>
+		<button type="button">标记</button>
+		<span class="spacer"></span>
+		<span class="frame-readout">帧 {currentFrame} / {lastFrame}</span>
+		<span class="frame-readout">{fps} fps</span>
+	</div>
+
 	<div class="timeline-main">
 		<div class="layer-list">
-			<div class="layer-summary">⌄ 汇总</div>
-			<div class="layer-row active"><span>⌄</span><strong>● Stroke</strong></div>
-			<div class="layer-row"><span></span><span>Lines</span><em>1.00</em></div>
-			<div class="layer-row"><span></span><span>Fills</span><em>1.00</em></div>
+			<!-- 和标尺等高的一行：让图层行与右侧的帧行一一对齐（两边都是 2lh）。 -->
+			<div class="layer-head">图层</div>
+			{#each layers as layer (layer.id)}
+				<div class="layer-row" class:active={layer.active} class:summary={layer.summary}>
+					<span class="layer-name">{layer.name}</span>
+					{#if layer.weight}<em>{layer.weight}</em>{/if}
+				</div>
+			{/each}
 		</div>
+
 		<div class="frame-area">
 			<div class="frame-ruler">
 				{#each frames as frame}
-					<span>{frame}</span>
+					<span class="frame-tick">{frame}</span>
 				{/each}
 			</div>
-			<div class="frame-grid"><span class="playhead"></span><span class="keyframe"></span></div>
+			<div class="frame-grid">
+				{#each keyframes as frame (frame)}
+					<span class="keyframe" style:left={`calc((${frame - firstFrame}) * var(--frame-width))`}></span>
+				{/each}
+				<span
+					class="playhead"
+					style:left={`calc((${playheadFrame - firstFrame}) * var(--frame-width))`}
+				></span>
+			</div>
 		</div>
 	</div>
-	<div class="timeline-footer"><span>▶ 播放</span><span>◆ 插帧</span><span class="footer-spacer"></span><span>帧：1 / 250</span></div>
+
+	<div class="timeline-footer">
+		<span class="transport" role="group" aria-label="播放控制">
+			<button type="button" aria-label="回到起点"><sp-icon-rewind></sp-icon-rewind></button>
+			<button type="button" aria-label="播放"><sp-icon-play></sp-icon-play></button>
+			<button type="button" aria-label="到结尾"><sp-icon-fast-forward></sp-icon-fast-forward></button>
+		</span>
+		<button type="button" class="keyframe-button">◆ 插入关键帧</button>
+	</div>
 </div>
 
 <style>
@@ -30,36 +89,71 @@
 		height: 100%;
 		min-width: 0;
 		min-height: 0;
-		font: 12px/var(--gpen-line-height) var(--gpen-font-sans);
+		font: var(--gpen-font-size)/var(--gpen-line-height) var(--gpen-font-sans);
 	}
 
 	.blender-panel-timeline {
+		/* 帧列宽：标尺、网格、关键帧、播放头全部按它换算。 */
+		--frame-width: 3.5ch;
 		display: flex;
 		flex-direction: column;
 		overflow: hidden;
-		background: #262626;
-		color: #cfcfcf;
+		background: var(--gpen-panel-background);
+		color: var(--gpen-panel-foreground);
 	}
 
 	.timeline-toolbar,
 	.timeline-footer {
 		display: flex;
 		align-items: center;
-		gap: 2.5ch;
-		min-height: 1.75lh;
-		padding: 0 1.4ch;
-		background: #303030;
-		color: #bdbdbd;
+		gap: 0.5ch;
+		min-height: 2.2lh;
+		padding: 0 1ch;
+		background: var(--gpen-chrome-background-subtle);
 	}
 
-	.editor-label {
-		color: #f2f2f2;
+	.timeline-toolbar {
+		border-bottom: 1px solid var(--gpen-panel-border);
+	}
+
+	.timeline-footer {
+		border-top: 1px solid var(--gpen-panel-border);
+	}
+
+	.timeline-toolbar button,
+	.timeline-footer button {
+		height: 1.8lh;
+		padding: 0 1ch;
+		border: 1px solid transparent;
+		border-radius: var(--gpen-radius-sm);
+		background: transparent;
+		color: var(--gpen-panel-muted);
+		font: inherit;
+		cursor: pointer;
+	}
+
+	.timeline-toolbar button:hover,
+	.timeline-footer button:hover {
+		border-color: var(--gpen-panel-border);
+		background: var(--gpen-panel-background-hover);
+		color: var(--gpen-panel-foreground);
+	}
+
+	.editor-chip {
+		padding: 0 1ch;
 		font-weight: 600;
+		color: var(--gpen-panel-accent);
 	}
 
-	.toolbar-spacer,
-	.footer-spacer {
+	.spacer {
 		flex: 1;
+	}
+
+	.frame-readout {
+		padding: 0 0.75ch;
+		color: var(--gpen-panel-muted);
+		font-size: 11px;
+		font-variant-numeric: tabular-nums;
 	}
 
 	.timeline-main {
@@ -69,82 +163,146 @@
 	}
 
 	.layer-list {
-		width: clamp(24ch, 24%, 45ch);
+		width: clamp(18ch, 22%, 32ch);
 		flex: 0 0 auto;
-		border-right: 1px solid #444;
-		background: #292929;
+		overflow-y: auto;
+		border-right: 1px solid var(--gpen-panel-border);
+		background: var(--gpen-panel-background);
 	}
 
-	.layer-summary,
 	.layer-row {
 		display: flex;
 		align-items: center;
-		gap: 1.25ch;
-		min-height: 1.5lh;
-		padding: 0 1.5ch;
+		gap: 1ch;
+		min-height: 2lh;
+		padding: 0 1.25ch;
+		border-left: 2px solid transparent;
 	}
 
-	.layer-summary {
-		background: #3b2c2d;
-		color: #f0b2b2;
+	.layer-row.summary {
+		color: var(--gpen-panel-muted);
+		background: color-mix(in srgb, var(--gpen-panel-border) 45%, transparent);
 	}
 
 	.layer-row.active {
-		background: #27496d;
-		color: #f0c35e;
+		border-left-color: var(--gpen-panel-accent);
+		background: var(--gpen-panel-selection);
+		color: var(--gpen-panel-foreground);
+	}
+
+	.layer-name {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
 	.layer-row em {
 		margin-left: auto;
-		color: #bdbdbd;
+		color: var(--gpen-panel-muted);
 		font-style: normal;
+		font-variant-numeric: tabular-nums;
 	}
 
 	.frame-area {
+		display: flex;
+		flex-direction: column;
 		flex: 1;
 		min-width: 0;
 		overflow: hidden;
 	}
 
-	.frame-ruler {
+	.layer-head {
 		display: flex;
-		justify-content: space-around;
-		min-height: 1.5lh;
-		border-bottom: 1px solid #444;
-		color: #999;
-		font-variant-numeric: tabular-nums;
+		align-items: center;
+		min-height: 2lh;
+		padding: 0 1.25ch;
+		border-bottom: 1px solid var(--gpen-panel-border);
+		color: var(--gpen-panel-muted);
+		font-size: 11px;
 	}
 
-	.frame-ruler span {
+	.frame-ruler {
+		display: flex;
+		min-height: 2lh;
+		border-bottom: 1px solid var(--gpen-panel-border);
+		color: var(--gpen-panel-muted);
+		font-size: 11px;
+		font-variant-numeric: tabular-nums;
+		overflow: hidden;
+	}
+
+	.frame-tick {
+		/* 一列 = COLUMN_FRAMES 帧，才能和每帧一条的网格线对齐。 */
+		flex: 0 0 calc(var(--frames-per-tick) * var(--frame-width));
+		padding-left: 0.5ch;
 		padding-top: 0.5lh;
+		border-left: 1px solid color-mix(in srgb, var(--gpen-panel-border) 70%, transparent);
 	}
 
 	.frame-grid {
 		position: relative;
-		height: calc(100% - 1.5lh);
-		background: repeating-linear-gradient(90deg, transparent 0 47px, rgb(255 255 255 / 0.07) 48px 49px), repeating-linear-gradient(0deg, transparent 0 24px, rgb(255 255 255 / 0.05) 25px 26px);
+		flex: 1;
+		min-height: 0;
+		/* 列 = 帧（与标尺同一 --frame-width），行 = 2lh，和左侧图层列表的行高对齐。 */
+		background-image:
+			repeating-linear-gradient(
+				90deg,
+				color-mix(in srgb, var(--gpen-panel-border) 55%, transparent) 0 1px,
+				transparent 1px var(--frame-width)
+			),
+			repeating-linear-gradient(
+				180deg,
+				color-mix(in srgb, var(--gpen-panel-border) 45%, transparent) 0 1px,
+				transparent 1px 2lh
+			);
 	}
 
 	.playhead {
 		position: absolute;
 		top: 0;
 		bottom: 0;
-		left: 4%;
-		width: 0.25ch;
-		background: #5ca9ef;
+		width: 1px;
+		background: var(--gpen-panel-accent);
+		box-shadow: 0 0 6px color-mix(in srgb, var(--gpen-panel-accent) 60%, transparent);
+	}
+
+	.playhead::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: -0.5ch;
+		width: 1ch;
+		height: 0.8lh;
+		border-radius: 0 0 var(--gpen-radius-sm) var(--gpen-radius-sm);
+		background: var(--gpen-panel-accent);
 	}
 
 	.keyframe {
 		position: absolute;
-		left: calc(4% - 0.75ch);
-		top: 1lh;
-		width: 1.5ch;
-		height: 0.5lh;
-		transform: rotate(45deg);
-		background: #f1bf50;
+		/* 第二行（Stroke）的垂直中心：行高 = 2lh。 */
+		top: calc(3lh - 0.45ch);
+		width: 0.9ch;
+		height: 0.9ch;
+		transform: translateX(-0.45ch) rotate(45deg);
+		border-radius: 1px;
+		background: var(--gpen-panel-accent);
+		opacity: 0.75;
 	}
 
-	:global(.dockview-container .dv-groupview .blender-panel-timeline) {
-		background: #262626;
+	.transport {
+		display: flex;
+		align-items: center;
+		gap: 0.25ch;
+	}
+
+	.keyframe-button {
+		margin-left: 1.5ch;
+	}
+
+	.blender-panel-timeline :global(sp-icon-rewind),
+	.blender-panel-timeline :global(sp-icon-play),
+	.blender-panel-timeline :global(sp-icon-fast-forward) {
+		--mod-icon-size: 1.2lh;
+		color: inherit;
 	}
 </style>

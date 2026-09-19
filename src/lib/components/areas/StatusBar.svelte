@@ -1,7 +1,16 @@
-<script lang="ts"></script>
+<script lang="ts">
+	// 状态栏 = 一行提示 + 右端版本号。所有项都是只读文本（真正的快捷键提示以后
+	// 由工具上下文推导），所以这里不需要任何交互元素。
+	const items = ['平移', '图层：Stroke', '帧：1', '绘画'];
+</script>
 
 <div class="blender-panel blender-panel-statusbar" aria-label="状态栏">
-	<span>平移</span><span class="divider">|</span><span>图层：Stroke</span><span class="divider">|</span><span>帧：1</span><span class="divider">|</span><span>绘画</span>
+	{#each items as item, index (item)}
+		{#if index > 0}<span class="divider" aria-hidden="true"></span>{/if}
+		<span>{item}</span>
+	{/each}
+	<span class="spacer"></span>
+	<span class="version">gpen {__GPEN_VERSION__}</span>
 </div>
 
 <style>
@@ -17,19 +26,25 @@
 	.blender-panel-statusbar {
 		display: flex;
 		align-items: center;
-		gap: 1ch;
+		gap: 1.25ch;
 		overflow: hidden;
 		padding: 0 1.5ch;
-		background: #1f1f1f;
-		color: #aaa;
+		background: var(--gpen-chrome-background);
+		color: var(--gpen-panel-muted);
 		white-space: nowrap;
 	}
 
 	.divider {
-		color: #555;
+		width: 1px;
+		height: 1.2lh;
+		background: var(--gpen-panel-border);
 	}
 
-	:global(.dockview-container .dv-groupview .blender-panel-statusbar) {
-		background: #1f1f1f;
+	.spacer {
+		flex: 1;
+	}
+
+	.version {
+		opacity: 0.75;
 	}
 </style>

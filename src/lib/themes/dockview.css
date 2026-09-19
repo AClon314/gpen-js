@@ -1,0 +1,102 @@
+/*
+ * dockview 主题桥：把 dockview 的 `--dv-*` 变量映射到 gpen token。
+ *
+ * 结构（tab 条、sash、drop preview、浮动组）仍由 dockview 自己的样式表负责，
+ * 这里只做两件事：
+ *   1. 颜色 / 尺寸全部指回 `--gpen-*`，让工作区随白天/夜间 token 一起变；
+ *   2. 把 tab 条改造成 Blender 风格的面板标题栏（单行、无关闭按钮、活动项下划线）。
+ *
+ * 用法：`createDockview(el, { theme: { className: 'gpen-dockview', … } })`，
+ * 并在引入 `dockview/dist/styles/dockview.css` **之后**引入本文件。
+ */
+
+.gpen-dockview {
+	/* 组：面板本体。用 chrome 底色而不是面板底色——面板内容会自己盖一层，
+	 * 真正需要这层底色的只有面板之间的缝和没有内容的组。 */
+	--dv-group-view-background-color: var(--gpen-chrome-background);
+	--dv-tabs-and-actions-container-background-color: var(--gpen-chrome-background-subtle);
+	--dv-activegroup-visiblepanel-tab-background-color: var(--gpen-chrome-background-subtle);
+	--dv-activegroup-hiddenpanel-tab-background-color: var(--gpen-chrome-background-subtle);
+	--dv-inactivegroup-visiblepanel-tab-background-color: var(--gpen-chrome-background-subtle);
+	--dv-inactivegroup-hiddenpanel-tab-background-color: var(--gpen-chrome-background-subtle);
+	--dv-activegroup-visiblepanel-tab-color: var(--gpen-panel-foreground);
+	--dv-activegroup-hiddenpanel-tab-color: var(--gpen-panel-muted);
+	--dv-inactivegroup-visiblepanel-tab-color: var(--gpen-panel-muted);
+	--dv-inactivegroup-hiddenpanel-tab-color: var(--gpen-panel-muted);
+	--dv-tab-divider-color: var(--gpen-panel-border);
+	/* dockview 把 separator 同时当 border 颜色和 background-color 用，所以给颜色本身。 */
+	--dv-separator-border: var(--gpen-panel-border);
+
+	/* 标题栏：2 个 token 行高 */
+	--dv-tabs-and-actions-container-height: calc(2 * var(--gpen-line-height) * 1lh);
+	--dv-tabs-and-actions-container-font-size: 12px;
+
+	/* sash：命中区保留 dockview 默认的 4px，但只在 hover / 拖动时显形（静止时靠 outline 分界）。 */
+	--dv-sash-color: transparent;
+	--dv-active-sash-color: color-mix(in srgb, var(--gpen-panel-accent) 45%, transparent);
+	--dv-active-sash-transition-delay: 0s;
+
+	/* 拖放 */
+	--dv-drag-over-background-color: color-mix(in srgb, var(--gpen-panel-accent) 22%, transparent);
+	--dv-drag-over-border-color: var(--gpen-panel-accent);
+	--dv-edge-dock-indicator-color: var(--gpen-panel-accent);
+	--dv-icon-hover-background-color: var(--gpen-panel-background-hover);
+
+	/* 浮动组 / 弹出组 */
+	--dv-floating-titlebar-height: calc(2 * var(--gpen-line-height) * 1lh);
+	--dv-floating-titlebar-background-color: var(--gpen-chrome-background-subtle);
+	--dv-floating-border: 1px solid var(--gpen-panel-border);
+	--dv-floating-box-shadow: var(--gpen-panel-shadow);
+	--dv-floating-group-border: 1px solid var(--gpen-panel-border);
+}
+
+/* 面板边界：dockview 的 sash 默认透明，相邻面板同色时看不出分界。
+ * 用 inset outline 画在组自己身上——不占布局、也不依赖 sash 的命中区宽度。 */
+.gpen-dockview .dv-groupview {
+	outline: 1px solid var(--gpen-panel-border);
+	outline-offset: -1px;
+}
+
+/* 拖拽 tab 时跟随指针的 ghost 标签 */
+.gpen-dockview .dv-tab-ghost-drag {
+	background: var(--gpen-panel-background);
+	border: 1px solid var(--gpen-panel-accent);
+	border-radius: var(--gpen-radius);
+	box-shadow: var(--gpen-panel-shadow);
+	color: var(--gpen-panel-foreground);
+}
+
+/* --- 标题栏：当作 Blender 的 area header ---------------------------------- */
+
+.gpen-dockview .dv-tabs-and-actions-container {
+	border-bottom: 1px solid var(--gpen-panel-border);
+}
+
+.gpen-dockview .dv-tab .dv-default-tab {
+	padding-inline: 1.25ch;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+}
+
+/* 标题是拖拽手柄，不是可关闭的浏览器标签：去掉关闭按钮与 tab 之间的分隔竖线。 */
+.gpen-dockview .dv-tabs-container .dv-tab:not(:first-child)::before {
+	display: none;
+}
+
+.gpen-dockview .dv-tab .dv-default-tab-action {
+	display: none;
+}
+
+.gpen-dockview .dv-tab.dv-active-tab {
+	box-shadow: inset 0 -2px 0 var(--gpen-panel-accent);
+}
+
+.gpen-dockview .dv-tab:hover {
+	background: var(--gpen-panel-background-hover);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.gpen-dockview .dv-tab {
+		transition: background-color 120ms ease;
+	}
+}

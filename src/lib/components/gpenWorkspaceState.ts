@@ -8,6 +8,11 @@ export const UI_SCALE_MAX = 2;
 export const UI_SCALE_STEP = 0.25;
 export const UI_SCALE_DEFAULT = 1;
 
+/**
+ * Drawing tools only. "Give the page back to the user" is not a tool any more —
+ * it is the workspace's minimize action (see `collapsed`), so it lives in the
+ * title bar instead of the tool rail.
+ */
 export const TOOL_IDS = [
   "brush",
   "eraser",
@@ -17,7 +22,6 @@ export const TOOL_IDS = [
   "picker",
   "transform",
   "more",
-  "mouse",
 ] as const;
 
 export type GpenToolId = (typeof TOOL_IDS)[number];

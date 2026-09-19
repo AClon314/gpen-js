@@ -1,4 +1,7 @@
 <script lang="ts">
+	import '@spectrum-web-components/icons-workflow/icons/sp-icon-brush.js';
+	import '@spectrum-web-components/icons-workflow/icons/sp-icon-close.js';
+	import '@spectrum-web-components/icons-workflow/icons/sp-icon-maximize.js';
 	import { onDestroy, onMount } from 'svelte';
 	import { applyFakeInfiniteCanvas, guessWebLayer } from '#lib/canvas/index';
 	import { draggable, type DragPosition } from '#lib/gestures/index';
@@ -26,6 +29,16 @@
 	function openWorkspace() {
 		workspaceState.open = true;
 		workspaceState.collapsed = false;
+	}
+
+	/**
+	 * 最小化 = 把指针/触摸/键盘交还给网页：工作区整体隐藏（连带退出命中测试），
+	 * 只留两个图标按钮。`blur` 是为了不把软键盘/焦点留在工具栏按钮上。
+	 */
+	function minimizeWorkspace() {
+		workspaceState.collapsed = true;
+		const active = document.activeElement;
+		if (active instanceof HTMLElement) active.blur();
 	}
 
 	function persistBallPosition(position: DragPosition) {
@@ -154,29 +167,38 @@
 		role="dialog"
 		aria-label="gpen 工作区"
 	>
-		{#if !workspaceState.collapsed}
-			<GpenWorkspace state={workspaceState} />
-		{/if}
+		<!-- 工作区始终挂载，最小化时只是 `visibility: hidden`：dockview 实例和面板
+		     尺寸都留着，还原不需要从存储里重建布局。 -->
+		<GpenWorkspace
+			state={workspaceState}
+			minimized={workspaceState.collapsed}
+			onClose={closeWorkspace}
+			onMinimize={minimizeWorkspace}
+		/>
 
 		{#if workspaceState.collapsed}
-			<button
-				class="restore-button"
-				type="button"
-				aria-label="恢复 gpen 工作区"
-				title="恢复 gpen 工作区"
-				onclick={restoreWorkspace}
-			>恢复 gpen</button>
+			<!-- 最小化后只留两个图标按钮：还原 / 关闭。 -->
+			<div class="minimized-bar">
+				<button
+					class="restore-button"
+					type="button"
+					aria-label="还原 gpen 工作区"
+					title="还原工作区"
+					onclick={restoreWorkspace}
+				>
+					<sp-icon-maximize></sp-icon-maximize>
+				</button>
+				<button
+					class="close-button"
+					type="button"
+					aria-label="关闭 gpen"
+					title="关闭 gpen"
+					onclick={closeWorkspace}
+				>
+					<sp-icon-close></sp-icon-close>
+				</button>
+			</div>
 		{/if}
-
-		<button
-			class="close-button"
-			type="button"
-			aria-label="关闭 gpen"
-			title="关闭 gpen"
-			onclick={closeWorkspace}
-		>
-			<span aria-hidden="true">×</span>
-		</button>
 	</div>
 {:else}
 	<button
@@ -195,7 +217,7 @@
 		aria-label="打开 gpen"
 		title="打开 gpen（可拖动，吸附边缘）"
 	>
-		<span aria-hidden="true">✦</span>
+		<sp-icon-brush aria-hidden="true"></sp-icon-brush>
 	</button>
 {/if}
 
@@ -207,18 +229,23 @@
 		z-index: 2147483000;
 		isolation: isolate;
 		overflow: hidden;
+		/* 工作区铺满整个 overlay（不留外边距）。尺寸基准在这里显式声明一次，
+		 * 内层才能放心用 lh / ch。 */
+		font-family: var(--gpen-font-sans);
+		font-size: var(--gpen-font-size);
+		line-height: var(--gpen-line-height);
 		pointer-events: none;
 	}
 
 	:where(.floating-button, .close-button, .restore-button) {
-		border: 1px solid var(--gpen-panel-border, #cbd5e1);
-		color: var(--gpen-panel-foreground, #1e293b);
+		border: 1px solid var(--gpen-panel-border);
+		color: var(--gpen-panel-foreground);
 		font: 600 1rem/var(--gpen-line-height) var(--gpen-font-sans);
 		cursor: pointer;
 	}
 
 	:where(.floating-button, .close-button, .restore-button):focus-visible {
-		outline: 2px solid var(--gpen-panel-accent, #4f46e5);
+		outline: 2px solid var(--gpen-panel-accent);
 		outline-offset: 3px;
 	}
 
@@ -236,7 +263,9 @@
 		border-color: transparent;
 		border-radius: 50%;
 		background: linear-gradient(135deg, var(--gpen-panel-accent), #7c3aed);
-		box-shadow: 0 8px 20px rgb(79 70 229 / 0.3);
+		box-shadow:
+			0 8px 20px color-mix(in srgb, var(--gpen-panel-accent) 32%, transparent),
+			0 0 0 3px color-mix(in srgb, var(--gpen-panel-accent) 18%, transparent);
 		color: #fff;
 		font-size: 1.35rem;
 		touch-action: none; /* let the draggable action handle pointer drags */
@@ -247,57 +276,60 @@
 		filter: brightness(1.08);
 	}
 
-	.close-button,
-	.restore-button {
+	.floating-button :global(sp-icon-brush) {
+		--mod-icon-size: 1.4rem;
+		color: #fff;
+	}
+
+	/* 最小化后只剩这两个图标按钮，浮在网页右上角（展开态的同类按钮在标题栏里）。 */
+	.minimized-bar {
 		position: absolute;
+		top: 0.5lh;
+		right: 1.5ch;
 		z-index: 30;
+		display: flex;
+		align-items: center;
+		gap: 0.75ch;
 		pointer-events: auto;
 	}
 
-	.close-button {
-		top: 0.5lh;
-		right: 1ch;
+	:where(.restore-button, .close-button) {
 		display: grid;
 		place-items: center;
-		width: 1.25lh;
-		height: 1.25lh;
+		width: 2.4lh;
+		height: 2.4lh;
 		padding: 0;
-		border-radius: 0.4rem;
-		background: rgb(255 255 255 / 0.94);
-		box-shadow: 0 2px 8px rgb(15 23 42 / 0.16);
-		font-size: 1.5rem;
-	}
-
-	.close-button:hover {
+		border-radius: 50%;
 		background: var(--gpen-panel-background);
-		color: var(--gpen-panel-accent);
-	}
-
-	.restore-button {
-		top: 1lh;
-		right: 8.5ch;
-		min-height: 2.75lh;
-		padding: 0 1.75ch;
-		border: 1px solid var(--gpen-panel-border, #cbd5e1);
-		border-radius: 0.4rem;
-		background: rgb(255 255 255 / 0.94);
-		box-shadow: 0 2px 8px rgb(15 23 42 / 0.16);
-		color: var(--gpen-panel-foreground, #1e293b);
-		font-size: 0.75rem;
+		box-shadow: var(--gpen-panel-shadow);
 	}
 
 	.restore-button:hover {
-		background: var(--gpen-panel-background);
+		border-color: var(--gpen-panel-accent);
 		color: var(--gpen-panel-accent);
+	}
+
+	.close-button:hover {
+		border-color: var(--gpen-danger);
+		background: color-mix(in srgb, var(--gpen-danger) 14%, var(--gpen-panel-background));
+		color: var(--gpen-danger);
+	}
+
+	.restore-button :global(sp-icon-maximize),
+	.close-button :global(sp-icon-close) {
+		--mod-icon-size: 1.2rem;
+		color: inherit;
 	}
 
 	@media (prefers-reduced-motion: no-preference) {
 		.floating-button,
-		.close-button {
+		.close-button,
+		.restore-button {
 			transition:
 				box-shadow 120ms ease,
 				filter 120ms ease,
 				background-color 120ms ease,
+				border-color 120ms ease,
 				color 120ms ease;
 		}
 	}

@@ -1,6 +1,54 @@
 # Gpen 面板系统
 
-状态：设计稿（2026-08-28）
+状态：设计稿（2026-08-28）；下节是 2026-09-19 的实现快照。
+
+## 当前实现（快照 2026-09-19）
+
+下面这些是已落地的结构，读后续设计稿时以它们为前提：
+
+- **外壳**：`GpenOverlay` 的 `.overlay` 是绝对定位（跟 `visualViewport` 走）的盒子，
+  `GpenWorkspace` 的 dockview 容器铺满它（没有外边距 / 圆角），面板一直贴到视口边缘。
+  容器**没有底色**（否则视口就不再是“洞”），底色由各面板自己画；
+  `--dv-group-view-background-color` 只给组一层 chrome 底色，视口那一组再覆盖回 `transparent`。
+- **标题栏就是 menu 面板**（`areas/TopBar.svelte`，它的 tab 条被隐藏）：第一行是应用菜单 +
+  工作区切换 + 界面缩放 + 关闭，第二行是工具设置。`uiScale` / 关闭这两个动作由
+  `GpenOverlay` 用 props 注入（`onChangeUiScale` / `onResetUiScale` / `onClose`），
+  所以它们和菜单处在同一条视觉带上，而不是压在面板上的浮层。
+- **分区标题**：menu / statusbar / tools 三组隐藏 dockview 的 tab 条（`:has(...)` 选择器），
+  它们的标题要么和内容重复、要么窄到放不下；其余面板把 tab 条当 Blender 的 area header 用
+  （中文标题、无关闭按钮、活动项 accent 下划线，右键仍出 dock/view 菜单）。
+- **视口 = 洞**：`blender-panel-viewport` 所在组 `pointer-events: none` + 透明背景，
+  只有 axis gizmo、tab 条、sash、drop overlay 各自 opt-in，宿主网页从洞里拿到指针事件。
+- **工具条**为 62px 宽的 rail（`2.4lh` 方形按钮）；图标用 Spectrum workflow 图标，
+  和取色器同一套视觉语言。rail 里**只有绘图工具**：`TOOL_IDS` 不含「交还网页」，
+  那个动作是工作区的最小化。
+- **最小化**是标题栏里「关闭」左边的按钮（`onMinimize` → `workspaceState.collapsed`）：
+  工作区整体 `visibility` 隐藏（连带退出命中测试），页面拿回指针 / 触摸 / 键盘，
+  右上角只剩 `还原` / `关闭` 两个图标按钮。**关键实现**：最小化只是隐藏，**不卸载**
+  `GpenWorkspace` —— dockview 实例、面板尺寸、浮动组全部原样留着，还原不需要重建。
+  另外隐藏要显式写到整棵子树：dockview 给 `.dv-view` 挂的 `visible` class 与 Tailwind
+  的 `.visible` 工具类同名，会把继承下来的 hidden 顶掉（组件样式不在 `@layer utilities`，
+  所以能压过它）。
+- **属性面板**直接吃 `InputSlider`（半径带 `STD_UNITS.length`），所以面板里的数值行为与
+  `/demo/widgets` 一致，不是另写一套只读展示。
+- **默认尺寸**在首次 layout 之后用 `group.api.setSize()` 显式设置：`addPanel` 的
+  `initialWidth` / `initialHeight` 只对“新建组”的面板生效，split 出来的组会退回组最小值。
+- **持久化**：`panelLayout` 存 dockview 的 `toJSON()`，`uiScale` / `activeTool` / 浮球位置
+  存在同一个 `gpen.workspaceState` 记录里（见 `components/gpenWorkspaceState.ts`）。
+  记忆布局有三个必须守住的点（踩过坑，都是"面板越还原越大 / 越还原越空"的来源）：
+  1. **只在真实尺寸下取快照**：刚挂载时 dockview 还停在它自己的默认尺寸（100×100），
+     此时每个面板都卡在最小值，`toJSON()` 存下来就是一个坏布局，下次还原会被摊回真实尺寸；
+     `captureDockviewLayout` 因此要求 `dockview.width/height` 与当前容器尺寸一致。
+  2. **结构变更和尺寸变更都要订**：`onDidMutateLayout` 不管 sash 拖动，只订它的话用户拖过的
+     面板宽度根本不会被持久化，所以同时订 `onDidLayoutChange`（尺寸变更走这条）。
+  3. **还原要等第一趟 layout**：容器尺寸来自 `visualViewport`，`onMount` 时还没算出来；
+     `fromJSON` 必须在第一趟 layout 之后跑，否则会被塞进错误的维度里重新分摊。
+     空的（没有面板）或尺寸过小（< 120px）的存储布局一律视为坏布局，重建默认布局。
+     **记忆的代价**：改过默认布局之后，老用户看到的还是存下来的那份，所以要有一条重置路径——
+     标题栏「窗口」是个原生 `<select>`，`重置面板布局` 会清掉 `panelLayout` 并重建默认布局
+     （`clear()` + `buildDefaultLayout()` + 在下一趟 layout 落默认尺寸）。
+- **配色**：工作区不写死颜色，全部走 `--gpen-*`（白天 / 夜间两套）；dockview 的 `--dv-*`
+  由 `themes/dockview.css` 桥接到同一套 token，见 `docs/theme.md`。
 
 ## 下个版本范围
 
@@ -92,13 +140,13 @@ header 必须始终可见，并且不能把所有操作藏在拖拽手势里。�
 
 ### Collapse、hide、pin 的区别
 
-| 状态           | 是否占空间          | 是否仍在当前布局        | 如何恢复         |
-| -------------- | ------------------- | ----------------------- | ---------------- |
-| expanded       | 是                  | 是                      | 收起或关闭       |
-| collapsed/rail | 只保留图标或窄 rail | 是                      | 点击图标         |
-| hidden         | 否                  | 是，仍在 workspace      | 面板菜单或工具栏 |
-| pinned         | 取决于所在区域      | 跨 tab/context 继续显示 | 取消 pin         |
-| closed         | 否                  | 否，实例被移除          | 面板菜单重新打开 |
+| 状态      | 是否占空间          | 是否仍在当前布局        | 如何恢复         |
+| --------- | ------------------- | ----------------------- | ---------------- |
+| expanded  | 是                  | 是                      | 收起或关闭       |
+| minimized | 否（只剩还原/关闭） | 是（实例保持挂载）      | 点击还原图标     |
+| hidden    | 否                  | 是，仍在 workspace      | 面板菜单或工具栏 |
+| pinned    | 取决于所在区域      | 跨 tab/context 继续显示 | 取消 pin         |
+| closed    | 否                  | 否，实例被移除          | 面板菜单重新打开 |
 
 Blender 的面板收起、批量展开/收起、排序 grip、pin 和 preset 值得保留为 gpen 的后续能力。Adobe 式“Collapse to Icons”适合窄屏和浮动工具栏，但图标必须有 tooltip、键盘名称和稳定的恢复位置。
 

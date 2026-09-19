@@ -28,6 +28,18 @@
 	--gpen-panel-accent: #4f46e5;
 	--gpen-panel-shadow: 0 2px 8px rgb(15 23 42 / 0.12);
 
+	/* workspace chrome：工作区外壳（菜单栏 / 标题栏 / 状态栏）与面板内部的次级表面。
+	 * 面板本体用 --gpen-panel-background，chrome 比它暗一档，形成"外壳包住面板"的层次。 */
+	--gpen-chrome-background: #e6eaf1;
+	--gpen-chrome-background-subtle: #dde3ec;
+	--gpen-panel-background-raised: #f1f4f9;
+	--gpen-panel-background-hover: #e5eaf3;
+	--gpen-panel-selection: #dbe3fb;
+
+	/* viewport 里浮在宿主网页上的物件（坐标轴、标签）：始终按深色半透明绘制 */
+	--gpen-viewport-overlay-background: rgb(15 23 42 / 0.55);
+	--gpen-viewport-overlay-foreground: rgb(248 250 252 / 0.94);
+
 	/* semantic */
 	--gpen-danger: #d24b4b;
 
@@ -46,5 +58,11 @@
 		--gpen-panel-accent: #818cf8;
 		--gpen-panel-shadow: 0 2px 8px rgb(0 0 0 / 0.45);
 		--gpen-danger: #7f1d1d;
+
+		--gpen-chrome-background: #101827;
+		--gpen-chrome-background-subtle: #1a2436;
+		--gpen-panel-background-raised: #334155;
+		--gpen-panel-background-hover: #2a3546;
+		--gpen-panel-selection: #2f3a63;
 	}
 }
