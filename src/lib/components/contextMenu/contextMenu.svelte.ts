@@ -1,24 +1,25 @@
 // 全局右键菜单的注册表、状态和浏览器事件桥接。
+//
+// 节点模型（label/disabled/when/children/keyBind、分隔项、键盘导航）在纯函数模块
+// `menuModel.ts` 里，类型也从那里再导出，消费方继续从本模块 import 即可。
 import { observeViewport, viewportSize } from "../../visualViewport.js";
+import type { MenuItem, MenuItemProviderInput } from "./menuModel.js";
 
-export type MenuItem = {
-  label?: string | (() => string);
-  disabled?: boolean | (() => boolean);
-  action?: () => void;
-  separator?: boolean;
-  order?: number;
-  [key: string]: unknown;
-};
-
-export type MenuItemProvider = MenuItem[] | (() => MenuItem[]);
-export type ContextMenuOptions = string | MenuItemProvider;
+export type {
+  MenuItem,
+  MenuItemProvider,
+  MenuItemProviderInput,
+  MenuItemType,
+} from "./menuModel.js";
+export type ContextMenuOptions = string | MenuItemProviderInput;
 
 type RegisteredProvider = {
-  provider: MenuItemProvider;
+  provider: MenuItemProviderInput;
   sequence: number;
 };
 
 const GLOBAL_ID = "*";
+const ANONYMOUS_ID_PREFIX = "__context_menu_";
 const CONTEXT_MENU_ID_ATTRIBUTE = "data-context-menu-id";
 const LEGACY_CONTEXT_MENU_ID_ATTRIBUTE = "data-contextmenu-id";
 const TOUCH_OPT_OUT_ATTRIBUTE = "data-context-menu-touch-opt-out";
@@ -42,10 +43,10 @@ let registrationSequence = 0;
 
 function anonymousId(): string {
   anonymousIdCounter += 1;
-  return `__context_menu_${anonymousIdCounter}`;
+  return `${ANONYMOUS_ID_PREFIX}${anonymousIdCounter}`;
 }
 
-function resolveProvider(provider: MenuItemProvider): MenuItem[] {
+function resolveProvider(provider: MenuItemProviderInput): MenuItem[] {
   const items = typeof provider === "function" ? provider() : provider;
   return items ?? [];
 }
@@ -84,8 +85,25 @@ function refresh() {
   if (items.length === 0) close();
 }
 
+/**
+ * Named menu registries that are currently mounted, sorted.
+ *
+ * Anonymous ids (`contextMenu` action instances) and the global `*` bucket are
+ * excluded: they are not stable names, so they must not show up in a command
+ * palette or in generated docs. Command enumeration itself is a separate
+ * registry (see handoff T1) — this is only the menu side.
+ */
+export function listMenuIds(): string[] {
+  const ids: string[] = [];
+  for (const id of registry.keys()) {
+    if (id === GLOBAL_ID || id.startsWith(ANONYMOUS_ID_PREFIX)) continue;
+    ids.push(id);
+  }
+  return ids.sort();
+}
+
 /** Register a provider and return a token-specific disposer. */
-export function registerMenuItems(id: string, provider: MenuItemProvider): () => void {
+export function registerMenuItems(id: string, provider: MenuItemProviderInput): () => void {
   const token = Symbol("context-menu-items");
   let group = registry.get(id);
   if (!group) {
