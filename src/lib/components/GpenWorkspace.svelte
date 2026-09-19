@@ -163,6 +163,8 @@
 	/** 浮动面板与工作区边缘的最小间距（px）。 */
 	const FLOAT_MARGIN = 16;
 
+	/** 当前 `gpenStore` 使用的 debounce（构造参数，改了要重建 store）。 */
+	let appliedDebounceMs = GPEN_SAVE_DEBOUNCE_MS;
 	/// 落盘状态（设置面板只读诊断）。
 	let storageStatus = $state('未保存');
 	/// 导出走运行时选择器（monkey 宿主用 `GM_download`，普通网页用原生下载）。
@@ -229,7 +231,10 @@
 	function changeBrush(patch: Partial<BrushSettingsT>) {
 		const current = gpenDocument;
 		if (!current) return;
-		const brush = readToolbarState(current)?.brush ?? undefined;
+		// 基线是**生效值**（没有 toolbarState 时就是默认值），不是 undefined：
+		// 否则面板一挂载、取色器把默认颜色回发一次，就会把整套默认 toolbarState
+		// 写进文档（实测 352 → 720 字节）——打开设置面板不该改文档。
+		const brush = ensureToolbarState(current).brush ?? undefined;
 		const changed = changedFields(patch, brush);
 		if (Object.keys(changed).length === 0) return;
 		const next = writeBrushSettings(current, changed);
@@ -240,7 +245,7 @@
 	function changeEraser(patch: Partial<EraserSettingsT>) {
 		const current = gpenDocument;
 		if (!current) return;
-		const eraser = readToolbarState(current)?.eraser ?? undefined;
+		const eraser = ensureToolbarState(current).eraser ?? undefined;
 		const changed = changedFields(patch, eraser);
 		if (Object.keys(changed).length === 0) return;
 		const next = writeEraserSettings(current, changed);
@@ -399,6 +404,30 @@
 		viewportProps.activeTool = workspaceState.activeTool;
 		viewportProps.brush = state?.brush ?? undefined;
 		viewportProps.eraser = state?.eraser ?? undefined;
+	});
+
+	// 自动保存间隔是 `createGpenBinaryStore` 的构造参数，改了只能重建 store。
+	// 重建前**必须先把旧 store 挂起的写入刷盘**，否则最后一次编辑会丢。
+	$effect(() => {
+		const next = preferencesState().autoSaveDebounceMs;
+		const storage = runtimeStorage;
+		if (!documentReady || !storage || next === appliedDebounceMs) return;
+		appliedDebounceMs = next;
+		const previous = gpenStore;
+		gpenStore = createGpenBinaryStore({
+			kv: storage.kv,
+			blob: storage.blob,
+			cache: true,
+			debounceMs: next
+		});
+		if (!previous) return;
+		void previous.commit().then(
+			() => previous.dispose(),
+			(error) => {
+				console.debug('[gpen] ignored rejection: GpenWorkspace debounce rebuild', error);
+				previous.dispose();
+			}
+		);
 	});
 
 	// 文档变化 → debounce 落盘。`documentReady` 之前不写：load 是异步的，
@@ -1301,8 +1330,11 @@
 			kv: runtimeStorage.kv,
 			blob: runtimeStorage.blob,
 			cache: true,
-			debounceMs: GPEN_SAVE_DEBOUNCE_MS
+			// 自动保存间隔来自用户偏好（设置面板可改）。偏好是异步读的，所以这里先取
+			// 当前值（默认 250ms），读盘落定后由下面的 `$effect` 重建 store 接管。
+			debounceMs: preferencesState().autoSaveDebounceMs
 		});
+		appliedDebounceMs = preferencesState().autoSaveDebounceMs;
 		void loadStoredDocument();
 
 		// Guess the host web layer **once**, before the camera spacer exists: the

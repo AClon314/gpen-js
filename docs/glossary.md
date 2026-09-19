@@ -26,6 +26,12 @@
 | coalesce | 合并历史 | 连续手势的多次编辑并成一条 undo（`commit(state, { coalesceWith })`） |
 | anchor | 锚点 | ① 选区范围锚点（树多选）；② 菜单挂靠的按钮元素（`openAt`） |
 | typeahead | 键入跳转 | 在列表里打字母跳到匹配项（`layers/tree/typeahead.ts`） |
+| command registry | 命令注册表 | 扁平的 `id → {label, run, keyBind, when, enabled}` 集合，菜单/快捷键/命令面板共用（`lib/commands.ts`） |
+| chord | 和弦（键位组合） | 归一化后的快捷键串，`Ctrl`/`Cmd`/`Meta` 一律写成 `Mod`（`lib/commands/chord.ts`） |
+| keymap dispatcher | 键位派发器 | 唯一的 window keydown 监听，命中即 `preventDefault` + `executeCommand`（`lib/commands/keymap.ts`） |
+| floating group | 浮动组 | dockview 里脱离网格、可拖动的面板容器（类名 `.dv-groupview-floating`） |
+| `light-dark()` | CSS 颜色函数 | 按 `color-scheme` 在深浅两支里取值；主题三态的机制（`themes/day-night.css`） |
+| soft/hard/stroke eraser | 橡皮三模式 | Blender 的 Dissolve / Point / Stroke，**枚举名与直觉相反**（`docs/stroke.md`） |
 
 ## 存储
 

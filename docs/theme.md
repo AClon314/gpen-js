@@ -70,3 +70,42 @@ dockview 用 `--dv-*` 变量描述 tab 条、sash、drop preview、浮动组。�
 - 面板分界：`.dv-groupview` 自带 1px inset `outline`（sash 静止时透明，hover 才显形）。
 
 引入顺序必须在 `dockview/dist/styles/dockview.css` **之后**，否则 `--dv-*` 会被 dockview 自己的主题覆盖。
+
+## 三态：`system` / `light` / `dark`（2026-09-19）
+
+`GpenPreferences.theme` 是三态，不是「一对解析好的 token」：`system` 必须与「用户手动选了
+平台当前恰好一致的那一档」区分开。
+
+实现只有一条：每个随主题变化的 token 用 **`light-dark(浅色, 深色)`** 声明一次，
+`color-scheme` 决定取哪一支：
+
+```css
+:root,
+:host {
+	color-scheme: light dark; /* system：跟平台走 */
+	--gpen-panel-background: light-dark(#ffffff, #1e293b);
+}
+:root[data-gpen-theme='light'],
+:host([data-gpen-theme='light']) {
+	color-scheme: light;
+}
+:root[data-gpen-theme='dark'],
+:host([data-gpen-theme='dark']) {
+	color-scheme: dark;
+}
+```
+
+- `system` = **不写属性**（回到 `light dark`）；`light` / `dark` = JS 写
+  `data-gpen-theme`（`applyThemePreference` / `setThemePreference`）。
+- **不要用 `@media (prefers-color-scheme: dark)` 覆盖 token**：媒体查询无法被属性顶掉，
+  手动选 `light` 会在深色系统上被媒体查询覆盖回去（实测）。这一轮把原来的媒体查询块删掉了。
+- 不支持 `light-dark()` 的浏览器会丢掉那一行，回落到紧邻的普通值（只出浅色）——降级但不破版，
+  所以每行都写了「普通值 + `light-dark()`」两条声明。
+- `--gpen-workspace-background` 与视口浮层 token **故意不随主题**（洞要透明、浮层底下是别人的网页）。
+
+`theme.svelte.ts` 里有两个互不重叠的旋钮：`setThemePreference` 选 `light-dark()` 的哪一支
+（从不写 token 值），`setThemeToken(s)` 覆盖单个 token（从不改其它 token 走哪一支）。
+
+> 早期版本用「JS 读一次静态 token，再整套写回内联样式」来表达主题，那样既要把调色板在 TS 里
+> 再抄一遍，又表达不了 `system`（读回来的值看不出用户有没有做过选择）。`setThemeTokens`
+> 现在只服务「换肤」这种真的需要覆盖单个 token 的场景。

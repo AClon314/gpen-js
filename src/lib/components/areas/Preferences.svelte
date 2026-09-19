@@ -13,7 +13,10 @@
 	import type { GpenToolId } from '../gpenWorkspaceState';
 	import {
 		color4ToHex,
+		DEFAULT_BRUSH_SIZE,
+		DEFAULT_BRUSH_SPACING,
 		DEFAULT_BRUSH_STRENGTH,
+		DEFAULT_ERASER_SIZE,
 		DEFAULT_ERASER_STRENGTH,
 		hexToColor4,
 		normalizeColor
@@ -94,11 +97,15 @@
 
 	// 画笔 `size` 是**直径**、`Point.radius` 是半径：滑条直接用直径表述，
 	// 换算只发生在 toolbarOps（`brushRadiusOf` / `eraserRadiusOf`）。
-	const brushSize = $derived(brush?.size ?? 0);
+	//
+	// ⚠️ 回退值必须与**协议默认值**一致（`DEFAULT_BRUSH_SIZE` / `DEFAULT_ERASER_SIZE`），
+	// 不能用 `0`：`InputSlider` 会把 0 钳到 `min={1}` 并在 `$effect` 里把结果发回来，
+	// 于是「刚打开设置面板」就会把 size=1 写进文档（实测：352 → 720 字节，还会多一条 undo）。
+	const brushSize = $derived(brush?.size ?? DEFAULT_BRUSH_SIZE);
 	const brushStrength = $derived(brush?.strength ?? DEFAULT_BRUSH_STRENGTH);
-	const brushSpacing = $derived(brush?.spacing ?? 0.25);
+	const brushSpacing = $derived(brush?.spacing ?? DEFAULT_BRUSH_SPACING);
 	const brushColor = $derived(color4ToHex(brush?.color ?? undefined));
-	const eraserSize = $derived(eraser?.size ?? 0);
+	const eraserSize = $derived(eraser?.size ?? DEFAULT_ERASER_SIZE);
 	const eraserStrength = $derived(eraser?.strength ?? DEFAULT_ERASER_STRENGTH);
 	const eraserMode = $derived(String(eraser?.mode ?? EraserMode.ERASER_MODE_HARD));
 

@@ -34,6 +34,12 @@
   所以能压过它）。
 - **属性面板**直接吃 `InputSlider`（半径带 `STD_UNITS.length`），所以面板里的数值行为与
   `/demo/widgets` 一致，不是另写一套只读展示。
+- **偏好设置是浮动面板**（`areas/Preferences.svelte`，T8）：`addPanel` + `addFloatingGroup`
+  幂等打开，**不进默认布局**，保留标题栏当拖动手柄（`dragHandle: 'titlebar'`）。
+  三层数据并排：用户偏好（`gpen.preferences` KV）/ 工具栏（协议 `ToolbarState`）/ 布局
+  （`gpen.workspaceState` KV）——见 [`preferences.md`](preferences.md)。
+- **标题栏的菜单行**由 `components/menuBar.ts` 的节点表驱动（T9），节点引用命令 id，
+  快捷键提示从命令注册表读；灰掉的项带 `title` 说明。见 [`commands.md`](commands.md)。
 - **默认尺寸**在首次 layout 之后用 `group.api.setSize()` 显式设置：`addPanel` 的
   `initialWidth` / `initialHeight` 只对“新建组”的面板生效，split 出来的组会退回组最小值。
 - **持久化**：`panelLayout` 存 dockview 的 `toJSON()`，`uiScale` / `activeTool` / 浮球位置

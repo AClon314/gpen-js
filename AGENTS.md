@@ -29,7 +29,7 @@
 
 ## 样式与 token
 
-- 全局设计 token（`--gpen-*`）定义在 `src/lib/themes/day-night.css`（`:root` / `:host` 白天 + `@media (prefers-color-scheme: dark)` 夜间，静态兜底）；JS 层 `theme.svelte.ts` 读一次后接管（source of truth），见 `docs/theme.md`。`src/app.css` 是 Tailwind 入口 + `@import` 该文件，由 `+layout.svelte` 引入。
+- 全局设计 token（`--gpen-*`）定义在 `src/lib/themes/day-night.css`（`:root` / `:host` 三态：每个随主题变化的 token 一次 `light-dark(浅色, 深色)`，`color-scheme` 决定取哪支；`system` 不写属性，`light` / `dark` 由 JS 写 `data-gpen-theme`）；JS 层 `theme.svelte.ts` 接管偏好，见 `docs/theme.md`。`src/app.css` 是 Tailwind 入口 + `@import` 该文件，由 `+layout.svelte` 引入。
 - 组件用 `var(--gpen-*)` 消费；需要局部变体时**覆盖变量本身**，不要新增「传具体值」的 props。
 - 组件尺寸由调用方用**内联 `style`** 覆盖（如 `<Input style="width: 12ch" />`）。Tailwind 工具类做不到：utility 在 `@layer utilities`，而 Svelte 的 scoped 规则**无层级**（无层级永远压过带层级），特异性也更高；详见 [`docs/input.md`](docs/input.md)。
 - 长度单位见下「CSS 长度单位」。

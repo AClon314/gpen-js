@@ -137,3 +137,61 @@ cache: true, debounceMs: 250 })`：
   「交还网页」= 最小化（见 `tests/embed/embed.e2e.ts`）。
 - **性能**：每次 redraw 全量重画，没有脏矩形 / 分层缓存 / 虚拟化。
 - **历史未持久化**：刷新后历史清空（只持久化文档本身）。
+
+## 橡皮（T11）与画笔参数（T10）（2026-09-19）
+
+### 工具参数住在文档里
+
+`Gpen.toolbarState`（协议 field 10）是画笔 / 橡皮参数的真值：
+`layers` 之外的 `components/toolbarOps.ts` 负责读写（`defaultToolbarState()` /
+`readToolbarState()` / `writeToolbarState()` / `writeBrushSettings()` / `writeEraserSettings()`）。
+
+`activeTool` 有两个家，只有一个主人：
+
+- `workspaceState.activeTool`（工作区 KV）是 **UI 真值**——工具轨高亮它、reload 后还是它；
+- `ToolbarState.activeToolId` 是**镜像**，写文档时同步一份。
+
+镜像**单向**：`readToolbarState` 绝不覆盖 UI 的当前选择（载入文档不该抢用户手上的工具）。
+
+⚠️ **`BrushSettings.size` 是直径、`Point.radius` 是半径**：换算只在 `brushRadiusOf()` /
+`eraserRadiusOf()` 里做一次（`size / 2`），调用方不要自己除。
+
+### 三种擦除模式（与枚举名相反！）
+
+`EraserMode` 的**名字会骗人**，以 `vendor/upbge-blender/.../grease_pencil/erase.cc` 为准：
+
+| `EraserMode` | Blender UI 名 | gpen 实现 | 语义 |
+| --- | --- | --- | --- |
+| `SOFT` (0) | Dissolve | `eraseSoft` | smoothstep falloff 逐点降 `Point.opacity`，降到 `0.05` 以下删点 |
+| `HARD` (1) | Point | `eraseHard` | 折线与圆求交，圆内部分切掉，圆外各段成为**新笔画**（新 `Stroke.id`） |
+| `STROKE` (2) | Stroke | `eraseStrokes` | 点到折线距离 ≤ 半径 → **整笔删除** |
+
+所以实现顺序是 STROKE → SOFT → HARD（最简单到最难），不是反过来。
+
+- **`EraserTarget` 已 deprecated**：`mode` 是唯一真值，代码里**不做任何 `target` 分支**。
+  `defaultToolbarState()` 照写 `target`（保证旧读端能理解），新代码不写。派生关系见
+  `../gpen-protocol/protocol/v1/brush.tsp`。
+- **几何**：`distanceToStroke`（点到**线段**距离，投影参数 clamp 到 `[0,1]`，零长线段退化为点距，
+  平方比较只开一次方）与 `strokesHitByCircle`。同一块积木将来给套索复用。
+- **只擦当前层**（`EraserFlags.active_layer_only`，Blender 默认）：跨层擦除**没做**。
+  在 web 层 / 非可画层上拖动是 no-op，不是报错。
+- **不可变 + 引用共享**：全部返回新文档；未命中的笔画原样返回引用
+  （`eraseHard(doc, ...) === doc` 在不命中时成立）。`mapLayerStrokes` 按 `drawingIndex`
+  去重，所以一个 drawing 被多帧引用时只擦一次。
+- **一次拖动 = 一条 undo**：橡皮是连续手势，`commitErase` 用
+  `history.commit(previous, { coalesceWith })` 把整次拖动合成一条，Ctrl+Z 一次退回拖动之前。
+- **画布只上报采样点**：`strokeCanvas` 的 `onStroke(points)` / `onErase(point)` 给的是
+  **图层局部坐标**；`GpenWorkspace.commitStroke` / `commitErase` 才把它们变成协议数据
+  （画笔半径 / 颜色来自 `ToolbarState`，画布不拥有文档）。
+
+### 已知缺口（本轮明确不做）
+
+- **压感曲线**：`Point.pressure` 一直在写（`strokeCanvas.sample` 读 `event.pressure`），
+  但渲染是等宽——**存了压力，画出来是等宽的**。
+- **橡皮跨层**：见上（`active_layer_only`）。
+- **橡皮性能**：画布是**全量重画**、没有笔画包围盒索引，STROKE/SOFT 每次 pointermove 都是
+  O(strokes × points) 命中判断。几百笔没问题；要优化先加「笔画 AABB + 网格哈希」，
+  不要先上脏矩形（脏矩形解决的是重绘，不是命中测试）。
+- **笔刷预设目录 / `recentBrushPresetIds`**：字段在协议里，UI 没做。
+- **`EraserSettings.strength_factor` / `thickness_factor`**：SOFT 用的是 `strength`，
+  这两个 factor 还没接进 falloff 曲线。

@@ -154,7 +154,13 @@ export function createRuntimeGpenPreferencesStorage(
 ): GpenPreferencesStorage {
   const memory = createMemoryGpenPreferencesStorage();
   try {
-    const storage = createRuntimeStorage<GpenPreferencesStorageRecord>(options);
+    // ⚠️ 必须传 `kvKey`：不传就落到 `"root"`，而工作区偏好用的是 `"gpen-root"`。
+    // 同一页面里两个 runtime root 会各持一份内存副本、各自 `submit()` 整根写回**同一个**
+    // IndexedDB key，互相覆盖（实测：偏好写了读不回来）。见 docs/preferences.md。
+    const storage = createRuntimeStorage<GpenPreferencesStorageRecord>({
+      kvKey: GPEN_PREFERENCES_KEY,
+      ...options,
+    });
     const kv = createKvGpenPreferencesStorage(storage);
     return {
       async load() {
