@@ -55,6 +55,13 @@ export interface GpenWorkspaceState {
   uiScale: number;
   open: boolean;
   collapsed: boolean;
+  /**
+   * 沉浸模式：隐藏全部 dockview chrome，视口洞扩到整个可视区（Blender 的"最大化区域"）。
+   * 与 `collapsed`（最小化）的区别：最小化是把工作区
+   * 整体收走、只剩还原/关闭两个按钮；沉浸模式保留绘制面（T4 起由画布接管），
+   * 只是不显示面板，所以页面原点 (0,0) 也可见可交互。
+   */
+  immersive: boolean;
   activeTool: GpenToolId;
   panelLayout: GpenPanelLayout | null;
   ballPosition: GpenBallPosition | null;
@@ -86,6 +93,7 @@ export function createDefaultGpenWorkspaceState(): GpenWorkspaceState {
     uiScale: UI_SCALE_DEFAULT,
     open: false,
     collapsed: false,
+    immersive: false,
     activeTool: "brush",
     panelLayout: null,
     ballPosition: null,
@@ -145,6 +153,7 @@ export function normalizeGpenWorkspaceState(
         : fallback.uiScale,
     open: typeof source.open === "boolean" ? source.open : fallback.open,
     collapsed: typeof source.collapsed === "boolean" ? source.collapsed : fallback.collapsed,
+    immersive: typeof source.immersive === "boolean" ? source.immersive : fallback.immersive,
     activeTool: isToolId(source.activeTool) ? source.activeTool : fallback.activeTool,
     panelLayout,
     ballPosition,
@@ -157,6 +166,7 @@ export function serializeGpenWorkspaceState(state: GpenWorkspaceState): GpenWork
     uiScale: normalizeUiScale(state.uiScale),
     open: state.open,
     collapsed: state.collapsed,
+    immersive: state.immersive,
     activeTool: state.activeTool,
     panelLayout: normalizePanelLayout(state.panelLayout),
     ballPosition: normalizeBallPosition(state.ballPosition),

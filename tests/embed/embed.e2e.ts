@@ -19,7 +19,10 @@ const PAGE = `<!doctype html>
 </head><body>
   <main id="page-content" class="marker">host page content</main>
   <button id="page-button">page button</button>
-  <script>window.__clicked = 0; document.getElementById('page-button').addEventListener('click', () => { window.__clicked += 1 });</script>
+  <script>
+    window.__clicked = 0;
+    document.addEventListener('click', () => { window.__clicked += 1 });
+  </script>
 </body></html>`;
 
 type EmbedGlobals = {
@@ -114,8 +117,26 @@ test.describe("gpen embed", () => {
     expect(hole?.background).toBe("rgba(0, 0, 0, 0)");
     expect(hole?.pointerEvents).toBe("none");
 
-    // 工作区打开时宿主页仍可交互（透明视口事件穿透）
-    await page.click("#page-button");
+    // 工作区打开时宿主页仍可交互（透明视口事件穿透）。
+    //
+    // 点在**洞内**（可视区中心），而不是页面左上角的按钮：相机换成绝对定位
+    // spacer 之后，`x < rail 宽 / y < 菜单高` 的像素永远进不了洞（scroll 不能为负，
+    // 见 docs/layer-view.md）。洞内的穿透才是这套方案要守的契约。
+    const center = await page.evaluate(() => ({
+      x: window.innerWidth / 2,
+      y: window.innerHeight / 2,
+      hitOverlay: Boolean(
+        document
+          .elementFromPoint(window.innerWidth / 2, window.innerHeight / 2)
+          ?.closest("#gpen-host"),
+      ),
+    }));
+    expect(center.hitOverlay).toBe(false);
+    // shadow 里的点击（悬浮球）也会冒泡到 document，所以先清零再点。
+    await page.evaluate(() => {
+      window.__clicked = 0;
+    });
+    await page.mouse.click(center.x, center.y);
     expect(await page.evaluate(() => window.__clicked)).toBe(1);
 
     // 卸载干净

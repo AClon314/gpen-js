@@ -36,7 +36,8 @@ function getViewportSize(element: Element): { width: number; height: number } {
 }
 
 function isHardExcluded(element: HTMLElement, style: CSSStyleDeclaration, rect: DOMRect): boolean {
-  if (element.matches(".gpen-overlay, [data-version], [data-instance]")) return true;
+  if (element.matches(".gpen-overlay, [data-version], [data-instance], [data-gpen-canvas-space]"))
+    return true;
   if (EXCLUDED_TAGS.has(element.tagName.toLowerCase())) return true;
   if (style.display === "none" || style.visibility === "hidden") return true;
   if (element.getAttribute("aria-hidden")?.toLowerCase() === "true") return true;

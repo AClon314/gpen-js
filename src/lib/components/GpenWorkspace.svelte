@@ -15,6 +15,8 @@
 	import { createDefaultGpen } from '../protocol/defaults';
 	import { buildLayerTree } from '../layers/layerAdapter';
 	import type { UiLayerTree } from '../layers/types';
+	import { applyInfiniteCanvas, guessWebLayer, type InfiniteCanvas } from '../canvas/index';
+	import { createLayerView, type LayerView } from '../layers/layerView';
 	import {
 		cloneGpenPanelLayout,
 		createDefaultGpenWorkspaceState,
@@ -59,6 +61,11 @@
 	let container: HTMLDivElement;
 	let dockview: ReturnType<typeof createDockview> | undefined;
 	let layerTree: UiLayerTree | undefined;
+	/// 图层视图：Web 图层（element）或未来的 gpen 画布（canvas）。
+	let layerView = $state<LayerView | undefined>(undefined);
+	let infiniteCanvas: InfiniteCanvas | undefined;
+	/// 视图旋转（度）。真值以后归图层模型；这里只驱动 DOM 投影。
+	const hostViewState = $state({ rotation: 0 });
 	let tabMenuPanelId: string | undefined;
 	let disposeTabMenu: (() => void) | undefined;
 	let layoutSubscriptions: { dispose(): void }[] = [];
@@ -91,6 +98,17 @@
 
 	function resetUiScale() {
 		workspaceState.uiScale = UI_SCALE_DEFAULT;
+	}
+
+	/** 视图旋转：不影响文档数据，只改图层视图的 DOM 投影。 */
+	function rotateHostView(degrees: number) {
+		const next = Math.round(degrees * 10) / 10;
+		hostViewState.rotation = next;
+		layerView?.setRotation(next);
+	}
+
+	function toggleImmersive() {
+		workspaceState.immersive = !workspaceState.immersive;
 	}
 
 	function selectTool(tool: GpenToolId) {
@@ -461,12 +479,14 @@
 	 */
 	function componentProps(name: string): Record<string, unknown> | undefined {
 		if (name === 'tools') return { state: workspaceState, onSelectTool: selectTool };
+		if (name === 'viewport') return { viewState: hostViewState, onRotate: rotateHostView };
 		if (name === 'menu') {
 			return {
 				state: workspaceState,
 				onChangeUiScale: changeUiScale,
 				onResetUiScale: resetUiScale,
 				onResetPanelLayout: resetPanelLayout,
+				onToggleImmersive: toggleImmersive,
 				onMinimize,
 				onClose
 			};
@@ -533,6 +553,17 @@
 		// document is wired to gpenBinary save/load; here it seeds the shell UI.
 		layerTree = buildLayerTree(createDefaultGpen(window.location.href));
 
+		// Guess the host web layer **once**, before the camera spacer exists: the
+		// spacer is a body child with a huge area, and re-guessing later would use
+		// the rotated AABB. (handoff §5 pit)
+		const webLayer = guessWebLayer();
+		// Camera: only an absolutely positioned spacer, no node reparenting.
+		infiniteCanvas = applyInfiniteCanvas();
+		layerView = createLayerView(
+			webLayer ? { kind: 'element', element: webLayer } : { kind: 'canvas' }
+		);
+		if (hostViewState.rotation !== 0) layerView.setRotation(hostViewState.rotation);
+
 		// dockview's tab context-menu hook is gated behind its optional
 		// ContextMenu module in the free v8.2 build. Keep the same tab-only
 		// interaction locally so the native browser menu is always suppressed.
@@ -598,6 +629,11 @@
 
 	onDestroy(() => {
 		mounted = false;
+		// 先恢复页面（旋转是 DOM 投影）再收相机 spacer。
+		layerView?.restore();
+		layerView = undefined;
+		infiniteCanvas?.destroy();
+		infiniteCanvas = undefined;
 		if (layoutFrame !== undefined) cancelAnimationFrame(layoutFrame);
 		removeViewportListeners?.();
 		removeViewportListeners = undefined;
@@ -617,6 +653,7 @@
 	bind:this={container}
 	class="dockview-container"
 	class:minimized
+	class:immersive={workspaceState.immersive}
 	style:width={containerWidth}
 	style:height={containerHeight}
 	style:zoom={workspaceZoom}
@@ -661,6 +698,14 @@
 	 * 的 hidden 顶掉了。组件样式不在 `@layer utilities` 里，所以这里能压过它。 */
 	.dockview-container.minimized,
 	.dockview-container.minimized :global(*) {
+		visibility: hidden;
+	}
+
+	/* 沉浸模式：隐藏四周面板，视口洞 = 整个可视区。与 minimized 一样必须写到整棵子树
+	 * （dockview 的 `.visible` 会顶掉继承的 hidden）。区别是语义与入口：沉浸模式保留
+	 * 绘制面（T4 起由画布接管），只由 GpenOverlay 的退出按钮 / Esc 退出。 */
+	.dockview-container.immersive,
+	.dockview-container.immersive :global(*) {
 		visibility: hidden;
 	}
 

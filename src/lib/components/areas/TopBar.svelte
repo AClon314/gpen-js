@@ -2,6 +2,8 @@
 	import '@spectrum-web-components/icons-workflow/icons/sp-icon-brush.js';
 	import '@spectrum-web-components/icons-workflow/icons/sp-icon-chevron-down.js';
 	import '@spectrum-web-components/icons-workflow/icons/sp-icon-close.js';
+	import '@spectrum-web-components/icons-workflow/icons/sp-icon-full-screen-exit.js';
+	import '@spectrum-web-components/icons-workflow/icons/sp-icon-full-screen.js';
 	import '@spectrum-web-components/icons-workflow/icons/sp-icon-minimize.js';
 
 	import {
@@ -19,6 +21,7 @@
 		onChangeUiScale,
 		onResetUiScale,
 		onResetPanelLayout,
+		onToggleImmersive,
 		onMinimize,
 		onClose
 	}: {
@@ -26,6 +29,7 @@
 		onChangeUiScale?: (delta: number) => void;
 		onResetUiScale?: () => void;
 		onResetPanelLayout?: () => void;
+		onToggleImmersive?: () => void;
 		onMinimize?: () => void;
 		onClose?: () => void;
 	} = $props();
@@ -88,6 +92,23 @@
 					onclick={() => onChangeUiScale?.(UI_SCALE_STEP)}
 				>+</button>
 			</div>
+
+			{#if onToggleImmersive}
+				<button
+					class="gpen-panel-button title-bar-button"
+					type="button"
+					aria-label={state?.immersive ? '退出沉浸模式' : '进入沉浸模式'}
+					title={state?.immersive ? '退出沉浸模式（只留绘制面）' : '沉浸模式（隐藏面板，最大化绘制面）'}
+					aria-pressed={state?.immersive ?? false}
+					onclick={onToggleImmersive}
+				>
+					{#if state?.immersive}
+						<sp-icon-full-screen-exit></sp-icon-full-screen-exit>
+					{:else}
+						<sp-icon-full-screen></sp-icon-full-screen>
+					{/if}
+				</button>
+			{/if}
 
 			{#if onMinimize}
 				<button

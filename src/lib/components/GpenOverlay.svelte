@@ -1,9 +1,9 @@
 <script lang="ts">
 	import '@spectrum-web-components/icons-workflow/icons/sp-icon-brush.js';
 	import '@spectrum-web-components/icons-workflow/icons/sp-icon-close.js';
+	import '@spectrum-web-components/icons-workflow/icons/sp-icon-full-screen-exit.js';
 	import '@spectrum-web-components/icons-workflow/icons/sp-icon-maximize.js';
 	import { onDestroy, onMount } from 'svelte';
-	import { applyFakeInfiniteCanvas, guessWebLayer } from '#lib/canvas/index';
 	import { draggable, type DragPosition } from '#lib/gestures/index';
 	import { createInstanceId } from '#lib/instanceId';
 	import { observeViewport, viewportRect } from '#lib/visualViewport';
@@ -19,7 +19,6 @@
 	let workspaceState = $state(createDefaultGpenWorkspaceState());
 	let overlayEl = $state<HTMLDivElement | undefined>(undefined);
 	let storageReady = $state(false);
-	let infiniteCanvas: ReturnType<typeof applyFakeInfiniteCanvas> | undefined;
 
 	// 偏好走后端无关的 KV（monkey / vscode / IndexedDB），不再直连 localStorage；
 	// 旧 localStorage 数据由适配器在首次读取时迁移。
@@ -39,6 +38,7 @@
 	 */
 	function minimizeWorkspace() {
 		workspaceState.collapsed = true;
+		workspaceState.immersive = false;
 		const active = document.activeElement;
 		if (active instanceof HTMLElement) active.blur();
 	}
@@ -50,6 +50,11 @@
 	function closeWorkspace() {
 		workspaceState.open = false;
 		workspaceState.collapsed = false;
+		workspaceState.immersive = false;
+	}
+
+	function exitImmersive() {
+		workspaceState.immersive = false;
 	}
 
 	function restoreWorkspace() {
@@ -57,7 +62,10 @@
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
-		if (workspaceState.open && event.key === 'Escape') closeWorkspace();
+		if (!workspaceState.open || event.key !== 'Escape') return;
+		// 沉浸模式里 Esc 先退沉浸（否则用户会被锁在无 chrome 状态里）。
+		if (workspaceState.immersive) exitImmersive();
+		else closeWorkspace();
 	}
 
 	// Persist one serializable state object. The adapter currently bridges to
@@ -96,23 +104,11 @@
 	});
 
 	// Keep the host page in a large document coordinate space while the gpen
-	// workspace is open. The effect cleanup also runs when this component is
-	// unmounted, so a route change cannot leave the host transformed.
-	$effect(() => {
-		if (!workspaceState.open) return;
-
-		const layer = guessWebLayer();
-		const applied = layer ? applyFakeInfiniteCanvas(layer) : undefined;
-		infiniteCanvas = applied;
-		return () => {
-			applied?.destroy();
-			if (infiniteCanvas === applied) infiniteCanvas = undefined;
-		};
-	});
+	// workspace is open. The camera itself lives in GpenWorkspace (it is mounted
+	// only while open) and is a document-level spacer, not a reparenting wrapper
+	// (see canvas/infiniteCanvas.ts).
 
 	onDestroy(() => {
-		infiniteCanvas?.destroy();
-		infiniteCanvas = undefined;
 		// Release the runtime KV connection (IndexedDB) so repeated embed mounts
 		// do not leak it. The adapter itself falls back to localStorage when the
 		// backend is unavailable, so this is best-effort.
@@ -185,6 +181,20 @@
 					<sp-icon-close></sp-icon-close>
 				</button>
 			</div>
+		{:else if workspaceState.immersive}
+			<!-- 沉浸模式：chrome 全部隐藏，只留一个退出入口（Esc 同效）。 -->
+			<div class="immersive-bar">
+				<button
+					class="immersive-exit"
+					type="button"
+					aria-label="退出沉浸模式"
+					title="退出沉浸模式（Esc）"
+					onclick={exitImmersive}
+				>
+					<sp-icon-full-screen-exit></sp-icon-full-screen-exit>
+					<span>退出沉浸</span>
+				</button>
+			</div>
 		{/if}
 	</div>
 {:else}
@@ -224,14 +234,14 @@
 		pointer-events: none;
 	}
 
-	:where(.floating-button, .close-button, .restore-button) {
+	:where(.floating-button, .close-button, .restore-button, .immersive-exit) {
 		border: 1px solid var(--gpen-panel-border);
 		color: var(--gpen-panel-foreground);
 		font: 600 1rem/var(--gpen-line-height) var(--gpen-font-sans);
 		cursor: pointer;
 	}
 
-	:where(.floating-button, .close-button, .restore-button):focus-visible {
+	:where(.floating-button, .close-button, .restore-button, .immersive-exit):focus-visible {
 		outline: 2px solid var(--gpen-panel-accent);
 		outline-offset: 3px;
 	}
@@ -281,6 +291,37 @@
 		align-items: center;
 		gap: 0.75ch;
 		pointer-events: auto;
+	}
+
+	/* 沉浸模式下唯一的 chrome：浮在右下角，避免遮挡页面左上角（那是这个模式要救的像素）。 */
+	.immersive-bar {
+		position: absolute;
+		bottom: 1.5lh;
+		right: 2ch;
+		z-index: 30;
+		pointer-events: auto;
+	}
+
+	.immersive-exit {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.75ch;
+		box-sizing: border-box;
+		height: 2.4lh;
+		padding: 0 1.25ch;
+		border-radius: 99px;
+		background: var(--gpen-panel-background);
+		box-shadow: var(--gpen-panel-shadow);
+	}
+
+	.immersive-exit:hover {
+		border-color: var(--gpen-panel-accent);
+		color: var(--gpen-panel-accent);
+	}
+
+	.immersive-exit :global(sp-icon-full-screen-exit) {
+		--mod-icon-size: 1.2rem;
+		color: inherit;
 	}
 
 	:where(.restore-button, .close-button) {

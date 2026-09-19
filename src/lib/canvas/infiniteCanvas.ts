@@ -1,193 +1,74 @@
 const DEFAULT_SURFACE = 200_000;
+const MIN_SURFACE = 1;
+const SPACE_ATTRIBUTE = "data-gpen-canvas-space";
 
-export type FakeInfiniteCanvas = {
+export type InfiniteCanvas = {
+  /** The spacer node (null when there is no document to append it to). */
+  readonly element: HTMLDivElement | null;
   destroy(): void;
 };
 
-type AppliedCanvas = {
-  element: HTMLElement;
-  originalParent: Node;
-  originalNextSibling: ChildNode | null;
-  surface: HTMLDivElement;
-  origin: HTMLDivElement;
-  window: Window;
-  scrollX: number;
-  scrollY: number;
-  history: History;
-  scrollRestoration: string | undefined;
-  html: HTMLElement;
-  originalScrollbarWidth: string;
-  originalScrollbarPriority: string;
-  scrollbarWidthChanged: boolean;
-  scrollbarStyle: HTMLStyleElement | undefined;
-  destroyed: boolean;
+type ActiveCanvas = {
+  element: HTMLDivElement;
+  handle: InfiniteCanvas;
 };
 
-const activeCanvases = new WeakMap<HTMLElement, FakeInfiniteCanvas>();
-
-function noopCanvas(): FakeInfiniteCanvas {
-  return { destroy() {} };
-}
-
-function attempt(label: string, action: () => void): boolean {
-  try {
-    action();
-    return true;
-  } catch (error) {
-    console.debug(`[gpen] ignored failure: ${label}`, error);
-    return false;
-  }
-}
-
-function validNumber(value: number | undefined, fallback: number, minimum: number): number {
-  return value !== undefined && Number.isFinite(value) && value >= minimum ? value : fallback;
-}
-
-function restoreAppliedCanvas(state: AppliedCanvas): void {
-  if (state.destroyed) return;
-  state.destroyed = true;
-  activeCanvases.delete(state.element);
-
-  let elementRestored = state.element.parentNode === state.originalParent;
-  if (!elementRestored) {
-    elementRestored = attempt("restore web layer position", () => {
-      const reference =
-        state.originalNextSibling?.parentNode === state.originalParent
-          ? state.originalNextSibling
-          : null;
-      state.originalParent.insertBefore(state.element, reference);
-    });
-  } else {
-    attempt("restore web layer order", () => {
-      const reference =
-        state.originalNextSibling?.parentNode === state.originalParent
-          ? state.originalNextSibling
-          : null;
-      if (state.element.nextSibling !== reference) {
-        state.originalParent.insertBefore(state.element, reference);
-      }
-    });
-  }
-
-  // Do not remove a wrapper that still owns the host: a changed parent or a
-  // hostile DOM mutation should not accidentally detach the host from the page.
-  if (state.element.parentNode !== state.origin || elementRestored) {
-    attempt("remove infinite canvas surface", () => state.surface.remove());
-  }
-
-  if (state.scrollbarStyle) {
-    attempt("remove infinite canvas scrollbar style", () => state.scrollbarStyle?.remove());
-  }
-
-  if (state.scrollbarWidthChanged) {
-    attempt("restore html scrollbar width", () => {
-      if (state.originalScrollbarWidth) {
-        state.html.style.setProperty(
-          "scrollbar-width",
-          state.originalScrollbarWidth,
-          state.originalScrollbarPriority,
-        );
-      } else {
-        state.html.style.removeProperty("scrollbar-width");
-      }
-    });
-  }
-
-  if (state.scrollRestoration !== undefined) {
-    attempt("restore history scroll restoration", () => {
-      state.history.scrollRestoration = state.scrollRestoration as ScrollRestoration;
-    });
-  }
-
-  attempt("restore document scroll position", () => {
-    state.window.scrollTo(state.scrollX, state.scrollY);
-  });
-}
-
 /**
- * Put a web layer in a large document-sized surface and move the camera to its
- * center. The returned handle is idempotent and restores the DOM and browser
- * state captured before the move.
+ * Document-level spacer that expands the page's natural scroll range, so the
+ * user can pan the camera by scrolling. There is exactly one: `apply` is
+ * idempotent and `destroy` only removes the node.
+ *
+ * Why a spacer and not a wrapper (measured, see handoff §2.1): a wrapper has to
+ * move the host content into `surface > origin`, which changes its document
+ * coordinates, fakes `scrollY` (100000) and `scrollHeight`, breaks
+ * `body > main` selectors, hides the scrollbar and jumps the page on open.
+ * The spacer touches none of that: content coordinates stay 0-based,
+ * `scrollY = 0` still means the top of the page and the scrollbar stays.
+ *
+ * Limitation (accepted, paired with immersive mode): the spacer starts at the
+ * document origin and scroll cannot be negative, so page pixels with `x <
+ * rail width` or `y < menu height` can never scroll into the viewport hole.
+ * Immersive mode hides the chrome so those pixels are visible/interactive
+ * anyway.
  */
-export function applyFakeInfiniteCanvas(
-  element: HTMLElement,
-  options?: { surface?: number; origin?: number; hideScrollbar?: boolean },
-): FakeInfiniteCanvas {
-  const existing = activeCanvases.get(element);
-  if (existing) return existing;
+export function applyInfiniteCanvas(options: { surface?: number } = {}): InfiniteCanvas {
+  if (activeCanvas) return activeCanvas.handle;
 
-  const ownerDocument = element.ownerDocument;
-  const view = ownerDocument.defaultView;
-  const originalParent = element.parentNode;
-  const html = ownerDocument.documentElement;
-  if (!view || !originalParent || !html) return noopCanvas();
+  const doc = typeof document === "undefined" ? undefined : document;
+  const body = doc?.body;
+  if (!doc || !body) return { element: null, destroy() {} };
 
-  const surfaceSize = validNumber(options?.surface, DEFAULT_SURFACE, Number.MIN_VALUE);
-  const origin = validNumber(options?.origin, surfaceSize / 2, 0);
-  const hideScrollbar = options?.hideScrollbar !== false;
-  const state: AppliedCanvas = {
+  const size = validSurface(options.surface);
+  const element = doc.createElement("div");
+  element.setAttribute(SPACE_ATTRIBUTE, "");
+  element.className = "gpen-canvas-space";
+  // `position: absolute` makes it relative to the initial containing block
+  // (document origin) even though it is a body child, and `pointer-events:
+  // none` keeps it out of hit testing.
+  element.style.cssText = `position:absolute;top:0;left:0;width:${size}px;height:${size}px;pointer-events:none`;
+  body.append(element);
+
+  const handle: InfiniteCanvas = {
     element,
-    originalParent,
-    originalNextSibling: element.nextSibling,
-    surface: ownerDocument.createElement("div"),
-    origin: ownerDocument.createElement("div"),
-    window: view,
-    scrollX: view.scrollX,
-    scrollY: view.scrollY,
-    history: view.history,
-    scrollRestoration: undefined,
-    html,
-    originalScrollbarWidth: html.style.getPropertyValue("scrollbar-width"),
-    originalScrollbarPriority: html.style.getPropertyPriority("scrollbar-width"),
-    scrollbarWidthChanged: false,
-    scrollbarStyle: undefined,
-    destroyed: false,
+    destroy() {
+      if (activeCanvas?.handle !== handle) return;
+      activeCanvas = undefined;
+      element.remove();
+    },
   };
+  activeCanvas = { element, handle };
+  return handle;
+}
 
-  try {
-    state.surface.className = "gpen-infinite-surface";
-    state.surface.style.position = "relative";
-    state.surface.style.width = `${surfaceSize}px`;
-    state.surface.style.height = `${surfaceSize}px`;
+let activeCanvas: ActiveCanvas | undefined;
 
-    state.origin.className = "gpen-infinite-origin";
-    state.origin.style.position = "absolute";
-    state.origin.style.left = `${origin}px`;
-    state.origin.style.top = `${origin}px`;
-    state.origin.style.width = "100vw";
-    state.origin.style.height = "100vh";
+/** True while the page is in the large-scroll camera mode. */
+export function hasInfiniteCanvas(): boolean {
+  return activeCanvas !== undefined;
+}
 
-    state.surface.append(state.origin);
-    originalParent.insertBefore(state.surface, element);
-    state.origin.append(element);
-
-    if (hideScrollbar) {
-      state.scrollbarStyle = ownerDocument.createElement("style");
-      state.scrollbarStyle.setAttribute("data-gpen-infinite-scrollbar", "");
-      state.scrollbarStyle.textContent = "html::-webkit-scrollbar { display: none; }";
-      (ownerDocument.head ?? ownerDocument.documentElement).append(state.scrollbarStyle);
-
-      html.style.setProperty("scrollbar-width", "none");
-      state.scrollbarWidthChanged = true;
-    }
-
-    if ("scrollRestoration" in state.history) {
-      state.scrollRestoration = state.history.scrollRestoration;
-      state.history.scrollRestoration = "manual";
-    }
-
-    view.scrollTo(origin, origin);
-
-    const handle: FakeInfiniteCanvas = {
-      destroy() {
-        restoreAppliedCanvas(state);
-      },
-    };
-    activeCanvases.set(element, handle);
-    return handle;
-  } catch (error) {
-    console.debug("[gpen] ignored failure: apply fake infinite canvas", error);
-    restoreAppliedCanvas(state);
-    return noopCanvas();
-  }
+function validSurface(value: number | undefined): number {
+  return value !== undefined && Number.isFinite(value) && value >= MIN_SURFACE
+    ? value
+    : DEFAULT_SURFACE;
 }
