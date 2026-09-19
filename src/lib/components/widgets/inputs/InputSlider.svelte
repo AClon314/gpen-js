@@ -27,6 +27,9 @@
 		units,
 		activeUnit,
 		onvalidvalue,
+		// 调用方的 style 归于本组件渲染的最外层（滑条根节）：内联声明压过 `width: 100%`，
+		// 内层 InputNumber 的 `width: 100%` 自然跟随。不再往下传。
+		style,
 		...rest
 	}: InputProps = $props();
 
@@ -237,6 +240,7 @@
 	class:scrubbing
 	class:vertical
 	bind:this={root}
+	{style}
 	data-input-slider
 	data-orientation={orientation}
 	data-step-rule={downRule}
@@ -279,7 +283,6 @@
 			flex: 1 1 auto;
 			flex-direction: column;
 			width: fit-content;
-			max-width: calc(var(--gpen-char-width, 6) * 1ch);
 			height: auto;
 			touch-action: pan-x;
 

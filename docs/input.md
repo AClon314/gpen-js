@@ -50,6 +50,27 @@ div.input-widget[data-input-widget][data-orientation][role="group"]
 - 垂直布局用 `flex-direction: column` + `order`（视觉 `+ / value / 单位标签 / −`，焦点顺序仍是 down→up）。
 - 子元素只用 `flex`；InputSlider 通过 `--input-background*` 把内层背景设成透明以露出浮层。
 
+### 宽度由调用方决定（内联 `style`）
+
+横向默认 `width: 100%`（填满父容器），但**调用方随时可以用内联 `style` 覆盖它**：
+
+```svelte
+<Input style="width: 12ch" … />          <!-- ✓ 生效：控件外框 12ch -->
+<Input class="w-[12ch]" … />             <!-- ✗ 不生效（见下） -->
+```
+
+- `style` 作用于**控件外框**（`Input` 时是滑条根节点 `.input-slider`，直接用 `InputNumber` 时是
+  `.input-widget`），不会往下传到内部 `<input>`；内层靠 `width: 100%` 跟随外框。
+- **为什么 `class` 不行**：Tailwind v4 的 utility 在 `@layer utilities` 里，而 Svelte 组件的 scoped
+  规则（`.input-widget.svelte-xxx`）**无层级**——无层级声明永远压过带层级的声明；即使不分层，
+  utility 的 `(0,1,0)` 也打不过 `.input-widget.svelte-xxx` 的 `(0,2,0)`。所以尺寸只能用内联 `style`。
+  （`class` 目前仍落在内部 `<input>` 上，供非尺寸类的样式用。）
+- 想“把组件自己的 `width` 挪进 `@layer components`”让 utility 能覆盖，代价是全局层叠顺序都要
+  重新理顺，得不偿失；目前**只承诺内联 `style`**。
+- 竖直形态不再用 `max-width` 钳制宽度（旧行为会把内联宽度截回 `--gpen-char-width`）。竖直形态
+  若要用内联 `height` 指定高度，记得 `min-height` 还在（4 × `--gpen-row`）：
+  `style="height: 12lh; min-height: 0"`。
+
 ## Props / 提交 / 校验
 
 | prop                   | 行为                                                      |

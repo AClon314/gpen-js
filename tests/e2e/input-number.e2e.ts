@@ -621,3 +621,54 @@ test.describe("gpen-input-number value clipboard", () => {
     await expect(field).toHaveValue("42");
   });
 });
+
+test.describe("gpen-input sizing", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/demo/widgets");
+  });
+
+  /** 在给定元素里量 `n` 个 `ch` 的像素宽：字体度量不写死进断言。 */
+  async function chWidth(host: Locator, ch: number) {
+    return host.evaluate((element, count) => {
+      const probe = document.createElement("span");
+      probe.style.cssText = `position:absolute;visibility:hidden;white-space:pre;width:${count}ch`;
+      element.append(probe);
+      const width = probe.getBoundingClientRect().width;
+      probe.remove();
+      return width;
+    }, ch);
+  }
+
+  test("an inline width overrides the built-in width: 100%", async ({ page }) => {
+    const field = page.getByLabel("强度"); // demo 里传了 style="width: 12ch"
+    const slider = field.locator("xpath=ancestor::*[@data-input-slider]");
+    const widget = field.locator("xpath=ancestor::*[@data-input-widget]");
+    const expected = await chWidth(widget, 12);
+
+    const sliderBox = await slider.boundingBox();
+    const widgetBox = await widget.boundingBox();
+    expect(sliderBox).not.toBeNull();
+    expect(widgetBox).not.toBeNull();
+    expect(sliderBox?.width).toBeCloseTo(expected, 0);
+    expect(widgetBox?.width).toBeCloseTo(expected, 0);
+
+    // 确实不再填满卡片
+    const card = await page.locator(".demo-card", { has: field }).boundingBox();
+    expect(sliderBox?.width ?? 0).toBeLessThan((card?.width ?? 0) - 20);
+  });
+
+  test("an inline width is not clamped in the vertical form", async ({ page }) => {
+    const field = page.getByLabel("压力");
+    const slider = field.locator("xpath=ancestor::*[@data-input-slider]");
+    const before = (await slider.boundingBox())?.width ?? 0;
+
+    await slider.evaluate((element) => {
+      (element as HTMLElement).style.width = "6ch";
+    });
+    const after = (await slider.boundingBox())?.width ?? 0;
+
+    // 之前被 --gpen-char-width（3ch）的 max-width 钳住，加宽无效
+    expect(after).toBeGreaterThan(before);
+    expect(after).toBeCloseTo(await chWidth(slider, 6), 0);
+  });
+});

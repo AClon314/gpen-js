@@ -43,6 +43,10 @@
 		onpaste,
 		onblur,
 		class: inputClass,
+		// 调用方的 style 作用于**控件外框**（根节点），不往下传给内部 input：
+		// 内联声明能压过组件自己的 `width: 100%`，所以 `style="width: 8ch"` 是唯一可靠的尺寸入口。
+		// （`class` 仍然落在内部 input 上，见 docs/input.md。）
+		style,
 		'aria-label': ariaLabel,
 		...rest
 	}: InputProps = $props();
@@ -595,6 +599,7 @@
 	class="input-widget"
 	class:disabled={rest.disabled}
 	use:contextMenu={menuItems}
+	{style}
 	data-input-widget
 	data-orientation={orientation}
 	role="group"
@@ -688,8 +693,6 @@
 			flex: 1 1 auto;
 			flex-direction: column;
 			width: calc(var(--gpen-char-width, 6) * 1ch);
-			/* flex 父级里只沿列方向长大，别被行方向的 grow 拉宽。 */
-			max-width: calc(var(--gpen-char-width, 6) * 1ch);
 			height: auto;
 			min-height: calc(4 * var(--gpen-row));
 			/* 四行要正好铺满控件，所以不再加纵向 padding（横向 padding 由根上那条覆盖掉）。 */
