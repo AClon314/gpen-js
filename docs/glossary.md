@@ -76,6 +76,16 @@
 | MIME | Multipurpose Internet Mail Extensions | 内容类型（`Content-Type`，如 `image/png`） |
 | SAA | Storage Access API | `document.requestStorageAccess()` / `hasStorageAccess()`；第三方 cookie 被拦时申请存储访问 |
 
+## 前端 / 编辑器
+
+| 缩写 | 全称 | 说明 |
+| --- | --- | --- |
+| CM / CM6 | CodeMirror / CodeMirror 6 | 编辑器内核，本项目只用 `@codemirror/state` / `view` / `commands` 三个包（见 `docs/codemirror.md`、`docs/code-editor.md`） |
+| IME | Input Method Editor | 输入法。组字期间（`compositionstart` … `compositionend`）**不能**程序化回写输入区，否则打断候选串 |
+| NFKC | Normalization Form KC | Unicode 兼容归一化；单位解析用它把全角 / CJK 兼容字符折成 ASCII（`１２ｃｍ` → `12cm`、`㎝` → `cm`） |
+| ICB | initial containing block | `position: absolute` 在没有已定位祖先时的包含块（overlay 就挂在它上） |
+| `ch` / `lh` | — | CSS 长度单位（字符宽 / 行高）；本项目横向用 `ch`、纵向用 `lh`，见 `AGENTS.md` |
+
 ## 项目 / 构建
 
 | 缩写 | 全称 | 说明 |

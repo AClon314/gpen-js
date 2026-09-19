@@ -348,6 +348,7 @@ Dockview 已经提供内部 dropzone、docking、split、tab 重排和 preview�
 - [ ] pointer/keyboard/touch/pen 的事件边界有自动化测试；
 - [ ] 画布滚动、缩放、iframe、webview、safe area 和软键盘不破坏面板；
 - [ ] 触摸、键盘、RTL、reduced-motion、对比度和 screen reader 基本行为通过验收；
+- [ ] `gpen-panel` 的折叠 / 恢复行为**目前没有自动化测试**：原来的 `tests/e2e/panel.e2e.ts` 打的是从未提交过的 `/demo/panel` 路由，已删；panel 现在只出现在根 workspace 里，要补就得对着 `/` 写。
 - [ ] panel body 不绑定 Dockview/Lumino 等布局引擎的业务 API；
 - [ ] 至少有一套默认布局和一键恢复默认布局；
 - [ ] 第三方库升级可以通过 adapter 和契约测试隔离。

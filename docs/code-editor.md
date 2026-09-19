@@ -55,7 +55,7 @@ props 基于 `Omit<HTMLTextareaAttributes, …>`，被显式接管的属性：
 | `selectionStart` / `selectionEnd` 系     | 只在 `HTMLTextAreaElement` 实例上，CM 的选择模型是 `EditorSelection`  |
 | `defaultValue` / `dirname`               | 没有对应的 CM 语义（`dirname` 是 RTL 表单字段，CM 不参与原生提交），直接忽略            |
 | `oninput` / `onchange` / `onkeydown` …   | CM 不转发这些 DOM 事件；要监听文档变化用绑定值或注入 extension                         |
-| `style`                                  | 会透传到 `.cm-content` 并覆盖 CM 自己的 `tab-size`；样式请用 `class` + `--gpen-*` 变量    |
+| `style`                                  | 会透传到 `.cm-content` 并覆盖 CM 自己的 `tab-size`；样式请用 `class` + `--gpen-*` 变量（注：与 `InputNumber` 不同，那里的 `style` 落在控件外框，下次可统一） |
 
 ## 三份状态怎么同步
 
@@ -103,18 +103,14 @@ CM 自己的 DOM 不参与表单，所以用这个镜像承载全部表单语义
 
 - **不用 `<input type="hidden">`**：hidden input 被排除在 constraint validation 之外，
   `required` 与 `setCustomValidity` 全部无效。
-- **不用 `<noscript>`**（原方案「noscript 里放隐藏 textarea」），三条实测否决证据：
-  1. **Svelte 5 编译器静默丢弃 `<noscript>` 的全部子节点**（文本、元素、`<style>`、`{@html}`
-     都一样，且 `warnings = []`）：`<noscript><textarea/></noscript>` 的 client 产物是
-     `<noscript></noscript>`；只有 server codegen 才原样输出。所以「SSR 回退」在组件里根本写不出来，
-     要写只能写进 `src/app.html`。
-  2. **`{@html}` 也不行，且行为不可依赖**：唯一子节点时走 `$.html(node, fn, true)` →
-     `parent_node.innerHTML = value` → 浏览器解析器（scripting enabled）把 noscript 内容当纯文本，
-     **无 textarea**（Chromium / Firefox 同）；只有 `{@html}` 带兄弟节点时才走 `<template>.innerHTML`
-     分支，此路 **Chromium 会建出 textarea、Firefox 不会**（跨浏览器不一致）。
-  3. `{@html}` 由 JS 在运行时执行，无 JS 时根本不运行 → **语义上不可能充当 no-JS 回退**。
-     命令式 `createElement('noscript')` + append 虽在 Chromium / Firefox 实测一致，但仍是跟「编译器
-     什么都不生成」「浏览器不渲染 noscript 子树」两条隐式行为对赌，不采用。
+- **不用 `<noscript>`**（原方案「noscript 里放隐藏 textarea」）——三条实测否决证据，别再试：
+  1. **Svelte 5 编译器静默丢弃 `<noscript>` 的全部子节点**（文本、元素、`<style>`、`{@html}` 一律
+     丢弃且 `warnings = []`）：client 产物是 `<noscript></noscript>`，只有 server codegen 才原样
+     输出。要写真正的无 JS 回退只能写进 `src/app.html`。
+  2. **`{@html}` 也不行且不可依赖**：唯一子节点时走 `parent_node.innerHTML`，而浏览器解析器
+     （scripting enabled）把 noscript 内容当纯文本 → 无 textarea（Chromium / Firefox 同）；
+     只有带兄弟节点时才走 `<template>.innerHTML`，此路 **Chromium 会建出 textarea、Firefox 不会**。
+  3. `{@html}` 由 JS 运行时执行，无 JS 时根本不跑 → **语义上不可能当 no-JS 回退**。
 
 ## 长度与校验
 

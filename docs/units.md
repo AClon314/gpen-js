@@ -1,8 +1,7 @@
 # Units 单位模型
 
 `src/lib/inputs/units.ts`：纯逻辑、无 DOM / Svelte，`bun test tests/units.test.ts` 覆盖。
-组件侧的接线（`unit` / `units` / `activeUnit` prop、粘贴解析、显示换算）见
-[`docs/input.md`](input.md)。
+组件侧的接线（`units` / `activeUnit` prop、提交时换算、显示）见 [`docs/input.md`](input.md)。
 
 ## 两层结构
 
@@ -86,6 +85,9 @@ mass:   { alias: { 磅: "lb", 盎司: "oz" } }
 `WeakMap<Registry, Map<key, ResolvedUnit>>`，之后每次按键都是纯 `Map.get`。因此
 **`Registry` 视为不可变**——建好之后只读；要变体就换一个新对象（改了旧对象不会失效缓存）。
 
+> 消融实验：去掉这层缓存（每次拿一个新对象查表）后 20 万次 `findUnit` 从 **43ns → 3664ns/次（85×）**，
+> 因为索引缓存每次都 miss 并重建。所以调用方要把同一个 `source` 原样透传，不要中途复制对象。
+
 **`UnitSource`**：`findUnit` / `parseQuantity` 既接受注册表（`STD_UNITS`），也接受**单张量纲表**
 （`STD_UNITS.length`）。裸量纲表没有量纲名，`toRegistry` 会把它包成 `{ [table.base]: table }`
 并把包对象缓进 `WeakMap<Dimension, Registry>`——所以「量纲表也能查」且**每次调用拿到的是同一个
@@ -103,7 +105,27 @@ mass:   { alias: { 磅: "lb", 盎司: "oz" } }
 | `convertValue`     | `(value, from, to) => number \| undefined`                   | **同量纲**换算；跨量纲 / 缺一侧 / 非有限值 → `undefined` |
 | `parseQuantity`    | `(text, source, options?) => { value, unit } \| undefined`   | 解析 `'12 cm'` / `'12cm'` / `'12 厘米'` / `'1e3 m'`      |
 | `formatQuantity`   | `(value, unit, decimals?) => string`                         | 显示格式化，如 `'0.12 cm'`                               |
-| `normalizeUnitKey` | `(text) => string`                                           | 暴露给调用方比较 `activeUnit` prop 与 `ResolvedUnit.id`  |
+| `normalizeUnitKey` | `(text) => string`                                           | 给调用方比较 `activeUnit` prop 与 `ResolvedUnit.id`        |
+| `bindUnit`         | `(source, activeUnit?) => UnitBinding \| undefined`         | **组件用的入口**：选好显示单位并打包换算 + 解析            |
+
+`bindUnit` 把「显示单位 + 两个换向 + 带单位解析」打成一个小对象，组件（`InputNumber`）直接用：
+
+```ts
+interface UnitBinding {
+  unit: ResolvedUnit;
+  label: string; // 右侧只读标签（单位 id）
+  toBase: (display: number) => number;
+  toDisplay: (base: number) => number;
+  // '1234克' / ' 1234 克 ' → 显示单位下的值（已去掉浮点噪音）；认不出 → undefined
+  parse: (text: string) => number | undefined;
+}
+```
+
+- `activeUnit` 缺省取**量纲表自己的 `base`**（`bindUnit(STD_UNITS.mass)` → `kg`）；
+  传整张注册表时没有 `activeUnit` 就返回 `undefined`——组件把 `undefined` 当作「没有单位」，
+  所有换算恒等。
+- `parse` 内部先 `parseQuantity(..., { expectDimension })` 再 `convertValue`，最后 `toPrecision(12)`
+  收敛浮点噪音（`12 in → 30.48`，不是 `30.479999999999997`）。
 
 `ResolvedUnit` 把「量纲名 / 基准单位 / 规范 id / 两个换算函数」打包在一起，所以调用方不需要
 再回头查注册表：
@@ -163,13 +185,15 @@ const CURRENCY: Dimension = {
 
 带符号的 id（`USD$` / `CNY¥`）不采用：id 一律 ASCII（`usd` / `cny`），展示文案交给 paraglide。
 
-## 与组件的约定（D2）
+## 与组件的约定
 
-- 组件默认 `units = STD_UNITS`（注册表），`activeUnit` 决定量纲：**只允许同量纲换算**。
-- 跨量纲粘贴（质量框里粘 `12 cm`）→ 拒绝，保留原文并让 `:invalid` 生效。
-- `unit` / `activeUnit` 是 ASCII 单位 id；查表统一走 `findUnit`（别自己 `STD_UNITS[x]`）。
+- 组件默认 `units = STD_UNITS`（注册表）；传一张量纲表时显示单位就是它的 `base`，传注册表时要显式给
+  `activeUnit`。**只允许同量纲换算**。
+- 换算时机在组件侧：手敲的带单位文本在**失焦 / Enter** 时换算，粘贴（含悬浮 `Ctrl+V`）立即换算。
+- 跨量纲（质量框里粘 `12 cm`）→ 拒绝，保留原文并让 `:invalid` 生效。
+- `units` / `activeUnit` 里是 ASCII 单位 id；查表统一走 `findUnit`（别自己 `STD_UNITS[x]`）。
 
 ## 明确不做
 
 - 货币 / 汇率（只留上面的 example）。
-- 单位切换 UI（下拉 / 循环按钮）——只做 `activeUnit` prop + 粘贴解析换算。
+- 单位切换 UI（下拉 / 循环按钮）——只有 `activeUnit` prop + 输入/粘贴解析换算。

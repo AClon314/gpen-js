@@ -9,6 +9,7 @@ src/lib/components/widgets/inputs/
 ├── Input.svelte        # 分发：number → InputSlider，其余 → 原生 <input>
 ├── InputNumber.svelte  # 数值：type="text" + inputmode="decimal"，自管数值语义
 ├── InputSlider.svelte  # 数值 + 浮层：Blender 风拖拽滑条（内嵌 InputNumber）
+├── CodeEditor.svelte   # 多行文本：CodeMirror 6 壳（→ docs/code-editor.md）
 └── types.ts
 ```
 
@@ -36,39 +37,34 @@ div.input-widget[data-input-widget][data-orientation][role="group"]
 
 - `aria-valuenow/min/max/valuetext`（有显示单位时）、`aria-invalid`（校验失败时）。
 - `aria-valuenow`/`aria-valuetext` 给的是**显示单位**下的值（`value` 本身是基准单位）。
-- **尺寸只由 InputNumber 决定，外层壳（`Input` / `InputSlider`）跟着它，不自己撑开**：
-  - 横向：`width: 100%`（填满父容器）、`height: calc(2 * var(--gpen-line-height) * 1lh)`；
-    控件自己声明 `line-height: var(--gpen-line-height)`，所以 `1lh` 只由 token × 自身字号决定，
-    与宿主页的 `line-height` 无关；
-  - 纵向：`width: calc(var(--gpen-char-width, 6) * 1ch)`、`height: auto` +
-    `min-height: calc(4 * var(--gpen-row))`（4 × 2lh），同时 `flex: 1 1 auto`——
-    父级是 flex 列时撑满剩余高度，普通块级父容器里退回 8lh，所以不会溢出卡片。
-  - **纵向每行 = 2 个 token 行高**（与水平控件等高）：`--gpen-row: calc(2 * var(--gpen-line-height, 1) * 1lh)`。
-    ± 与单位标签固定 `height: var(--gpen-row)`、`flex: 0 0 auto`（字号回落到根字号，`1lh` 才等于
-    根的行高），多出来的高度全给可编辑的 value（`flex: 1 1 auto`）。四行要正好铺满控件，
-    所以纵向形态不加纵向 padding（横向 padding 由根那条覆盖）。
+- **尺寸由 InputNumber 定，外层壳（`Input` / `InputSlider`）跟着它**：
+  - 横向 `height: calc(2 * var(--gpen-line-height) * 1lh)`：控件自己声明 `line-height` = token，
+    所以 `1lh` 只由 token × 自身字号决定，与宿主页的 `line-height` 无关；`width: 100%` 可被调用方
+    内联 `style` 覆盖（见下）。
+  - 纵向 `width: calc(var(--gpen-char-width, 6) * 1ch)`（token 默认 3）、`height: auto` +
+    `min-height: calc(4 * var(--gpen-row))`、`flex: 1 1 auto`：flex 列里撑满剩余高度，普通块级
+    父容器里退回 4 行，因此不会溢出卡片。
+  - 纵向每行 = 2 个 token 行高（`--gpen-row`，与水平控件等高）：± 与单位标签固定占一行
+    （`flex: 0 0 auto`），余量全给可编辑的 value，所以纵向不加纵向 padding。
 - 垂直布局用 `flex-direction: column` + `order`（视觉 `+ / value / 单位标签 / −`，焦点顺序仍是 down→up）。
-- 子元素只用 `flex`；InputSlider 通过 `--input-background*` 把内层背景设成透明以露出浮层。
+- 子元素只用 `flex`；InputSlider 用 `--input-background*` 把内层背景设成透明以露出浮层。
 
 ### 宽度由调用方决定（内联 `style`）
 
-横向默认 `width: 100%`（填满父容器），但**调用方随时可以用内联 `style` 覆盖它**：
+横向默认 `width: 100%`，调用方用**内联 `style`** 覆盖它：
 
 ```svelte
-<Input style="width: 12ch" … />          <!-- ✓ 生效：控件外框 12ch -->
-<Input class="w-[12ch]" … />             <!-- ✗ 不生效（见下） -->
+<Input style="width: 12ch" … />   <!-- ✓ 控件外框 12ch -->
+<Input class="w-[12ch]" … />      <!-- ✗ 不生效 -->
 ```
 
-- `style` 作用于**控件外框**（`Input` 时是滑条根节点 `.input-slider`，直接用 `InputNumber` 时是
-  `.input-widget`），不会往下传到内部 `<input>`；内层靠 `width: 100%` 跟随外框。
-- **为什么 `class` 不行**：Tailwind v4 的 utility 在 `@layer utilities` 里，而 Svelte 组件的 scoped
-  规则（`.input-widget.svelte-xxx`）**无层级**——无层级声明永远压过带层级的声明；即使不分层，
-  utility 的 `(0,1,0)` 也打不过 `.input-widget.svelte-xxx` 的 `(0,2,0)`。所以尺寸只能用内联 `style`。
-  （`class` 目前仍落在内部 `<input>` 上，供非尺寸类的样式用。）
-- 想“把组件自己的 `width` 挪进 `@layer components`”让 utility 能覆盖，代价是全局层叠顺序都要
-  重新理顺，得不偿失；目前**只承诺内联 `style`**。
-- 竖直形态不再用 `max-width` 钳制宽度（旧行为会把内联宽度截回 `--gpen-char-width`）。竖直形态
-  若要用内联 `height` 指定高度，记得 `min-height` 还在（4 × `--gpen-row`）：
+- `style` 落在**控件外框**（`Input` 时是滑条根 `.input-slider`，直接用 `InputNumber` 时是
+  `.input-widget`），不再往下传；内层 `width: 100%` 跟随外框。
+- **`class` 不行**：Tailwind v4 的 utility 在 `@layer utilities` 里，而 Svelte scoped 规则
+  （`.input-widget.svelte-xxx`）**无层级**——无层级声明永远压过带层级的声明；即便不分层，
+  `(0,1,0)` 也打不过 `(0,2,0)`。把组件规则挪进 `@layer components` 能救，但要重排全局层叠顺序，
+  **不做**：尺寸只承诺内联 `style`。（`class` 仍落在内部 `<input>` 上，供非尺寸样式用。）
+- 竖直形态不用 `max-width` 钳宽度；用内联 `height` 指定高度时记得 `min-height` 还在（4 × `--gpen-row`）：
   `style="height: 12lh; min-height: 0"`。
 
 ## Props / 提交 / 校验
@@ -81,6 +77,8 @@ div.input-widget[data-input-widget][data-orientation][role="group"]
 | `min` / `max`          | **只做校验**：不静默改绑定值（见下）；按**显示单位**表述  |
 | `onvalidvalue`         | 校验后的值：钳 `min`/`max`、不按 `step` 取整（见下）       |
 | `units` / `activeUnit` | 单位表与当前显示单位；见「单位」一节                      |
+| `style`                | 作用于控件**外框**（唯一可靠的尺寸入口，见「宽度」一节）  |
+| `class`                | 落在内部 `<input>`（尺寸**别**用它，理由见「宽度」一节）  |
 | 其余                   | `Omit<HTMLInputAttributes,'value'>`                       |
 
 - `oninput`：空/非有限值不写绑定值；有效时写值并记下 `draftDecimals`（用户敲的小数位，含尾零）。
@@ -122,17 +120,15 @@ validValue = finiteNumber(value) === undefined
   : clampTo(value, min, max);     // 只钳 min/max，【不按 step 取整】
 ```
 
-- 回调 prop 就是 Svelte 5 runes 下的事件机制（`createEventDispatcher` + `on:` 已是 legacy），与
+- 回调 prop 就是 Svelte 5 runes 下的事件机制（`createEventDispatcher` + `on:` 已 legacy），与
   `oninput` / `onchange` 同构，所以形状就是 `onvalidvalue?: (value: number | undefined) => void`。
-- 实现是 `InputNumber` 里的一个 `$derived` + 一个 `$effect`，天然覆盖「挂载初值 / 外部改值 /
-  用户输入」三条路径，不挂在 `commit()` 的各出口上。
-- **为什么不调 `validateNumeric`**：那个纯函数会先钳边界再**按 `step` 取整**。而 `step` 不参与校验
-  （见上），智能整数位/用户最大精度本来就会落在 step 网格之外（`step=0.01` 也能到 `0.008`），
-  这里取整会推翻「尊重用户最小精度」。所以 `validValue` 只钳 `min`/`max`；要 step 网格上的值，
-  调用方自己调 `validateNumeric(value, { min, max, step })`。
-- 例：`min=0 max=10` 时输入 `150`，`value` 仍是 `150`（打字不钳），`onvalidvalue` 给 `10`。
-- 转发链：`Input.svelte` 的原生分支必须把 `onvalidvalue` **显式解构掉**，否则 `{...rest}` 会把它
-  当成原生 `<input>` 的 `validvalue` 事件监听器挂上去；数值分支再显式转给 `InputSlider` → `InputNumber`。
+- 实现是 `InputNumber` 里一个 `$derived` + 一个 `$effect`，天然覆盖「挂载初值 / 外部改值 / 用户输入」，
+  不挂在 `commit()` 的各出口上。
+- **为什么不复用 `validateNumeric`**：它会按 `step` 取整，而 `step` 不参与校验（见上），取整会推翻
+  「尊重用户最小精度」。想要 step 网格上的值，调用方自己 `validateNumeric(value, {min, max, step})`。
+- 例：`min=0 max=10` 时输入 `150` → `value` 仍是 `150`（打字不钳），`onvalidvalue` 给 `10`。
+- 新增这类数值分支专用 prop 时，`Input.svelte` 的原生分支必须**显式解构掉**（否则 `{...rest}` 会把它
+  当成原生 `<input>` 的事件监听器挂上去），数值分支再显式转给 `InputSlider` → `InputNumber`。
 
 ### 单位（`units` / `activeUnit`）
 
@@ -163,17 +159,14 @@ validValue = finiteNumber(value) === undefined
   `1.234` kg，`kg` 作为只读标签留在旁边。二次编辑只会改到 `1.234` 这个数字。
 - 前后空格与「数字 / 单位之间」的空格在提交时用 `trim()` + split 处理（NFKC 归一化、大小写不敏感），
   所以 `' 1234克 '` 与 `'1234 克'` 等价。
-- **红底只表示「单位错」**：`invalid` 的判据是「既不是纯数字、也不是 `units` 支持的合法量」。
-  所以
-  - `1234g` / `1234 克`（单位正确、只是还没提交）→ **中性**，不标红、不写绑定值；
-  - `12 xyz`（单位认不出）、`12 cm`（质量字段里的长度单位，跨量纲）→ 红底 + `customValidity`，
-    失焦也不换算、文本原样保留；
-  - `1.2.3` 这类压根不是数字的文本 → 红底（与引入单位之前一致）。
+- **红底只表示「单位错」**：`invalid` 的判据是「既不是纯数字、也不是 `units` 认识的合法量」。所以
+  `1234g`（单位对、只是没提交）**中性不标红**；`12 xyz`（单位认不出）、`12 cm`（质量框里的长度单位，
+  跨量纲）、`1.2.3` 才标红，且失焦也不换算、原文保留。
 - **粘贴是显式赋值**，仍然立即换算（整段替换，不是插到光标处）：悬浮 `Ctrl+V` 时控件本来就没有焦点，
-  不会再有 blur 来触发提交。字段内粘贴同样如此。
+  不会再有 blur 来触发提交。
 - 换算走 `convertValue`（内部经基准单位），所以 `K ⇄ C ⇄ F` 这类**仿射换算**也对；不要自己乘系数。
-- `activeUnit` **实例创建后视为常量**（还没有单位切换 UI）。
-- 没有任何显示单位时（缺省注册表且无 `activeUnit`）所有换算都是恒等，行为与引入单位之前逐字一致。
+- `activeUnit` **实例创建后视为常量**（还没有单位切换 UI）。没有任何显示单位时（缺省注册表且无
+  `activeUnit`）所有换算都是恒等，行为与引入单位之前逐字一致。
 
 ### 悬浮 Ctrl+C / Ctrl+V（Blender 习惯）
 
@@ -188,12 +181,9 @@ validValue = finiteNumber(value) === undefined
 
 ### 非法文本
 
-非空、`Number()` 非有限（`1.2.3`、`abc`、`1e999`），**并且**不是 `units` 支持的「数字 + 单位」量
-→ `customValidity` + `:invalid` 红底，文本保留、绑定值 `NaN`；`<form>.checkValidity()` 会拦下。
-清空不算非法。语法以 `Number()` 为准（`0x10` 合法）。
-
-配了 `units` 时那条例外很重要：`1234g` 虽然 `Number()` 是 `NaN`，但它是**合法量、只是尚未提交**，
-所以不标红也不改绑定值（提交时才换算，见上）。
+非空、`Number()` 非有限（`1.2.3`、`abc`、`1e999`），**并且**不是 `units` 认识的「数字 + 单位」量
+→ `customValidity` + `:invalid` 红底，文本保留、绑定值 `NaN`；`<form>.checkValidity()` 拦下。
+清空不算非法；语法以 `Number()` 为准（`0x10` 合法）。单位那条例外（`1234g` 不算非法）见上。
 
 ### 右键菜单
 
@@ -261,21 +251,18 @@ validValue = finiteNumber(value) === undefined
 
 ## InputSlider 的指针行为
 
-- **点击/轻触**：走原生 focus，进 InputNumber 编辑模式；此时拖拽交给原生选区。
-- **长按(250ms) 或拖拽(>4px)**：不激活编辑模式，`blur` 后进入 scrub。确认拖拽才 `setPointerCapture`
+- **点击/轻触**：走原生 focus，进编辑模式；此时拖拽交给原生选区。
+- **长按(250ms) 或拖拽(>4px)**：不激活编辑模式，`blur` 后进 scrub；确认拖拽才 `setPointerCapture`
   （pointerdown 就捕获会让 mousedown 改派、输入框拿不到焦点）。
-- **无限拖拽（桌面鼠标）**：确认拖拽后、指针类型为鼠标时申请 `pointerLock`，锁定后用 `movementX/Y`
-  累加（可拉过屏幕边缘）；失败/被拒退回绝对坐标。
-- **移动端 / 触屏优先设备**（`(pointer: coarse)`，含 Android Chrome）：**不申请指针锁**——那里的
-  Pointer Lock 仍是实验性实现，`movementX/Y` 的轴、缩放、灵敏度都不可靠，锁上反而拖不动或乱跳；
-  这些设备（手指或外接鼠标都一样）统一走「`setPointerCapture` + 绝对坐标」，靠指针捕获让手指
-  移出控件后事件仍回到控件上。
-- `touch`/`pen` 也从不申请指针锁（锁定会弹「按 ESC 退出」提示，而且本来就有屏幕边界）；
-  WebDriver 的合成 `movementX/Y` 无效，`navigator.webdriver` 时同样跳过。
+- **无限拖拽**：桌面鼠标在确认拖拽后申请 `pointerLock`，用 `movementX/Y` 累加（可拉过屏幕边缘）；
+  失败或被拒退回绝对坐标。
+- **移动端 / 触屏优先设备（`(pointer: coarse)`，含 Android Chrome）与 `touch`/`pen` 一律不锁指针**：
+  那里的 Pointer Lock 仍不可靠（轴、缩放、灵敏度都存疑），锁上反而拖不动；统一走
+  「`setPointerCapture` + 绝对坐标」，手指移出控件后事件仍回到控件上。锁定还会弹「按 ESC 退出」提示，
+  而屏幕边界本来就有。WebDriver 的合成 `movementX/Y` 无效（`navigator.webdriver` 时跳过）。
 - 拖拽中浏览器接管手势（滚动/缩放）会发 `pointercancel`：按当前值收尾（等同松手），不会卡在 scrub。
-- 覆盖情况：e2e 用 CDP 合成真实 touch 事件（`hasTouch` + `isMobile` 上下文）覆盖「落点锁规则」
-  「跨区不换规则」「第二根手指不抢拖拽」；Android Chrome 上 Pointer Lock 的具体劣化无法在桌面
-  Chrome 复现，那部分只能靠真机回归。
+- e2e 用 CDP 合成真实 touch 事件（`hasTouch` + `isMobile`）覆盖「落点锁规则 / 跨区不换规则 / 第二根手指」；
+  Android Chrome 上 Pointer Lock 的劣化无法在桌面复现，只能真机回归。
 - CodeMirror 的 `±` 把手仍用**连续**拖拽（`numericScrub.ts` 的 `scrubValue`：精度取当前 token 的小数位，
   6px 一个精度单位）；离散三段分区是 InputSlider 独有的。
 
@@ -288,11 +275,10 @@ validValue = finiteNumber(value) === undefined
 
 `stepAtCaret` / `addStepToValue` / `toggleSign` / `softClampTo` / `finiteNumber` / `roundTo` /
 `clampTo` / `scrubValue` 被两个 CodeMirror 6 扩展与两个输入组件共用（方向键步进、`±` 拖拽把手），
-见 [`docs/codemirror.md`](codemirror.md)。
-
-拖拽像素→步进的量化也抽成了纯函数 `consumeScrubSteps(accumulated, consumed, pixelsPerStep)`：
-返回这次该走几步 + 已经花掉的像素（余量留到下一次，微动不反复触发），InputSlider 的三段分区
-与 CodeMirror 的连续拖拽共用同一个 `SCRUB_PIXELS_PER_STEP = 6` 灵敏度。
+见 [`docs/codemirror.md`](codemirror.md)。拖拽像素→步进的量化也抽成了纯函数
+`consumeScrubSteps(accumulated, consumed, pixelsPerStep)`（返回该走几步 + 已花掉的像素，余量留到
+下一次，微动不反复触发），InputSlider 的三段分区与 CodeMirror 的连续拖拽共用同一个
+`SCRUB_PIXELS_PER_STEP = 6`。
 
 ## 如何增加新 input 类型
 

@@ -22,13 +22,16 @@
 ## 原生优先（MDN / 浏览器行为）
 
 - 默认依赖原生行为来压低逻辑复杂度：优先 `<input type="…">` 等原生元素/属性、原生约束校验（`setCustomValidity` / `:invalid` / `required`）与浏览器默认交互（剪切复制粘贴、右键菜单、selection），再考虑自研。
-- 只有原生行为无法满足精确要求时才自研，并在对应 `docs/*.md` 写清「缺口 + 自研代价」。当前唯一例子：Chrome 的 `<input type="number">` 不提供 `selectionStart` / `setSelectionRange`，做不了 `InputNumber` 的「按光标位权步进」，所以它用 `type="text" inputmode="decimal"` 并在组件内补回数值语义（见 [`docs/input.md`](docs/input.md)）。
+- 只有原生行为无法满足精确要求时才自研，并在对应 `docs/*.md` 写清「缺口 + 自研代价」。目前只有两处例外：
+  - `number`：Chrome 的 `<input type="number">` 不提供 `selectionStart` / `setSelectionRange`，做不了 `InputNumber` 的「按光标位权步进」，所以它用 `type="text" inputmode="decimal"` 并在组件内补回数值语义（见 [`docs/input.md`](docs/input.md)）；将来的 `color` 同理。
+  - 多行文本：`CodeEditor` 用 CodeMirror 6 换掉 `<textarea>`（缺口 / 代价 / 表单镜像个案见 [`docs/code-editor.md`](docs/code-editor.md)）。
 - 因此除 `number`（和将来的 `color`）外，其余 `<input type>` 一律渲染原生元素，不要再套自研 wrapper/编辑态。
 
 ## 样式与 token
 
 - 全局设计 token（`--gpen-*`）定义在 `src/lib/themes/day-night.css`（`:root` / `:host` 白天 + `@media (prefers-color-scheme: dark)` 夜间，静态兜底）；JS 层 `theme.svelte.ts` 读一次后接管（source of truth），见 `docs/theme.md`。`src/app.css` 是 Tailwind 入口 + `@import` 该文件，由 `+layout.svelte` 引入。
 - 组件用 `var(--gpen-*)` 消费；需要局部变体时**覆盖变量本身**，不要新增「传具体值」的 props。
+- 组件尺寸由调用方用**内联 `style`** 覆盖（如 `<Input style="width: 12ch" />`）。Tailwind 工具类做不到：utility 在 `@layer utilities`，而 Svelte 的 scoped 规则**无层级**（无层级永远压过带层级），特异性也更高；详见 [`docs/input.md`](docs/input.md)。
 - 长度单位见下「CSS 长度单位」。
 
 ## 运行时与实例约定
