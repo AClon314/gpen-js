@@ -27,19 +27,20 @@ async function pasteText(target: Locator, text: string) {
 /** 读表单镜像 textarea 的值：既是文档文本，也顺带断言镜像与文档同步。 */
 function editorValue(target: Locator): Promise<string> {
   return target.evaluate((element) => {
-    const mirror = element.closest(".text-editor")?.querySelector("textarea");
+    const mirror = element.closest(".code-editor")?.querySelector("textarea");
     return mirror instanceof HTMLTextAreaElement ? mirror.value : "（找不到镜像）";
   });
 }
 
-test.describe("gpen-text-editor", () => {
+test.describe("gpen-code-editor", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/demo/textarea");
+    await page.goto("/demo/code");
     // 冷启动竞态：第一次导航可能撞上 Vite 还在优化依赖（SvelteKit 的动态入口 ?v= 哈希失配 → 404），
     // 页面空白；重载一次兜底，与组件本身无关。
     if ((await page.locator(".cm-content").count()) === 0) await page.reload();
-    // 编辑器在 onMount 里创建，先确认挂好了再操作（5 个示例编辑器）。
-    await expect(page.locator(".cm-content")).toHaveCount(5, { timeout: 15_000 });
+    // 编辑器在 onMount 里创建，先确认挂好了再操作（合并后的 /demo/code：2 个手搓 EditorView
+    // + 5 个 CodeEditor 实例 = 7 个 .cm-content）。
+    await expect(page.locator(".cm-content")).toHaveCount(7, { timeout: 15_000 });
   });
 
   test("writes the document through bind:value, keeping line breaks", async ({ page }) => {

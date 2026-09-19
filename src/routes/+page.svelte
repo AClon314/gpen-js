@@ -12,7 +12,7 @@
 	<p><a href={resolve('/demo/cross-tab-bus')}>cross-tab bus demo</a></p>
 	<p><a href={resolve('/demo/zoom')}>browser zoom counter demo</a></p>
 	<p><a href={resolve('/demo/widgets')}>input widgets demo</a></p>
-	<p><a href={resolve('/demo/code')}>CodeMirror number plugins demo</a></p>
+	<p><a href={resolve('/demo/code')}>CodeMirror demo（数值插件 + CodeEditor 组件）</a></p>
 	{'测试'.repeat(9999)}
 </main>
 

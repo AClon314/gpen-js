@@ -11,9 +11,9 @@
 		placeholder as cmPlaceholder,
 	} from '@codemirror/view';
 
-	// TextEditor：多行文本输入用的 CodeMirror 6 壳。
+	// CodeEditor：多行输入统一用的 CodeMirror 6 壳（可注入语言 / 扩展，将来挂语法高亮）。
 	//
-	// 为什么自研（对照 docs/textarea.md 的「缺口 + 自研代价」）：原生 <textarea> 除了
+	// 为什么自研（对照 docs/code-editor.md 的「缺口 + 自研代价」）：原生 <textarea> 除了
 	// 撤销栈以外没有任何编辑能力（隐式快捷键、按位权步进、± 拖拽、将来的语法高亮），
 	// 也拿不到「光标落在哪一位」这类结构化信息。CM6 已在仓库里（demo/code、
 	// numberStepper / numberScrubber），这里只做「CM 文档 ⇄ 表单值」的接线，不重写编辑逻辑。
@@ -23,7 +23,7 @@
 	// 会静默丢弃它的子节点），改用 `hidden` 的真 <textarea> 镜像：它参与 FormData /
 	// required / checkValidity，但 display:none 不占布局、不进无障碍树。
 
-	interface TextEditorProps
+	interface CodeEditorProps
 		extends Omit<
 			HTMLTextareaAttributes,
 			| 'value'
@@ -85,7 +85,7 @@
 		class: editorClass,
 		'aria-label': ariaLabel,
 		...rest
-	}: TextEditorProps = $props();
+	}: CodeEditorProps = $props();
 
 	let host = $state<HTMLDivElement | undefined>();
 	let mirror = $state<HTMLTextAreaElement | undefined>();
@@ -126,7 +126,7 @@
 		},
 		// rows → min-height：1lh 只由控件自己的字号 × 行高 token 决定（与宿主页无关）。
 		'.cm-content': {
-			minHeight: 'calc(var(--gpen-textarea-rows, 2) * 1lh)',
+			minHeight: 'calc(var(--gpen-code-rows, 2) * 1lh)',
 			padding: '0.4lh 0',
 		},
 		'.cm-line': { padding: '0 1ch' },
@@ -285,11 +285,11 @@
 </script>
 
 <div
-	class={`text-editor${disabled ? ' disabled' : ''}${editorClass ? ` ${editorClass}` : ''}`}
-	style="--gpen-textarea-rows: {rows ?? 2}"
-	data-text-editor
+	class={`code-editor${disabled ? ' disabled' : ''}${editorClass ? ` ${editorClass}` : ''}`}
+	style="--gpen-code-rows: {rows ?? 2}"
+	data-code-editor
 >
-	<div class="text-editor__host" bind:this={host}></div>
+	<div class="code-editor__host" bind:this={host}></div>
 	<!-- 表单镜像：hidden 的真 <textarea>，参与 FormData / required / checkValidity。 -->
 	<textarea
 		bind:this={mirror}
@@ -306,16 +306,16 @@
 </div>
 
 <style>
-	.text-editor {
+	.code-editor {
 		display: block;
 	}
 
 	/* 尺寸全交给 CM 的 theme（min-height = rows × 1lh），这里只统一「禁用」观感。 */
-	.text-editor.disabled :global(.cm-editor) {
+	.code-editor.disabled :global(.cm-editor) {
 		opacity: 0.55;
 	}
 
-	.text-editor.disabled :global(.cm-content) {
+	.code-editor.disabled :global(.cm-content) {
 		cursor: default;
 	}
 </style>

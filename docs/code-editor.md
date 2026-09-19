@@ -1,10 +1,10 @@
-# TextEditor（CodeMirror 6 多行文本）
+# CodeEditor（CodeMirror 6 多行文本）
 
-`src/lib/components/widgets/inputs/TextEditor.svelte`：多行文本输入的统一实现，内部是 CodeMirror 6，
-对外装作一个 `<textarea>`（值双向绑定 + 原生表单关联 + 约束校验）。
+`src/lib/components/widgets/inputs/CodeEditor.svelte`：多行文本输入的统一实现，内部是 CodeMirror 6，
+对外装作一个 `<textarea>`（值双向绑定 + 原生表单关联 + 约束校验），可注入语言 / 扩展（将来挂语法高亮）。
 
 ```svelte
-<TextEditor bind:value={note} name="note" required maxlength={200} rows={4} aria-label="备注" />
+<CodeEditor bind:value={note} name="note" required maxlength={200} rows={4} aria-label="备注" />
 ```
 
 只用已装的 `@codemirror/state` / `@codemirror/view` / `@codemirror/commands`（不引 `codemirror`
@@ -13,7 +13,7 @@
 
 ## 缺口 + 自研代价（仓库约定）
 
-仓库默认「原生优先」（见 [`docs/input.md`](input.md)）。`TextEditor` 是第二个例外（第一个是
+仓库默认「原生优先」（见 [`docs/input.md`](input.md)）。`CodeEditor` 是第二个例外（第一个是
 `InputNumber` 的 `number`），缺口与代价都写在这里：
 
 | 需求                                            | 原生 `<textarea>` | 自研代价                                                                 |
@@ -42,7 +42,7 @@ props 基于 `Omit<HTMLTextareaAttributes, …>`，被显式接管的属性：
 | `rows`                  | → `min-height: N * 1lh`（缺省 2，与原生一致）                                                   |
 | `wrap`                  | `off` → 不折行；其余（含缺省 `soft`）→ `EditorView.lineWrapping`                                |
 | `extensions`            | 追加到 CM 配置 compartment，`@codemirror/state` 的 `Extension[]`                                |
-| `class`                 | 加在外层 `.text-editor` 上（CM 自己的主题变量走 `--gpen-*`）                                     |
+| `class`                 | 加在外层 `.code-editor` 上（CM 自己的主题变量走 `--gpen-*`）                                     |
 | `aria-label`            | `contentAttributes`（CM 已自带 `role="textbox"` + `aria-multiline="true"`）                     |
 | 其余（`spellcheck` / `autocomplete` / `id` / `data-*` / `aria-*` …） | 透传进 `contentAttributes`；**函数值（事件处理器）**与 `cols` / `minlength` / `defaultValue` / `dirname` 会被丢弃 |
 
@@ -145,7 +145,8 @@ CM 主题里字号取 `--gpen-font-size`、行高取 `--gpen-line-height`，所�
 
 ## demo 与测试
 
-- `src/routes/demo/textarea/+page.svelte`：双向绑定、占位符、表单提交（打印 `FormData`）、
-  `disabled` / `readonly`、超长拒绝、`extensions` 注入 `numberStepper`。
-- `tests/e2e/textarea.e2e.ts`：绑定与换行、外部改值后的 undo、`FormData` / `required` /
+- `src/routes/demo/code/+page.svelte`：CodeEditor 部分演示双向绑定、占位符、表单提交
+  （打印 `FormData`）、`disabled` / `readonly`、超长拒绝、`extensions` 注入 `numberStepper`
+  （同一页面另有一节直接演示 `numberStepper` / `numberScrubber` 两个扩展）。
+- `tests/e2e/code-editor.e2e.ts`：绑定与换行、外部改值后的 undo、`FormData` / `required` /
   `disabled` / `readonly`、`maxlength` 的键入与粘贴、占位符、扩展注入。
