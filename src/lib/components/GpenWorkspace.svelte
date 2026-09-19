@@ -811,10 +811,21 @@
 	/**
 	 * 打开偏好设置：幂等的**浮动** dockview 面板。
 	 *
-	 * 已存在就 `setActive()`（不开第二个）；不存在才 `addPanel` + `addFloatingGroup`
-	 * （dockview 8.2 的 `addFloatingGroup(item, { position, width, height, dragHandle })`）。
-	 * `dragHandle: 'titlebar'` 保留面板标题栏作为拖动手柄，所以它不进
-	 * `:has(.blender-panel-...) { display: none }` 那组。
+	 * ⚠️ 必须用 `addPanel({ floating: {...} })`，**不要**写成
+	 * `addPanel({initialWidth, initialHeight})` + `addFloatingGroup(panel)`。
+	 *
+	 * 原因（dockview 8.2 `_doAddPanel` 实测读源码）：没有 `position` / `floating` 时，
+	 * `addPanel` 会把面板开进 **active 组**，并在最后对那个组调
+	 * `group.api.setSize({width: initialWidth, height: initialHeight})` —— 这一下就把整个网格
+	 * 重新分配了（实测：视口组从 918×442 变成 860×654，右列 300×221 缩成 260×200，
+	 * 状态栏被撑成 420×406）。随后 `addFloatingGroup` 把面板挪出去，但网格的尺寸已经改了，
+	 * 不会自己恢复（用户看到的「Airbrush 那一行被撑高 / 整个网格溢出容器」就是这个）。
+	 *
+	 * 走 `floating:` 分支则完全不碰网格：dockview 新建一个组、直接把它挂成浮窗
+	 * （`skipRemoveGroup: true`，因为那个组本来就不在网格里），**不会对任何网格组 setSize**。
+	 *
+	 * `position` 与 `floating` 互斥（同时传 dockview 会抛错）；`FloatingGroupOptions.position`
+	 * 只有四个角（`AnchorPosition`），没有 `'center'`，所以居中坐标自己算。
 	 */
 	function openPreferences(): void {
 		const instance = dockview;
@@ -824,25 +835,19 @@
 			existing.api.setActive();
 			return;
 		}
-		const panel = instance.addPanel({
+		const width = Math.min(PREFERENCES_WIDTH, Math.max(240, instance.width - 2 * FLOAT_MARGIN));
+		const height = Math.min(PREFERENCES_HEIGHT, Math.max(200, instance.height - 2 * FLOAT_MARGIN));
+		instance.addPanel({
 			id: PREFERENCES_PANEL_ID,
 			component: PREFERENCES_PANEL_ID,
 			title: '偏好设置',
-			initialWidth: PREFERENCES_WIDTH,
-			initialHeight: PREFERENCES_HEIGHT
-		});
-		if (!panel) return;
-		// `position` 的类型是 `AnchorPosition`（四个角），**没有** `'center'`：
-		// 传 `'center'` 会编译报错，运行时也会落回默认左上角。所以按容器尺寸自己算居中
-		// 坐标（dockview 的 `floatingGroupBounds: 'boundedWithinViewport'` 会再夹一次）。
-		const width = Math.min(PREFERENCES_WIDTH, Math.max(240, instance.width - 2 * FLOAT_MARGIN));
-		const height = Math.min(PREFERENCES_HEIGHT, Math.max(200, instance.height - 2 * FLOAT_MARGIN));
-		instance.addFloatingGroup(panel, {
-			x: Math.max(FLOAT_MARGIN, Math.round((instance.width - width) / 2)),
-			y: Math.max(FLOAT_MARGIN, Math.round((instance.height - height) / 2)),
-			width,
-			height,
-			dragHandle: 'titlebar'
+			floating: {
+				x: Math.max(FLOAT_MARGIN, Math.round((instance.width - width) / 2)),
+				y: Math.max(FLOAT_MARGIN, Math.round((instance.height - height) / 2)),
+				width,
+				height,
+				dragHandle: 'titlebar'
+			}
 		});
 	}
 

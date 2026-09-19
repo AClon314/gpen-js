@@ -53,6 +53,41 @@ function countInk(page: Page) {
   });
 }
 
+/**
+ * 网格布局快照：所有**非浮动**组的矩形 + 几个关键面板的矩形。
+ *
+ * 用来断言「打开浮动面板不能动到网格」——dockview 的 `addPanel` 在没有 `floating` 时会把
+ * `initialWidth/Height` 应用给 active 组（`group.api.setSize(...)`），一次性重排整个网格，
+ * 之后把面板挪成浮窗也不会恢复（实测：菜单行被撑高、视口/状态栏尺寸全变）。
+ */
+function gridSnapshot(page: Page) {
+  return page.evaluate(() => {
+    const round = (n: number) => Math.round(n);
+    const box = (el: Element) => {
+      const r = el.getBoundingClientRect();
+      return `${round(r.x)},${round(r.y)} ${round(r.width)}x${round(r.height)}`;
+    };
+    const groups = [...document.querySelectorAll(".dv-groupview")]
+      .filter((el) => !el.classList.contains("dv-groupview-floating"))
+      .map(box)
+      .join(" | ");
+    const panels = [
+      ".blender-panel-menu",
+      ".menu-row",
+      ".tool-settings",
+      ".blender-panel-viewport",
+      ".blender-panel-statusbar",
+      ".blender-panel-timeline",
+    ]
+      .map((selector) => {
+        const el = document.querySelector(selector);
+        return el ? box(el) : "missing";
+      })
+      .join(" | ");
+    return { groups, panels };
+  });
+}
+
 test.describe("preferences panel", () => {
   test("opens as a floating dockview panel and does not duplicate", async ({ page }) => {
     await page.goto("/");
@@ -70,6 +105,32 @@ test.describe("preferences panel", () => {
     expect(await page.locator(".blender-panel-preferences").count()).toBe(1);
     // dockview 8.2 给浮动组的类是 `.dv-groupview-floating`（没有 `.dv-floating` 容器）。
     await expect(page.locator(".dv-groupview-floating")).toHaveCount(1);
+  });
+
+  test("opening the panel does not reflow the workspace grid", async ({ page }) => {
+    await page.goto("/");
+    await openWorkspace(page);
+    const before = await gridSnapshot(page);
+    // 顶栏（menu 面板）与它的两行必须各自保持原高：这是用户看到的现象。
+    const menuBefore = await page.locator(".menu-row").boundingBox();
+    const toolSettingsBefore = await page.locator(".tool-settings").boundingBox();
+
+    await openPreferences(page);
+    await page.waitForTimeout(500);
+    expect(await gridSnapshot(page)).toEqual(before);
+    await expect(page.locator(".dv-groupview-floating")).toHaveCount(1);
+
+    // 关闭（Esc 由捕获阶段收浮动面板）后再开一次：网格依然不动。
+    await page.keyboard.press("Escape");
+    await expect(page.locator(".blender-panel-preferences")).toHaveCount(0);
+    await openPreferences(page);
+    await page.waitForTimeout(500);
+    expect(await gridSnapshot(page)).toEqual(before);
+
+    const menuAfter = await page.locator(".menu-row").boundingBox();
+    const toolSettingsAfter = await page.locator(".tool-settings").boundingBox();
+    expect(menuAfter?.height).toBe(menuBefore?.height);
+    expect(toolSettingsAfter?.height).toBe(toolSettingsBefore?.height);
   });
 
   test("switches the theme tri-state and applies it immediately", async ({ page }) => {

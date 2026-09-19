@@ -54,14 +54,31 @@ runes 模块（不进 `#lib` 桶，理由同 `themes/theme.svelte.ts`）：`pref
 ```ts
 const existing = dockview.getPanel(PREFERENCES_PANEL_ID);
 if (existing) { existing.api.setActive(); return; }   // 幂等，不开第二个
-const panel = dockview.addPanel({ id, component: 'preferences', title: '偏好设置', ... });
-dockview.addFloatingGroup(panel, { x, y, width, height, dragHandle: 'titlebar' });
+const width = …; const height = …;                     // 按容器尺寸算居中
+const x = …; const y = …;
+dockview.addPanel({
+  id: PREFERENCES_PANEL_ID,
+  component: 'preferences',
+  title: '偏好设置',
+  floating: { x, y, width, height, dragHandle: 'titlebar' },
+});
 ```
 
-- ⚠️ **`addFloatingGroup` 没有 `position: 'center'`**：类型是 `AnchorPosition`
-  （`TopLeft` / `TopRight` / `BottomLeft` / `BottomRight`），传 `'center'` 编译报错、
-  运行时落回默认左上角 `{left: 100, top: 100}`。居中坐标要自己按容器尺寸算
-  （`floatingGroupBounds: 'boundedWithinViewport'` 会再夹一次）。
+- ⚠️ **必须用 `addPanel({ floating })`，不要写成 `addPanel({initialWidth, initialHeight})` +
+  `addFloatingGroup(panel)`。** dockview 8.2 的 `_doAddPanel`：没有 `position` / `floating` 时，
+  它把面板开进 **active 组**，并在末尾对那个组调
+  `group.api.setSize({ width: initialWidth, height: initialHeight })` —— 这一下就把**整个网格**
+  重新分配了；随后 `addFloatingGroup` 把面板挪成浮窗，但网格尺寸**不会恢复**。
+  实测（1280×720）：视口组 `918×442 → 860×200`、状态栏 `1218×24 → 420×406`、
+  时间轴 `1218×188 → 420×48`，顶栏的「Airbrush」那一行被顶出容器。
+  走 `floating:` 分支完全不碰网格（dockview 新建一个组直接挂成浮窗，`skipRemoveGroup: true`），
+  实测开/关浮动面板前后所有网格组矩形**逐字节相同**。
+  回归：`tests/e2e/preferences.e2e.ts` 的「opening the panel does not reflow the workspace grid」
+  （快照所有非浮动组 + 顶栏两行的矩形做比对）。
+- **`position` 与 `floating` 互斥**（同时传 dockview 会抛错）；`FloatingGroupOptions.position`
+  的类型是 `AnchorPosition`（`TopLeft` / `TopRight` / `BottomLeft` / `BottomRight`），
+  **没有 `'center'`**，传 `'center'` 编译报错、运行时落回默认左上角 `{left: 100, top: 100}`。
+  所以居中坐标自己算（`floatingGroupBounds: 'boundedWithinViewport'` 会再夹一次）。
 - **不进 `buildDefaultLayout`**：否则默认布局变大，且老用户存下的布局里没有它。
 - **保留标题栏**（不加进 `:has(.blender-panel-...) > .dv-tabs-and-actions-container { display: none }`
   那组）：它是浮动的，需要标题栏当拖动手柄（`dragHandle: 'titlebar'`）。
@@ -87,6 +104,10 @@ dockview.addFloatingGroup(panel, { x, y, width, height, dragHandle: 'titlebar' }
    `changedFields()`（`GpenWorkspace`）与 `changedPreferences()`（state 模块）丢掉等值 patch。
    顺带修掉「聚焦滑条就往 undo 里塞一条空记录」。删掉守卫立刻复现。
 2. **`position: 'center'` 不存在**（见上）：改为自算居中坐标。
+2b. **打开浮动面板会把整个网格重排**：`addPanel` 不带 `floating` 时会把
+   `initialWidth/initialHeight` 应用给 **active 组**（`group.api.setSize(...)`），
+   浮出去之后也不恢复 —— 表现是顶栏「Airbrush」那行被撑高/被顶出容器、视口与状态栏尺寸全变。
+   改用 `addPanel({ floating })` 后完全不碰网格（e2e 逐字节比对所有非浮动组矩形）。
 3. **`.dv-floating` 不存在**（见上）：e2e 断言按实测改成 `.dv-groupview-floating`。
 4. **Esc 关掉整个工作区**：浮动的偏好面板开着时按 Esc 会冒泡到工作区的「关工作区」处理；
    改为捕获阶段的 Esc 优先收面板（见 [`commands.md`](commands.md)「Escape 的优先级」）。
