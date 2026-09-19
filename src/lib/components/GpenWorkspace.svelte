@@ -12,7 +12,7 @@
 		type SerializedDockview
 	} from 'dockview';
 	import { MimeType, type GpenT, type StrokeT } from 'gpen-protocol/flatbuffers';
-	import { EraserMode, type BrushSettingsT, type EraserSettingsT } from 'gpen-protocol/flatbuffers';
+	import { EraserMode, type BrushSettingsT, type EraserSettingsT, type ToolbarStateT } from 'gpen-protocol/flatbuffers';
 	import { createDefaultGpen } from '../protocol/defaults';
 	import { encodeGpen } from '../protocol/codec';
 	import { createRuntimeUploadDownloadSelector } from '#lib/bindings/upDownloader';
@@ -378,6 +378,37 @@
 		preferencesProps.eraser = state?.eraser ?? undefined;
 		preferencesProps.storageStatus = storageStatus;
 	});
+
+	/**
+	 * 属性面板的 props：和 `viewportProps` / `preferencesProps` 一样是 `$state` 代理
+	 * （`componentProps` 只在 `init()` 时求值一次，返回普通对象的话子组件永远看不到变化）。
+	 */
+	const propertiesProps = $state<{
+		brush: BrushSettingsT | undefined;
+		eraser: EraserSettingsT | undefined;
+		activeTool: GpenToolId;
+		onChangeBrush: (patch: Partial<BrushSettingsT>) => void;
+		onChangeEraser: (patch: Partial<EraserSettingsT>) => void;
+	}>({
+		brush: undefined,
+		eraser: undefined,
+		activeTool: 'brush',
+		onChangeBrush: changeBrush,
+		onChangeEraser: changeEraser
+	});
+
+	// 工具 + 协议 `ToolbarState` → 属性面板 props。
+	$effect(() => {
+		const state = gpenDocument ? readToolbarState(gpenDocument) : undefined;
+		propertiesProps.brush = state?.brush ?? undefined;
+		propertiesProps.eraser = state?.eraser ?? undefined;
+		propertiesProps.activeTool = workspaceState.activeTool;
+	});
+
+	/** 当前文档的工具栏状态（没有就 `undefined`）。 */
+	function toolbarState(): ToolbarStateT | undefined {
+		return gpenDocument ? readToolbarState(gpenDocument) : undefined;
+	}
 
 	let expandedInitialized = false;
 
@@ -1240,6 +1271,9 @@
 		if (name === 'viewport') return viewportProps;
 		if (name === 'outliner') return outlinerProps;
 		if (name === 'preferences') return preferencesProps;
+		// 属性面板与设置面板共用同一套画笔 / 橡皮参数（真值在协议 `ToolbarState`），
+		// 只是属性面板跟随当前工具、设置面板两套都显示。
+		if (name === 'properties') return propertiesProps;
 		if (name === 'statusbar') {
 			return {
 				state: historyState,

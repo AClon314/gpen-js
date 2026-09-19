@@ -68,6 +68,10 @@ dockview.addFloatingGroup(panel, { x, y, width, height, dragHandle: 'titlebar' }
 - dockview 给浮动组的类名是 **`.dv-groupview-floating`**（没有 `.dv-floating` 容器）。
 - 面板内容分四组：界面（缩放 / 主题 / 语言 / 状态栏）、工具（默认工具 + 画笔 + 橡皮，
   **直接绑协议 `ToolbarState`**）、文件（自动保存间隔、文档 id、落盘状态、清空）、重置。
+- **属性面板与设置面板共用同一批 `aria-label`**（两边都绑同一份 `ToolbarState`），
+  所以 e2e 里查值必须限定作用域（`.blender-panel-preferences` / `.blender-panel-properties`）。
+  属性面板跟随当前工具（画笔显示「画笔直径 / 强度 / 间距」，橡皮显示「橡皮直径 / 强度」）；
+  尺寸两边都用 `px` 直径表述（`BrushSettings.size` 是直径、CSS px，不做单位换算）。
 - 关闭 / 重置：面板内「恢复默认偏好」调 `resetPreferences()` 并把 `ToolbarState` 的画笔 /
   橡皮重置为默认；「重置面板布局」复用 `gpen.reset_panel_layout`。
 

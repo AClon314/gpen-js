@@ -104,7 +104,7 @@ test.describe("preferences panel", () => {
     await page.goto("/");
     await openWorkspace(page);
     await openPreferences(page);
-    await page.getByLabel("主题").selectOption("dark");
+    await page.locator(".blender-panel-preferences").getByLabel("主题").selectOption("dark");
     await expect.poll(() => themeAttribute(page)).toBe("dark");
     // 偏好是 debounce 落盘的（KV），给存储一点时间。
     await page.waitForTimeout(1500);
@@ -113,7 +113,9 @@ test.describe("preferences panel", () => {
     await openWorkspace(page);
     await expect.poll(() => themeAttribute(page), { timeout: 15_000 }).toBe("dark");
     await openPreferences(page);
-    expect(await page.getByLabel("主题").inputValue()).toBe("dark");
+    expect(await page.locator(".blender-panel-preferences").getByLabel("主题").inputValue()).toBe(
+      "dark",
+    );
   });
 
   test("shows brush and eraser settings from the protocol toolbar state", async ({ page }) => {
@@ -186,11 +188,13 @@ test.describe("preferences panel", () => {
     await page.goto("/");
     await openWorkspace(page);
     await openPreferences(page);
-    await page.getByLabel("主题").selectOption("dark");
+    await page.locator(".blender-panel-preferences").getByLabel("主题").selectOption("dark");
     await expect.poll(() => themeAttribute(page)).toBe("dark");
 
     await page.getByRole("button", { name: "恢复默认偏好" }).click();
     await expect.poll(() => themeAttribute(page)).toBeNull();
-    expect(await page.getByLabel("主题").inputValue()).toBe("system");
+    expect(await page.locator(".blender-panel-preferences").getByLabel("主题").inputValue()).toBe(
+      "system",
+    );
   });
 });

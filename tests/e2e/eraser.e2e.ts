@@ -51,7 +51,7 @@ function inkMass(page: Page) {
 /** Make the eraser big enough that a short drag really bites into a 2px line. */
 async function setEraserSize(page: Page, diameter: number) {
   await openPreferences(page);
-  await page.getByLabel("橡皮尺寸（直径）").fill(String(diameter));
+  await preferences(page).getByLabel("橡皮尺寸（直径）").fill(String(diameter));
   await page.keyboard.press("Enter");
   await page.waitForTimeout(300);
   await page.keyboard.press("Escape");
@@ -91,13 +91,18 @@ async function selectTool(page: Page, label: string) {
 }
 
 async function setEraserMode(page: Page, label: string) {
-  await page.getByLabel("擦除模式").selectOption({ label });
+  await preferences(page).getByLabel("擦除模式").selectOption({ label });
   await page.waitForTimeout(150);
 }
 
 async function openPreferences(page: Page) {
   await page.keyboard.press("Control+Alt+u");
   await expect(page.locator(".blender-panel-preferences")).toBeVisible();
+}
+
+/** 属性面板与设置面板共用同一批 `aria-label`，所以查值要限定作用域。 */
+function preferences(page: Page) {
+  return page.locator(".blender-panel-preferences");
 }
 
 /** `Gpen.toolbarState.brush` / `.eraser` as stored in the document (via the KV blob). */
@@ -132,7 +137,7 @@ test.describe("brush and eraser", () => {
     expect(thinInk).toBeGreaterThan(0);
 
     await openPreferences(page);
-    await page.getByLabel("画笔尺寸（直径）").fill("40");
+    await preferences(page).getByLabel("画笔尺寸（直径）").fill("40");
     await page.keyboard.press("Enter");
     await page.waitForTimeout(400);
     // 关掉浮动面板，免得挡住画布。
@@ -221,7 +226,7 @@ test.describe("brush and eraser", () => {
     const before = await readToolbarStateFromStorage(page);
 
     await openPreferences(page);
-    await page.getByLabel("画笔尺寸（直径）").fill("48");
+    await preferences(page).getByLabel("画笔尺寸（直径）").fill("48");
     await page.keyboard.press("Enter");
     await page.waitForTimeout(1200);
     await page.keyboard.press("Escape");
@@ -230,5 +235,35 @@ test.describe("brush and eraser", () => {
     await expect
       .poll(() => readToolbarStateFromStorage(page), { timeout: 15_000 })
       .toBeGreaterThan(before);
+  });
+});
+
+test.describe("properties panel", () => {
+  test("follows the active tool and writes the same protocol state", async ({ page }) => {
+    test.setTimeout(90_000);
+    await page.goto("/");
+    await openWorkspace(page);
+
+    const properties = page.locator(".blender-panel-properties");
+    await expect(properties.getByText("笔刷设置")).toBeVisible();
+    // 画笔模式：有「间距」，尺寸滑条标「画笔直径」。
+    await expect(properties.getByLabel("画笔尺寸（直径）")).toBeVisible();
+    await expect(properties.getByLabel("画笔间距")).toBeVisible();
+
+    await selectTool(page, "橡皮");
+    await expect(properties.getByText("橡皮设置")).toBeVisible();
+    await expect(properties.getByLabel("橡皮尺寸（直径）")).toBeVisible();
+    await expect(properties.getByLabel("橡皮强度")).toBeVisible();
+    // 橡皮没有「间距」。
+    await expect(properties.getByLabel("画笔间距")).toHaveCount(0);
+
+    // 属性面板改的是**同一份** `ToolbarState`：设置面板能看到同一个值。
+    await properties.getByLabel("橡皮尺寸（直径）").fill("64");
+    await page.keyboard.press("Enter");
+    await page.waitForTimeout(300);
+    // 焦点还在文本框里时快捷键会被让给控件（`isTextEntryTarget`），先点开空白处。
+    await properties.getByText("橡皮设置").click();
+    await openPreferences(page);
+    expect(await preferences(page).getByLabel("橡皮尺寸（直径）").inputValue()).toBe("64");
   });
 });

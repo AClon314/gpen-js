@@ -7,7 +7,6 @@
 	import ColorPicker from '#lib/components/widgets/colors/ColorPicker.svelte';
 	import InputSlider from '#lib/components/widgets/inputs/InputSlider.svelte';
 	import SelectRow from '#lib/components/widgets/inputs/SelectRow.svelte';
-	import { STD_UNITS } from '#lib/inputs/units';
 	import { EraserMode, type BrushSettingsT, type EraserSettingsT } from 'gpen-protocol/flatbuffers';
 	import type { GpenPreferences } from '../gpenPreferences';
 	import type { GpenToolId } from '../gpenWorkspaceState';
@@ -200,7 +199,7 @@
 			<span class="property-label">画笔尺寸</span>
 			<InputSlider
 				value={brushSize}
-				units={STD_UNITS.length}
+				units={{ base: 'px', units: { px: 1 } }}
 				min={1}
 				max={256}
 				step={1}
@@ -263,7 +262,7 @@
 			<span class="property-label">橡皮尺寸</span>
 			<InputSlider
 				value={eraserSize}
-				units={STD_UNITS.length}
+				units={{ base: 'px', units: { px: 1 } }}
 				min={1}
 				max={256}
 				step={1}
