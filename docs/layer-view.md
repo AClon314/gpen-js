@@ -110,3 +110,10 @@ view.restore();                                // 恢复原始 transform-origin 
 
 `immersive` 是持久化偏好；最小化 / 关闭 / 进入沉浸前都会显式清掉相反的状态，避免
 「重新打开时仍无 chrome」这种死状态。
+
+### T4 补充：沉浸模式下画布不铺满
+
+加画布后，`.dv-groupview.gpen-hole`（含画布）在沉浸模式下用更高特异性重新 `visibility:
+visible`，否则绘制面会跟着 chrome 一起被隐藏。但洞仍只占 dockview 原来给视口的那一格——
+沉浸模式只隐藏 chrome，不改网格，所以画布**不会**扩到整个可视区。这是 `docs/stroke.md`
+记的已知缺口。

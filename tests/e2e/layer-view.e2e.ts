@@ -103,12 +103,18 @@ test.describe("web layer rotation", () => {
     expect(during!.rect.width).toBeGreaterThan(0);
     expect(during!.rect.height).toBeGreaterThan(0);
 
-    // 命中测试仍然落在页内元素上。
+    // T4：打开工作区 = 绘制模式，视口中心归画布（`canvas.stroke-surface`）。
+    // 宿主网页的命中测试由「最小化」交还（见 tests/embed/embed.e2e.ts）。
     const hit = await page.evaluate(() => {
       const element = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2);
-      return { inOverlay: Boolean(element?.closest(".gpen-overlay")) };
+      return {
+        isCanvas: element?.classList.contains("stroke-surface") ?? false,
+        mainRotate: getComputedStyle(document.querySelector("main") as HTMLElement).rotate,
+      };
     });
-    expect(hit.inOverlay).toBe(false);
+    expect(hit.isCanvas).toBe(true);
+    // 画布覆盖不影响页面自身的旋转投影。
+    expect(hit.mainRotate).toContain("30deg");
 
     await page.getByLabel("重置视图旋转").click();
     const after = await readMain(page);

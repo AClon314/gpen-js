@@ -39,12 +39,41 @@ export interface LayerView {
    */
   setRotation(degrees: number): boolean;
 
+  /** Map a layer-local point to current client (layout viewport) coordinates. */
+  toClientPoint(local: LayerPoint): LayerPoint;
+
+  /** Map current client coordinates to a layer-local point (pointer sampling). */
+  toLayerPoint(client: LayerPoint): LayerPoint;
+
   /** Put the host element back exactly as it was before the first rotation. */
   restore(): void;
 }
 
+export interface LayerPoint {
+  x: number;
+  y: number;
+}
+
+/**
+ * Everything the coordinate mapping needs: the rotation pivot (layer-local),
+ * the rotation angle, the element origin in document coordinates and the
+ * current page scroll. Pure data so the math can be unit tested.
+ */
+export interface LayerPointMapping {
+  /** Layer-local coordinate the viewport center had when the rotation was set. */
+  pivot: LayerPoint;
+  /** View rotation in degrees (clockwise on screen, y-down CSS convention). */
+  rotation: number;
+  /** Unrotated element origin in **document** coordinates (`rect.left + scrollX`). */
+  origin: LayerPoint;
+  /** Current page scroll (`window.scrollX/scrollY`). */
+  scroll: LayerPoint;
+}
+
 type ElementLayerState = {
   rotation: number;
+  pivot: LayerPoint;
+  origin: LayerPoint;
   originalTransformOrigin: string;
   originalTransformOriginPriority: string;
   originalRotate: string;
@@ -61,6 +90,8 @@ function readState(element: HTMLElement): ElementLayerState {
   const style = element.style;
   const state: ElementLayerState = {
     rotation: 0,
+    pivot: { x: 0, y: 0 },
+    origin: { x: 0, y: 0 },
     originalTransformOrigin: style.getPropertyValue("transform-origin"),
     originalTransformOriginPriority: style.getPropertyPriority("transform-origin"),
     originalRotate: style.getPropertyValue("rotate"),
@@ -119,20 +150,25 @@ function applyElementRotation(
     return false;
   }
 
+  // Measure the unrotated box so the pivot is real layer-local geometry.
+  // Removing the inline `rotate` and reading `getBoundingClientRect` in the
+  // same task means no frame is painted in between. The same measurement
+  // captures the element origin in document coordinates, which the coordinate
+  // mapping needs (and which must be taken *without* our rotation, since the
+  // rotated rect is an AABB of the rotated content).
+  style.removeProperty("rotate");
+  const rect = element.getBoundingClientRect();
+  const scroll = currentScroll();
+  state.pivot = pivotAtViewportCenter(rect, viewportOffset(), viewportSize());
+  state.origin = { x: rect.left + scroll.x, y: rect.top + scroll.y };
+
   if (degrees === 0) {
     clearRotation(element, state);
     state.rotation = 0;
     return true;
   }
 
-  // Measure the unrotated box so the pivot is real layer-local geometry.
-  // Removing the inline `rotate` and reading `getBoundingClientRect` in the
-  // same task means no frame is painted in between.
-  style.removeProperty("rotate");
-  const rect = element.getBoundingClientRect();
-  const pivot = pivotAtViewportCenter(rect, viewportOffset(), viewportSize());
-
-  style.setProperty("transform-origin", `${pivot.x}px ${pivot.y}px`);
+  style.setProperty("transform-origin", `${state.pivot.x}px ${state.pivot.y}px`);
   style.setProperty("rotate", `${degrees}deg`);
   state.rotation = degrees;
   return true;
@@ -142,26 +178,96 @@ function round(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
+function toRadians(degrees: number): number {
+  return (degrees * Math.PI) / 180;
+}
+
+/** Current page scroll in layout coordinates (0 when there is no window). */
+export function currentScroll(): LayerPoint {
+  if (typeof window === "undefined") return { x: 0, y: 0 };
+  return { x: window.scrollX, y: window.scrollY };
+}
+
+/**
+ * `layerToClient`: map a layer-local point to current client coordinates.
+ *
+ *   client = origin - scroll + pivot + R(θ)·(local - pivot)
+ *
+ * `origin - scroll` is the element origin in client coordinates, so with θ = 0
+ * the result is simply `origin - scroll + local`. The pivot term makes the
+ * rotation match CSS `transform-origin: pivot`, which rotates *around* the
+ * pivot instead of around the layer origin. (`tmp/handoff.md` wrote the formula
+ * without `+ pivot`; that variant is only correct for `pivot = (0, 0)`.)
+ *
+ * θ is clockwise on screen (y-down CSS convention), so
+ * `R(θ)·(dx, dy) = (dx·cosθ - dy·sinθ, dx·sinθ + dy·cosθ)`.
+ */
+export function mapLayerPoint(local: LayerPoint, mapping: LayerPointMapping): LayerPoint {
+  const radians = toRadians(mapping.rotation);
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  const dx = local.x - mapping.pivot.x;
+  const dy = local.y - mapping.pivot.y;
+  return {
+    x: mapping.origin.x - mapping.scroll.x + mapping.pivot.x + dx * cos - dy * sin,
+    y: mapping.origin.y - mapping.scroll.y + mapping.pivot.y + dx * sin + dy * cos,
+  };
+}
+
+/** Inverse of `mapLayerPoint` (client → layer-local). */
+export function unmapClientPoint(client: LayerPoint, mapping: LayerPointMapping): LayerPoint {
+  const radians = toRadians(mapping.rotation);
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  const dx = client.x - (mapping.origin.x - mapping.scroll.x) - mapping.pivot.x;
+  const dy = client.y - (mapping.origin.y - mapping.scroll.y) - mapping.pivot.y;
+  return {
+    x: mapping.pivot.x + dx * cos + dy * sin,
+    y: mapping.pivot.y - dx * sin + dy * cos,
+  };
+}
+
 /** Project a layer onto a layer view. Element views are shared per element. */
 export function createLayerView(target: LayerViewTarget): LayerView {
   if (target.kind === "canvas") {
-    let rotation = 0;
+    // Canvas layers have no DOM element, so there is nothing to measure: the
+    // origin is the document origin and the pivot is (0, 0). Rotation then
+    // happens around the document origin instead of the viewport center — a
+    // documented gap (see docs/stroke.md); the element target is used whenever
+    // a web layer could be guessed, which is the normal path.
+    const mapping = { pivot: { x: 0, y: 0 }, rotation: 0, origin: { x: 0, y: 0 } };
     return {
       kind: "canvas",
       element: null,
-      rotation: () => rotation,
+      rotation: () => mapping.rotation,
       setRotation(degrees) {
-        rotation = degrees;
+        mapping.rotation = degrees;
         return true;
       },
+      toClientPoint(local) {
+        return mapLayerPoint(local, { ...mapping, scroll: currentScroll() });
+      },
+      toLayerPoint(client) {
+        return unmapClientPoint(client, { ...mapping, scroll: currentScroll() });
+      },
       restore() {
-        rotation = 0;
+        mapping.rotation = 0;
       },
     };
   }
 
   const element = target.element;
   const state = readState(element);
+  // Capture the unrotated origin (and pivot) right away, so the coordinate
+  // mapping works at rotation 0 too. `applyElementRotation(…, 0)` measures the
+  // box without applying any rotation.
+  applyElementRotation(element, state, 0);
+  const mapping = (): LayerPointMapping => ({
+    pivot: state.pivot,
+    rotation: state.rotation,
+    origin: state.origin,
+    scroll: currentScroll(),
+  });
   return {
     kind: "element",
     element,
@@ -169,9 +275,17 @@ export function createLayerView(target: LayerViewTarget): LayerView {
     setRotation(degrees) {
       return applyElementRotation(element, state, degrees);
     },
+    toClientPoint(local) {
+      return mapLayerPoint(local, mapping());
+    },
+    toLayerPoint(client) {
+      return unmapClientPoint(client, mapping());
+    },
     restore() {
       clearRotation(element, state);
       state.rotation = 0;
+      state.pivot = { x: 0, y: 0 };
+      state.origin = { x: 0, y: 0 };
     },
   };
 }

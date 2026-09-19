@@ -117,11 +117,8 @@ test.describe("gpen embed", () => {
     expect(hole?.background).toBe("rgba(0, 0, 0, 0)");
     expect(hole?.pointerEvents).toBe("none");
 
-    // 工作区打开时宿主页仍可交互（透明视口事件穿透）。
-    //
-    // 点在**洞内**（可视区中心），而不是页面左上角的按钮：相机换成绝对定位
-    // spacer 之后，`x < rail 宽 / y < 菜单高` 的像素永远进不了洞（scroll 不能为负，
-    // 见 docs/layer-view.md）。洞内的穿透才是这套方案要守的契约。
+    // T4 起「打开工作区 = 绘制模式」：视口洞（可视区中心）归画布，宿主网页不再直接拿到指针。
+    // 画布在 shadow root 里，所以 `document.elementFromPoint` 只能看到 host。
     const center = await page.evaluate(() => ({
       x: window.innerWidth / 2,
       y: window.innerHeight / 2,
@@ -131,8 +128,25 @@ test.describe("gpen embed", () => {
           ?.closest("#gpen-host"),
       ),
     }));
-    expect(center.hitOverlay).toBe(false);
-    // shadow 里的点击（悬浮球）也会冒泡到 document，所以先清零再点。
+    expect(center.hitOverlay).toBe(true);
+
+    // 交还网页 = 最小化（工作区整体隐藏，画布也不再命中）。
+    await page
+      .locator("#gpen-host")
+      .locator("button[aria-label='最小化 gpen（把网页交还给页面）']")
+      .click();
+    await expect(page.locator("#gpen-host").locator(".dockview-container")).toBeHidden();
+    expect(
+      await page.evaluate(() =>
+        Boolean(
+          document
+            .elementFromPoint(window.innerWidth / 2, window.innerHeight / 2)
+            ?.closest("#gpen-host"),
+        ),
+      ),
+    ).toBe(false);
+
+    // shadow 里的点击（悬浮球 / 最小化按钮）也会冒泡到 document，所以先清零再点。
     await page.evaluate(() => {
       window.__clicked = 0;
     });

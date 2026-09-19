@@ -11,15 +11,25 @@
 		type IContentRenderer,
 		type SerializedDockview
 	} from 'dockview';
-	import { MimeType, type GpenT } from 'gpen-protocol/flatbuffers';
+	import { MimeType, type GpenT, type StrokeT } from 'gpen-protocol/flatbuffers';
 	import { createDefaultGpen } from '../protocol/defaults';
 	import { buildLayerTree } from '../layers/layerAdapter';
 	import {
+		ensureDrawableActiveLayer,
 		moveNodes,
 		renameNode,
 		setActiveNode,
 		type MoveNodeOp
 	} from '../layers/layerOps';
+	import { appendStroke } from '../layers/strokeOps';
+	import {
+		createGpenBinaryStore,
+		createRuntimeStorage,
+		type GpenBinaryStore,
+		type GpenKvRoot,
+		type HookedBlobBackend,
+		type Storage
+	} from '../bindings/storage/index';
 	import type { UiLayerTree, UiLayerTreeNode } from '../layers/types';
 	import type { TreeKey, TreeOp } from '../layers/tree/index.js';
 	import { applyInfiniteCanvas, guessWebLayer, type InfiniteCanvas } from '../canvas/index';
@@ -76,6 +86,24 @@
 	let infiniteCanvas: InfiniteCanvas | undefined;
 	/// 视图旋转（度）。真值以后归图层模型；这里只驱动 DOM 投影。
 	const hostViewState = $state({ rotation: 0 });
+
+	// --- 文档写入 / 撤销 / 持久化 ------------------------------------------------
+	/** 撤销栈上限（内存快照栈，见 docs/stroke.md）。 */
+	const UNDO_LIMIT = 50;
+	const GPEN_DOCUMENT_ID = 'gpen-main';
+	const GPEN_SAVE_DEBOUNCE_MS = 250;
+	// 工作区偏好与文档各用一份 KV 根：`createRuntimeStorage()` 每次都建一个独立的
+	// 内存根，`submit()` 会整根写回同一个 IndexedDB key，共用根会互相覆盖命名空间。
+	const GPEN_KV_KEY = 'gpen-root';
+	/// 撤销/重做存的是不可变文档引用，所以快照本身不复制数据。
+	let undoStack: GpenT[] = [];
+	let redoStack: GpenT[] = [];
+	/// 用户是否动过文档：`load` 返回时据此决定要不要用存档覆盖默认文档。
+	let documentEdited = false;
+	let runtimeStorage: Storage<GpenKvRoot, HookedBlobBackend> | undefined;
+	let gpenStore: GpenBinaryStore | undefined;
+	/// load 结束后才允许落盘（否则默认文档会在 load 之前覆盖存储里的那份）。
+	let documentReady = $state(false);
 	let tabMenuPanelId: string | undefined;
 	let disposeTabMenu: (() => void) | undefined;
 	let layoutSubscriptions: { dispose(): void }[] = [];
@@ -160,6 +188,24 @@
 		onMove: (ops) => moveLayerNodes(ops)
 	});
 
+	/**
+	 * 视口面板的 props：与 outlinerProps 同一套路（`$state` 代理跨 dockview
+	 * `mount()` 同步）。画布需要文档（重绘）+ layerView（坐标映射）+ onStroke。
+	 */
+	const viewportProps = $state<{
+		viewState: { rotation: number };
+		onRotate: (degrees: number) => void;
+		document: GpenT | undefined;
+		layerView: LayerView | undefined;
+		onStroke: (stroke: StrokeT) => void;
+	}>({
+		viewState: hostViewState,
+		onRotate: rotateHostView,
+		document: undefined,
+		layerView: undefined,
+		onStroke: commitStroke
+	});
+
 	let expandedInitialized = false;
 
 	// 文档 → 子组件 props 的单向同步（树、active、首次的展开集合）。
@@ -171,6 +217,23 @@
 			expandedInitialized = true;
 			outlinerProps.expandedKeys = groupKeys(tree.root);
 		}
+	});
+
+	// 文档 / 图层视图 → 视口 props（画布重绘与坐标映射都靠它）。
+	$effect(() => {
+		viewportProps.document = gpenDocument;
+		viewportProps.layerView = layerView;
+	});
+
+	// 文档变化 → debounce 落盘。`documentReady` 之前不写：load 是异步的，
+	// 不然默认文档会在 load 读到存档之前把它覆盖掉。
+	$effect(() => {
+		const document = gpenDocument;
+		if (!documentReady || !document || !gpenStore) return;
+		void gpenStore.save(GPEN_DOCUMENT_ID, document).catch((error) => {
+			console.debug('[gpen] ignored rejection: GpenWorkspace gpenBinary save', error);
+			return;
+		});
 	});
 
 	function groupKeys(root: UiLayerTreeNode | null): Set<TreeKey> {
@@ -185,13 +248,16 @@
 
 	function activateLayerNode(key: TreeKey) {
 		if (!gpenDocument || gpenDocument.activeNodeIndex === key) return;
-		gpenDocument = setActiveNode(gpenDocument, key);
+		assignDocument(setActiveNode(gpenDocument, key));
 	}
 
 	function renameLayerNode(key: TreeKey, name: string) {
 		if (!gpenDocument) return;
+		const current = gpenDocument;
 		try {
-			gpenDocument = renameNode(gpenDocument, key, name);
+			const next = renameNode(current, key, name);
+			pushUndo(current);
+			assignDocument(next);
 		} catch (error) {
 			console.debug('[gpen] ignored rejection: GpenWorkspace renameNode', error);
 			return;
@@ -201,16 +267,107 @@
 	/** `TreeOp`（UI 层，key 命名）→ `MoveNodeOp`（文档层，index 命名）。 */
 	function moveLayerNodes(ops: TreeOp[]) {
 		if (!gpenDocument || ops.length === 0) return;
+		const current = gpenDocument;
 		const moves: MoveNodeOp[] = ops.map((op) => {
 			const move: MoveNodeOp = { nodeIndex: op.key, parentNodeIndex: op.parentKey };
 			if (op.beforeKey !== undefined) move.beforeNodeIndex = op.beforeKey;
 			return move;
 		});
 		try {
-			gpenDocument = moveNodes(gpenDocument, moves);
+			const next = moveNodes(current, moves);
+			pushUndo(current);
+			assignDocument(next);
 		} catch (error) {
 			console.debug('[gpen] ignored rejection: GpenWorkspace moveNodes', error);
 			return;
+		}
+	}
+
+	// --- 写入 / 撤销 --------------------------------------------------------------
+
+	/**
+	 * 用户改动文档的统一入口：标记 `documentEdited` 并赋值。`gpenDocument` 是
+	 * `$state.raw`，所以每次都是一次整体替换（不可变文档，见 layerOps / strokeOps）。
+	 */
+	function assignDocument(next: GpenT) {
+		documentEdited = true;
+		gpenDocument = next;
+	}
+
+	/** 提交前把当前文档推进撤销栈（上限 50），并清空重做栈。 */
+	function pushUndo(previous: GpenT | undefined) {
+		if (!previous) return;
+		undoStack.push(previous);
+		if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+		redoStack = [];
+	}
+
+	function undoDocument() {
+		const current = gpenDocument;
+		const previous = undoStack.pop();
+		if (!current || !previous) return;
+		redoStack.push(current);
+		assignDocument(previous);
+	}
+
+	function redoDocument() {
+		const current = gpenDocument;
+		const next = redoStack.pop();
+		if (!current || !next) return;
+		undoStack.push(current);
+		assignDocument(next);
+	}
+
+	/**
+	 * 画布提交一笔：确保 active layer 可画（必要时自动建 `Stroke-N`）→ appendStroke。
+	 * 失败只记日志：笔迹丢了比把异常抛回 pointer 事件里更安全。
+	 */
+	function commitStroke(stroke: StrokeT) {
+		const current = gpenDocument;
+		if (!current) return;
+		try {
+			const next = appendStroke(ensureDrawableActiveLayer(current), stroke);
+			pushUndo(current);
+			assignDocument(next);
+		} catch (error) {
+			console.debug('[gpen] ignored rejection: GpenWorkspace commitStroke', error);
+			return;
+		}
+	}
+
+	/** 文本框 / CodeMirror 有自己的撤销栈，别抢 Ctrl+Z。 */
+	function isTextEntryTarget(target: EventTarget | null): boolean {
+		if (!(target instanceof HTMLElement)) return false;
+		if (target.isContentEditable) return true;
+		const tag = target.tagName;
+		return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+	}
+
+	function handleDocumentKeydown(event: KeyboardEvent) {
+		if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+		const key = event.key.toLowerCase();
+		if (key !== 'z' && key !== 'y') return;
+		if (isTextEntryTarget(event.target)) return;
+		event.preventDefault();
+		// Ctrl+Shift+Z 与 Ctrl+Y 都是重做。
+		if (key === 'y' || event.shiftKey) redoDocument();
+		else undoDocument();
+	}
+
+	/** 挂载时读存档；没有 / 坏了都退回已经设好的默认文档。 */
+	async function loadStoredDocument() {
+		const store = gpenStore;
+		if (!store) return;
+		try {
+			const loaded = await store.load(GPEN_DOCUMENT_ID);
+			// 用户在 load 期间已经画过：不覆盖他的工作。
+			if (!documentEdited) gpenDocument = loaded;
+		} catch (error) {
+			console.debug('[gpen] ignored rejection: GpenWorkspace gpenBinary load', error);
+			// 失败只是没有存档可读，退回默认文档即可，无需向上传播。
+			return;
+		} finally {
+			documentReady = true;
 		}
 	}
 
@@ -574,7 +731,7 @@
 	 */
 	function componentProps(name: string): Record<string, unknown> | undefined {
 		if (name === 'tools') return { state: workspaceState, onSelectTool: selectTool };
-		if (name === 'viewport') return { viewState: hostViewState, onRotate: rotateHostView };
+		if (name === 'viewport') return viewportProps;
 		if (name === 'outliner') return outlinerProps;
 		if (name === 'menu') {
 			return {
@@ -649,6 +806,20 @@
 		// document is wired to gpenBinary save/load; here it seeds the shell UI.
 		gpenDocument = createDefaultGpen(window.location.href);
 
+		// gpenBinary：文档落盘。load 异步，先用默认文档把 UI 立起来，读到存档再替换
+		//（用户在 load 期间画过就不覆盖，见 loadStoredDocument）。
+		runtimeStorage = createRuntimeStorage<GpenKvRoot>({
+			kvKey: GPEN_KV_KEY,
+			storageKey: GPEN_KV_KEY
+		});
+		gpenStore = createGpenBinaryStore({
+			kv: runtimeStorage.kv,
+			blob: runtimeStorage.blob,
+			cache: true,
+			debounceMs: GPEN_SAVE_DEBOUNCE_MS
+		});
+		void loadStoredDocument();
+
 		// Guess the host web layer **once**, before the camera spacer exists: the
 		// spacer is a body child with a huge area, and re-guessing later would use
 		// the rotated AABB. (handoff §5 pit)
@@ -707,6 +878,7 @@
 
 		disposeTabMenu = registerMenuItems(WORKSPACE_TAB_MENU_ID, tabMenuItems);
 		container.addEventListener('contextmenu', handleTabContextMenu);
+		window.addEventListener('keydown', handleDocumentKeydown);
 
 		const onViewportChange = () => {
 			updateExternalZoom();
@@ -738,10 +910,32 @@
 		for (const subscription of layoutSubscriptions) subscription.dispose();
 		layoutSubscriptions = [];
 		container.removeEventListener('contextmenu', handleTabContextMenu);
+		window.removeEventListener('keydown', handleDocumentKeydown);
 		disposeTabMenu?.();
 		disposeTabMenu = undefined;
 		dockview?.dispose();
 		dockview = undefined;
+
+		// 先把挂起的写入刷盘，再停掉 store 与 storage。
+		const store = gpenStore;
+		gpenStore = undefined;
+		if (store) {
+			void store.commit().then(
+				() => store.dispose(),
+				(error) => {
+					console.debug('[gpen] ignored rejection: GpenWorkspace gpenBinary commit', error);
+					store.dispose();
+				}
+			);
+		}
+		const storage = runtimeStorage;
+		runtimeStorage = undefined;
+		if (storage?.close) {
+			void Promise.resolve(storage.close()).catch((error) => {
+				console.debug('[gpen] ignored rejection: GpenWorkspace storage close', error);
+				return;
+			});
+		}
 	});
 </script>
 
@@ -803,6 +997,14 @@
 	.dockview-container.immersive,
 	.dockview-container.immersive :global(*) {
 		visibility: hidden;
+	}
+
+	/* 沉浸模式保留视口那一组（含画布）：chrome 全隐，但绘制面不能跟着消失。
+	 * 注意洞仍只占它原来的 dockview 格位，不会铺满整个可视区（网格没变，
+	 * 见 docs/stroke.md 的已知缺口）。 */
+	.dockview-container.immersive :global(.dv-groupview.gpen-hole),
+	.dockview-container.immersive :global(.dv-groupview.gpen-hole *) {
+		visibility: visible;
 	}
 
 	/* dockview 的 shell 和 content 层不上色，由面板组件自己画表面。
