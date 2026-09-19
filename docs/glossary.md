@@ -18,6 +18,15 @@
 | HMR | Hot Module Replacement | 开发时热更新；`mount()` 的组件在 HMR 下可能重复挂载（本项目遇过「两颗球」） |
 | TUI | Text User Interface | 终端字符界面；本项目 `ch`/`lh` 单位规范就是为将来 TUI 移植铺路 |
 
+## 编辑器 / UI
+
+| 缩写 | 全称 | 说明 |
+| --- | --- | --- |
+| ring buffer | 环形缓冲 | 固定容量、丢弃最旧项的队列；`lib/history.ts` 的撤销栈用它（O(1) 提交 / 丢弃，不搬数组） |
+| coalesce | 合并历史 | 连续手势的多次编辑并成一条 undo（`commit(state, { coalesceWith })`） |
+| anchor | 锚点 | ① 选区范围锚点（树多选）；② 菜单挂靠的按钮元素（`openAt`） |
+| typeahead | 键入跳转 | 在列表里打字母跳到匹配项（`layers/tree/typeahead.ts`） |
+
 ## 存储
 
 | 缩写 | 全称 | 说明 |

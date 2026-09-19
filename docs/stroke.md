@@ -81,14 +81,27 @@ R(θ)·(dx,dy)   = (dx·cosθ - dy·sinθ, dx·sinθ + dy·cosθ)     // y 向�
 
 ## undo 模型
 
-`GpenWorkspace` 里的内存快照栈（`GpenT[]`，上限 `UNDO_LIMIT = 50`）。因为文档是不可变的，
-快照就是一个引用，不需要深拷贝。提交前 `pushUndo(current)`，`undo` / `redo` 交换栈顶。
+历史实现在 `lib/history.ts`（`createEditHistory<T>`），**不是** `Array` + `shift()`：
+
+- **环形缓冲**：`{items, head, length}`，`commit` / `undo` / `redo` 都是 O(1)，丢弃最旧
+  历史只推进 `head`，永远不搬数组（`shift()` 在大数组上是 O(n)，而且它按**条数**丢弃，
+  小文档 50 份和大文档 50 份的成本一样）。
+- **预算是条目数**：`limit`（默认 50）是环容量，`maxEntries` 是额外的硬上限（取更紧的）。
+  文档快照是不可变引用，所以「同时存活的文档份数」就是真正的内存压力；如果以后某类历史项
+  自带重负载（如位图），用 `onEvict` 回调在那里释放。
+- **可合并**：`commit(state, { coalesceWith })` 用新值替换最新一条，而不是新推一条。
+  连续的拖拽类编辑应该走这条（当前笔画是离散提交，用不上）。
+- `redo` 是普通数组（同样受预算约束、每次新提交都被清空），所以它不会无限增长。
+
+`GpenWorkspace` 的接线：提交前 `pushUndo(current)`（`commitStroke` / `renameNode` /
+`moveNodes`），`undo` / `redo` 交换状态；**不**参与的：选中图层（`setActiveNode`，视图态
+不是文档编辑）。`load` 到存档时会 `history.clear()`——否则 `Ctrl+Z` 会退回到那个临时的
+默认文档。
 
 - 键位：`Ctrl/Cmd+Z` 撤销，`Ctrl+Shift+Z` 或 `Ctrl+Y` 重做；焦点在 `input` / `textarea` /
   `contenteditable`（CodeMirror）里时让给控件自己的撤销栈。
-- 参与快照的：`commitStroke`、`renameNode`、`moveNodes`。**不**参与的：选中图层
-  （`setActiveNode`，是视图态不是文档编辑）。
-- 没有持久化、没有撤销入口按钮（键盘是必需项，按钮是加分项，本轮未做）。
+- 入口：状态栏左侧的撤销/重做按钮（可用状态与深度由 `historyState` 驱动，`history` 本身
+  不是响应式的）+ 可撤销步数显示。
 
 ## gpenBinary 接线
 
@@ -123,5 +136,4 @@ cache: true, debounceMs: 250 })`：
 - **层叠关系**：画布在宿主网页之上（同 origin 的 overlay），绘制模式下指针不再穿透；
   「交还网页」= 最小化（见 `tests/embed/embed.e2e.ts`）。
 - **性能**：每次 redraw 全量重画，没有脏矩形 / 分层缓存 / 虚拟化。
-- **文档未做的取舍**：e2e 里 `layer-view.e2e.ts` 的「视口中心命中宿主页」断言改成
-  「命中画布」——打开工作区 = 绘制模式是本任务定的语义。
+- **历史未持久化**：刷新后历史清空（只持久化文档本身）。

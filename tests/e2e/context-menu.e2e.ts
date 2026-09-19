@@ -103,6 +103,35 @@ test.describe("context menu", () => {
     await expect(page.getByRole("menuitem", { name: "画笔" })).toBeFocused();
   });
 
+  test("opens the window menu anchored to its menu-bar button", async ({ page }) => {
+    await page.goto("/");
+    await page.locator(".floating-button").click();
+    const button = page.getByRole("button", { name: "窗口菜单" });
+    await expect(button).toBeVisible();
+
+    const anchor = await button.boundingBox();
+    await button.click();
+    const item = page.getByRole("menuitem", { name: "重置面板布局" });
+    await expect(item).toBeVisible();
+
+    // 锚定：菜单在按钮下方，且左边缘对齐按钮（不是鼠标位置）。
+    const menu = await page.locator("[data-context-menu-root]").boundingBox();
+    expect(menu).not.toBeNull();
+    expect(menu!.y).toBeGreaterThanOrEqual(anchor!.y + anchor!.height - 1);
+    expect(Math.abs(menu!.x - anchor!.x)).toBeLessThan(24);
+
+    // 同一次点击不能把刚开的菜单关掉（click 冒泡到 window 的关闭监听）。
+    await expect(item).toBeVisible();
+
+    // 点菜单项执行命令并关闭。
+    await item.click();
+    await expect(page.getByRole("menuitem", { name: "重置面板布局" })).toHaveCount(0);
+
+    // 再点按钮可以重新打开（不是 <select> 那种“选完复位”）。
+    await button.click();
+    await expect(page.getByRole("menuitem", { name: "重置面板布局" })).toBeVisible();
+  });
+
   test("paints with theme tokens in dark mode", async ({ page }) => {
     await page.emulateMedia({ colorScheme: "dark" });
     await page.reload();

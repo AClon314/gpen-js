@@ -6,12 +6,21 @@
 	import '@spectrum-web-components/icons-workflow/icons/sp-icon-full-screen.js';
 	import '@spectrum-web-components/icons-workflow/icons/sp-icon-minimize.js';
 
+	import { onDestroy, onMount } from 'svelte';
 	import {
 		UI_SCALE_MAX,
 		UI_SCALE_MIN,
 		UI_SCALE_STEP,
 		type GpenWorkspaceState
 	} from '../gpenWorkspaceState';
+	import {
+		close,
+		contextMenu,
+		menuState,
+		openAt,
+		registerMenuItems,
+		type MenuItem
+	} from '../contextMenu/contextMenu.svelte';
 
 	// 标题栏 = 菜单行（应用菜单 + 工作区切换 + 界面缩放 + 关闭）+ 工具设置行。
 	// 缩放 / 关闭这两个动作属于工作区外壳，由 GpenOverlay → GpenWorkspace 传进来，
@@ -37,18 +46,39 @@
 	const menuItems = ['文件', '编辑', '渲染', '帮助', '切换', '实用工具', '设置'];
 	const uiScale = $derived(state?.uiScale ?? 1);
 
-	// 窗口菜单是原生 `<select>`：这些是“执行一次”的命令，不是可保持状态的选项，所以
-	// 选完立刻把控件复位（否则同一个命令第二次选不触发 change）。
-	// 这也是布局的记忆点——panelLayout 存在 localStorage 里，改过默认布局后要在这里重置。
-	const WINDOW_RESET_LAYOUT = 'reset-panel-layout';
+	/**
+	 * 窗口菜单改用和右键菜单同一套 `contextMenu`（不再是原生 `<select>`）：
+	 * 菜单节点就是命令本身，与 `menus`/`commands` 分家的约定一致（handoff T1），
+	 * 样式 / 键盘导航 / 深色 token 全部复用 `ContextMenu.svelte`，不再有
+	 * 「选完复位 select.value」那种状态技巧。
+	 */
+	const WINDOW_MENU_ID = 'gpen-window-menu';
 
-	function runWindowCommand(event: Event) {
-		const select = event.currentTarget as HTMLSelectElement;
-		const command = select.value;
-		// 命令执行完立刻复位到占位项，下一次才能再选同一条命令。
-		select.value = '';
-		if (command === WINDOW_RESET_LAYOUT) onResetPanelLayout?.();
+	function windowMenuItems(): MenuItem[] {
+		return [
+			{
+				id: 'gpen.reset_panel_layout',
+				label: '重置面板布局',
+				order: 10,
+				action: () => onResetPanelLayout?.()
+			}
+		];
 	}
+
+	function openWindowMenu(event: MouseEvent) {
+		const anchor = event.currentTarget;
+		if (!(anchor instanceof HTMLElement)) return;
+		openAt(WINDOW_MENU_ID, anchor);
+	}
+
+	// 具名注册：provider 由注册表持有（`use:contextMenu` 只关联 DOM），
+	// 所以菜单可以在别处枚举 / 被命令面板复用。
+	onMount(() => registerMenuItems(WINDOW_MENU_ID, windowMenuItems));
+
+	// 面板被关掉 / 重排时菜单可能还开着：卸载时顺手收起。
+	onDestroy(() => {
+		if (menuState.visible && menuState.id === WINDOW_MENU_ID) close();
+	});
 </script>
 
 <div class="blender-panel blender-panel-menu" aria-label="菜单栏和工具设置">
@@ -58,12 +88,17 @@
 			{#each menuItems as item}
 				<button class="gpen-panel-button menu-item" type="button">{item}</button>
 			{/each}
-			<!-- 窗口：用原生 select 承载「执行一次的菜单命令」，<option> 就是命令本身。
-			     不做 value 绑定——选完就复位，没有需要保持的状态。 -->
-			<select class="menu-select" aria-label="窗口菜单" title="窗口菜单" onchange={runWindowCommand}>
-				<option value="">窗口</option>
-				<option value={WINDOW_RESET_LAYOUT}>重置面板布局</option>
-			</select>
+			<!-- 窗口：`use:contextMenu` 只把按钮关联到具名注册表（provider 由下面
+			     `registerMenuItems` 持有），点击时按按钮矩形锚定菜单。 -->
+			<button
+				class="gpen-panel-button menu-item menu-window"
+				type="button"
+				aria-haspopup="menu"
+				aria-label="窗口菜单"
+				title="窗口菜单"
+				use:contextMenu={WINDOW_MENU_ID}
+				onclick={openWindowMenu}
+			>窗口</button>
 		</nav>
 
 		<span class="title-bar-actions">
@@ -191,36 +226,16 @@
 		overflow: hidden;
 	}
 
-	.menu-item,
-	.menu-items .menu-select {
+	.menu-item {
 		padding: 0.25lh 1ch;
 		border-radius: var(--gpen-radius);
 	}
 
-	.menu-items .menu-select:hover {
-		background: var(--gpen-panel-background-hover);
-	}
-
-	/* 原生下拉：保留浏览器自带的箭头，让“这里是菜单”一眼可见；只把边框/底色
-	 * 压成和旁边的菜单按钮一样。`color-scheme: light dark` 让弹出的列表跟着
-	 * 系统配色走（dockview 在根上把 color-scheme 固定成了 light）。 */
-	.menu-items .menu-select {
-		box-sizing: border-box;
-		/* 宽度按占位项（"窗口"）给，不要跟着最宽的 <option> 撑开。 */
-		width: 7ch;
-		height: 1.9lh;
-		/* Tailwind preflight / forms 把 select 的 appearance 清成了 none 并画了自己的箭头；
-		 * 这里改回 auto 用浏览器自带的箭头，同时关掉那个背景箭头（否则会出现两个箭头）。 */
-		appearance: auto;
-		background-image: none;
-		background-color: transparent;
-		border: 0;
-		padding: 0 0 0 1ch;
-		color: inherit;
-		font: inherit;
-		cursor: pointer;
-		/* 弹出的列表跟着系统配色走（dockview 在根上把 color-scheme 固定成了 light）。 */
-		color-scheme: light dark;
+	/* 菜单栏上的菜单按钮：与右键菜单同一套交互，只是永远显示自己的标签。
+	 * 展开时给一点按下感（`aria-expanded` 由 ContextMenu 之外的状态驱动不了，
+	 * 所以只用 :active / :focus-visible）。 */
+	.menu-window:active {
+		background: var(--gpen-panel-selection);
 	}
 
 	/* 菜单项贴在一起，焦点环外扩会和邻项重叠，所以画在内侧。 */

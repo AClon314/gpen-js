@@ -17,3 +17,4 @@ export * from "./error.js";
 export * from "./instanceId.js";
 export * from "./components/gpenWorkspaceState.js";
 export * from "./components/contextMenu/contextMenu.svelte.js";
+export * from "./history.js";

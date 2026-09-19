@@ -50,10 +50,14 @@
      `fromJSON` 必须在第一趟 layout 之后跑，否则会被塞进错误的维度里重新分摊。
      空的（没有面板）或尺寸过小（< 120px）的存储布局一律视为坏布局，重建默认布局。
      **记忆的代价**：改过默认布局之后，老用户看到的还是存下来的那份，所以要有一条重置路径——
-     标题栏「窗口」是个原生 `<select>`，`重置面板布局` 会清掉 `panelLayout` 并重建默认布局
+     标题栏「窗口」按钮打开的就是右键菜单那套 `ContextMenu`（`openAt` 按按钮矩形锚定），
+     `重置面板布局` 会清掉 `panelLayout` 并重建默认布局
      （`clear()` + `buildDefaultLayout()` + 在下一趟 layout 落默认尺寸）。
 - **配色**：工作区不写死颜色，全部走 `--gpen-*`（白天 / 夜间两套）；dockview 的 `--dv-*`
   由 `themes/dockview.css` 桥接到同一套 token，见 `docs/theme.md`。
+- **撤销 / 重做**：状态栏左侧是入口（图标按钮 + 当前可撤销步数），键盘是 `Ctrl+Z` /
+  `Ctrl+Shift+Z` / `Ctrl+Y`（焦点在文本框 / CodeMirror 时让给控件）。历史模型见
+  [`stroke.md`](stroke.md) 与 `lib/history.ts`：**环形缓冲 + 条目预算**，不是 `shift()` 数组。
 
 ## 下个版本范围
 

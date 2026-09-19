@@ -22,6 +22,7 @@
 		type MoveNodeOp
 	} from '../layers/layerOps';
 	import { appendStroke } from '../layers/strokeOps';
+	import { createEditHistory } from '../history';
 	import {
 		createGpenBinaryStore,
 		createRuntimeStorage,
@@ -88,16 +89,25 @@
 	const hostViewState = $state({ rotation: 0 });
 
 	// --- 文档写入 / 撤销 / 持久化 ------------------------------------------------
-	/** 撤销栈上限（内存快照栈，见 docs/stroke.md）。 */
+	/**
+	 * 撤销预算：条目上限 + 总快照预算。文档快照是不可变引用，所以这里的
+	 * 「预算」约束的是同时存活的文档份数（真正的内存压力），而不是数组长度。
+	 */
 	const UNDO_LIMIT = 50;
+	const UNDO_BUDGET = 200;
 	const GPEN_DOCUMENT_ID = 'gpen-main';
 	const GPEN_SAVE_DEBOUNCE_MS = 250;
 	// 工作区偏好与文档各用一份 KV 根：`createRuntimeStorage()` 每次都建一个独立的
 	// 内存根，`submit()` 会整根写回同一个 IndexedDB key，共用根会互相覆盖命名空间。
 	const GPEN_KV_KEY = 'gpen-root';
-	/// 撤销/重做存的是不可变文档引用，所以快照本身不复制数据。
-	let undoStack: GpenT[] = [];
-	let redoStack: GpenT[] = [];
+	/// 撤销/重做存的是不可变文档引用，所以快照本身不复制数据。环形缓冲 + 预算，
+	/// 丢弃最旧历史时只推进 head，不搬数组（见 lib/history.ts）。
+	const history = createEditHistory<GpenT>({
+		limit: UNDO_LIMIT,
+		maxEntries: UNDO_BUDGET
+	});
+	/// 让状态栏的撤销/重做按钮跟着历史深度变化（history 本身不是响应式的）。
+	const historyState = $state({ undoDepth: 0, redoDepth: 0 });
 	/// 用户是否动过文档：`load` 返回时据此决定要不要用存档覆盖默认文档。
 	let documentEdited = false;
 	let runtimeStorage: Storage<GpenKvRoot, HookedBlobBackend> | undefined;
@@ -294,28 +304,34 @@
 		gpenDocument = next;
 	}
 
-	/** 提交前把当前文档推进撤销栈（上限 50），并清空重做栈。 */
+	/** 提交前把当前文档推进历史（环形缓冲 + 预算），并清空重做栈。 */
 	function pushUndo(previous: GpenT | undefined) {
 		if (!previous) return;
-		undoStack.push(previous);
-		if (undoStack.length > UNDO_LIMIT) undoStack.shift();
-		redoStack = [];
+		history.commit(previous);
+		syncHistoryState();
+	}
+
+	function syncHistoryState() {
+		historyState.undoDepth = history.undoDepth();
+		historyState.redoDepth = history.redoDepth();
 	}
 
 	function undoDocument() {
 		const current = gpenDocument;
-		const previous = undoStack.pop();
-		if (!current || !previous) return;
-		redoStack.push(current);
+		if (!current) return;
+		const previous = history.undo(current);
+		if (!previous) return;
 		assignDocument(previous);
+		syncHistoryState();
 	}
 
 	function redoDocument() {
 		const current = gpenDocument;
-		const next = redoStack.pop();
-		if (!current || !next) return;
-		undoStack.push(current);
+		if (!current) return;
+		const next = history.redo(current);
+		if (!next) return;
 		assignDocument(next);
+		syncHistoryState();
 	}
 
 	/**
@@ -361,7 +377,12 @@
 		try {
 			const loaded = await store.load(GPEN_DOCUMENT_ID);
 			// 用户在 load 期间已经画过：不覆盖他的工作。
-			if (!documentEdited) gpenDocument = loaded;
+			if (!documentEdited) {
+				gpenDocument = loaded;
+				// 历史里的是「默认文档 → ...」，不是用户的操作：清掉，undo 不该退回默认文档。
+				history.clear();
+				syncHistoryState();
+			}
 		} catch (error) {
 			console.debug('[gpen] ignored rejection: GpenWorkspace gpenBinary load', error);
 			// 失败只是没有存档可读，退回默认文档即可，无需向上传播。
@@ -733,6 +754,13 @@
 		if (name === 'tools') return { state: workspaceState, onSelectTool: selectTool };
 		if (name === 'viewport') return viewportProps;
 		if (name === 'outliner') return outlinerProps;
+		if (name === 'statusbar') {
+			return {
+				state: historyState,
+				onUndo: undoDocument,
+				onRedo: redoDocument
+			};
+		}
 		if (name === 'menu') {
 			return {
 				state: workspaceState,

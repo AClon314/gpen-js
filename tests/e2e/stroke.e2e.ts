@@ -35,12 +35,13 @@ function countInkPixels(page: Page) {
 }
 
 /** Draw a short diagonal stroke through the middle of the canvas. */
-async function drawStroke(page: Page) {
+async function drawStroke(page: Page, options: { offset?: number } = {}) {
+  const shift = options.offset ?? 0;
   const box = await page.locator("canvas.stroke-surface").boundingBox();
   expect(box).not.toBeNull();
-  const startX = box!.x + box!.width * 0.3;
+  const startX = box!.x + box!.width * 0.3 + shift;
   const startY = box!.y + box!.height * 0.3;
-  const endX = box!.x + box!.width * 0.6;
+  const endX = box!.x + box!.width * 0.6 + shift;
   const endY = box!.y + box!.height * 0.5;
 
   await page.mouse.move(startX, startY);
@@ -88,6 +89,33 @@ test.describe("stroke write path", () => {
 
     await page.keyboard.press("Control+Shift+z");
     await expect.poll(() => countInkPixels(page)).toBeGreaterThan(0);
+  });
+
+  test("exposes undo/redo in the status bar and keeps a deep history", async ({ page }) => {
+    await page.goto("/");
+    await openWorkspace(page);
+    const undo = page.getByLabel("撤销（Ctrl+Z）");
+    const redo = page.getByLabel("重做（Ctrl+Shift+Z）");
+    await expect(undo).toBeDisabled();
+    await expect(redo).toBeDisabled();
+
+    // 画 3 笔：历史要能一路退回去（不是只能退一笔）。
+    for (let index = 0; index < 3; index += 1) {
+      await drawStroke(page, { offset: index * 40 });
+    }
+    await expect(undo).toBeEnabled();
+    await expect(page.locator(".history-depth")).toHaveText("3");
+
+    for (let index = 0; index < 3; index += 1) await undo.click();
+    await expect.poll(() => countInkPixels(page)).toBe(0);
+    await expect(undo).toBeDisabled();
+    await expect(redo).toBeEnabled();
+
+    // 重做回来，然后新画一笔必须清掉重做分支。
+    await redo.click();
+    await expect.poll(() => countInkPixels(page)).toBeGreaterThan(0);
+    await drawStroke(page, { offset: 160 });
+    await expect(redo).toBeDisabled();
   });
 
   test("persists a stroke through gpenBinary and restores it after reload", async ({ page }) => {

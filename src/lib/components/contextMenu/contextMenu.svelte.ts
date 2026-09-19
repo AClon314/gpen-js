@@ -33,6 +33,13 @@ export const menuState = $state({
   id: null as string | null,
   items: [] as MenuItem[],
   openVersion: 0,
+  /**
+   * Anchor element when the menu was opened from a button (`openAt`). The
+   * global click-to-close listener must ignore clicks on it: the same click
+   * that opened the menu bubbles up to `window`, and without this the menu
+   * would close in the same task it opened.
+   */
+  anchor: null as Element | null,
 });
 
 // Registry mutations are deliberately not reactive. refresh() is the explicit
@@ -174,7 +181,7 @@ export function clampMenuPosition(width = 0, height = 0) {
 }
 
 /** Open a registered menu at client coordinates. Returns false when empty. */
-export function open(id: string, x: number, y: number): boolean {
+export function open(id: string, x: number, y: number, anchor: Element | null = null): boolean {
   const items = collect(id);
   if (items.length === 0) {
     close();
@@ -184,6 +191,7 @@ export function open(id: string, x: number, y: number): boolean {
   const viewport = viewportSize();
   menuState.id = id;
   menuState.items = items;
+  menuState.anchor = anchor;
   menuState.x = clampCoordinate(x, 0, viewport.width);
   menuState.y = clampCoordinate(y, 0, viewport.height);
   menuState.visible = true;
@@ -194,8 +202,35 @@ export function open(id: string, x: number, y: number): boolean {
 /** Alias for callers that prefer a verb-named API. */
 export const openMenu = open;
 
+/**
+ * Open a menu anchored to a DOM element instead of a pointer position.
+ *
+ * Menu-bar entries are buttons, not pointer targets: the menu belongs below
+ * the button (or above it when there is not enough room), left-aligned with
+ * its left edge. Coordinates are computed from the anchor's client rect and
+ * then go through the same `open()` clamp as a right-click.
+ *
+ * Returns false when the menu has no items.
+ */
+export function openAt(id: string, anchor: Element, options: { gap?: number } = {}): boolean {
+  const rect = anchor.getBoundingClientRect();
+  const gap = options.gap ?? 2;
+  const viewport = viewportSize();
+  // Guess the menu height from the item count so a menu that would overflow the
+  // bottom is flipped above the anchor. `clampMenuPosition` corrects the exact
+  // position once the real size is known.
+  const estimatedHeight = (menuState.items.length || collect(id).length) * 2 * 16 + 16;
+  const below = rect.bottom + gap;
+  const y =
+    below + estimatedHeight > viewport.height
+      ? Math.max(MENU_MARGIN_PX, rect.top - gap - estimatedHeight)
+      : below;
+  return open(id, rect.left, y, anchor);
+}
+
 export function close() {
   if (menuState.visible) menuState.visible = false;
+  menuState.anchor = null;
 }
 
 function targetElement(target: EventTarget | null): Element | null {
@@ -314,6 +349,10 @@ if (typeof document !== "undefined" && typeof window !== "undefined") {
   window.addEventListener("click", (event) => {
     const root = document.querySelector("[data-context-menu-root]");
     if (root && event.target instanceof Node && root.contains(event.target)) return;
+    // Clicking the anchor that opened the menu must not close it: that is the
+    // same click that opened it (it bubbles from the button to window).
+    if (menuState.anchor && event.target instanceof Node && menuState.anchor.contains(event.target))
+      return;
     close();
   });
   document.addEventListener("keydown", (event) => {
