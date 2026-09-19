@@ -186,7 +186,10 @@ Blender 的面板收起、批量展开/收起、排序 grip、pin 和 preset 值
 
 - Dockview workspace root 使用 `position: fixed; inset: 0`，属于网页/VS Code tab 上方的独立 UI 图层，不随网页 document scroll 移动；
 - 工具栏默认位于 visual viewport 底部居中，并避开 `safe-area-inset-bottom`；
-- 浮动位置使用 viewport CSS pixels，不使用随文档滚动的 page coordinates；
+- 浮动位置在**存储与状态里用视觉视口 CSS px**（`visualViewport` 左上角为原点），
+  DOM 侧再换算成文档坐标写 `left/top`（`draggable` 的 `anchor: 'page'`）。手机 pinch
+  放大后布局视口不变、只有视觉视口变，存"看到的位置"才能让浮球在缩放/平移后依然贴边，
+  也才不会像 `position: fixed` 那样被"错误地固定"在布局视口上；
 - 拖动结束时 clamp 到 visual viewport，不能把标题栏或唯一恢复入口拖出屏幕；
 - 贴边吸附要有 hysteresis：进入阈值后吸附，离开更大的阈值后才释放，避免边缘抖动；
 - layer panel 可以默认靠右或跟随当前编辑区域，但所有 Dockview panel 都位于同一个固定 UI 层；

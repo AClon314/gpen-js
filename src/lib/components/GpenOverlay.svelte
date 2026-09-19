@@ -21,8 +21,7 @@
 	let infiniteCanvas: ReturnType<typeof applyFakeInfiniteCanvas> | undefined;
 
 	const workspaceStorage = createLocalStorageGpenWorkspaceStateStorage();
-	const BALL_SIZE = 3.25; // rem, matches .floating-button
-	const EDGE_MARGIN = 0.75; // rem gap from the viewport edges
+	const EDGE_MARGIN = 0.75; // rem gap between the ball and the visible viewport edges
 	const BALL_DRAG_THRESHOLD = 8; // CSS px, filters touch/mouse jitter from drags
 	const instanceId = createInstanceId();
 
@@ -204,6 +203,7 @@
 	<button
 		use:draggable={{
 			position: workspaceState.ballPosition,
+			anchor: 'page',
 			onTap: openWorkspace,
 			threshold: BALL_DRAG_THRESHOLD,
 			margin: EDGE_MARGIN * 16,
@@ -212,7 +212,6 @@
 		class="floating-button gpen-overlay"
 		data-version={__GPEN_VERSION__}
 		data-instance={instanceId}
-		style="left: calc(100% - {BALL_SIZE + 1}rem); top: calc(100% - {BALL_SIZE + 1.75}rem); right: auto; bottom: auto;"
 		type="button"
 		aria-label="打开 gpen"
 		title="打开 gpen（可拖动，吸附边缘）"
@@ -250,7 +249,10 @@
 	}
 
 	.floating-button {
-		position: fixed;
+		/* 和 overlay 一样用文档坐标（`position: absolute` + visualViewport.pageLeft/pageTop）：
+		 * `position: fixed` 相对**布局视口**，手机 pinch 放大后视觉视口只是它里面的一小块，
+		 * 球就会停在看不见的地方（看起来"被固定死"）。坐标换算在 draggable 里。 */
+		position: absolute;
 		z-index: 2147483000;
 		display: grid;
 		place-items: center;

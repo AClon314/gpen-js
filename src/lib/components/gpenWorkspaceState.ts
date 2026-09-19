@@ -29,7 +29,13 @@ export type GpenToolId = (typeof TOOL_IDS)[number];
 /** The JSON-safe layout returned by dockview.toJSON(). */
 export type GpenPanelLayout = Record<string, JsonValue>;
 
-/** Persisted top-left of the floating ball (CSS px, viewport coordinates). */
+/**
+ * Persisted top-left of the floating ball (CSS px, **visual-viewport** coordinates).
+ *
+ * 视觉视口坐标 = 相对 `visualViewport` 左上角，也就是用户看到的位置。手机 pinch 放大后
+ * 布局视口不变、只有视觉视口变，所以存"看到的位置"才能让球在缩放/平移后依然贴边
+ * （DOM 侧的坐标换算在 `gestures/draggable.ts` 里，`anchor: 'page'`）。
+ */
 export type GpenBallPosition = { x: number; y: number };
 
 /**

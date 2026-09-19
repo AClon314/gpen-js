@@ -1,5 +1,5 @@
 /**
- * Pointer-based drag with viewport clamping for a single element.
+ * Pointer-based drag with viewport clamping for a single floating element.
  *
  * Extracted from `GpenOverlay`'s floating-ball handling so any element can be
  * dragged (with tap detection and bounds clamping) without pulling in a heavy
@@ -11,13 +11,22 @@
  * `node.style` (disable with `apply: false` to handle positioning yourself,
  * e.g. by reading `onPositionChange`).
  *
- * While attached it also re-clamps the element into the viewport when the
- * window is resized or the page is zoomed (desktop Ctrl +/- and pinch), so a
- * px position captured at a larger viewport cannot leave the element
- * off-screen.
+ * ## 坐标语义（手机 pinch 缩放的关键）
+ *
+ * - action 存的位置、`onPositionChange` 报出去的位置，都是**视觉视口坐标**：
+ *   相对 `visualViewport` 左上角。这正是用户看到的位置，所以「贴右下角」在 pinch
+ *   缩放 / 旋转 / 软键盘之后依然成立，存进 storage 的也是这个语义。
+ * - 写进 DOM 的 `left/top` 由 `anchor` 决定，两者都在补上「视觉视口相对参考系的偏移」，
+ *   否则元素会跟着布局视口走：pinch 放大后视觉视口只是布局视口里的一小块，
+ *   元素看起来就是"被错误地固定住"甚至跑出可视区。
+ *   - `'fixed'`（默认）：元素是 `position: fixed`，补 `visualViewport.offsetLeft/offsetTop`；
+ *   - `'page'`：元素是 `position: absolute`，补 `visualViewport.pageLeft/pageTop`（文档坐标，
+ *     和 `GpenOverlay` 的 overlay 同款，跨浏览器最稳）。
+ * - 视觉视口平移（pinch-pan）时只重写样式让元素跟着走，位置值不变，因此不会反复写存储。
+ * - `keepInViewport`（默认开）会在视口尺寸变化时把元素夹回可视区，并保持"贴边"意图。
  *
  * ```svelte
- * <button use:draggable={{ onTap: open, margin: 12, onPositionChange: save }}>
+ * <button use:draggable={{ onTap: open, margin: 12, anchor: 'page', onPositionChange: save }}>
  *   …
  * </button>
  * ```
@@ -51,12 +60,15 @@ export interface DraggableOptions {
   apply?: boolean;
   /**
    * Position to apply on mount and whenever it changes externally (e.g. one
-   * restored from storage). The action owns the DOM style, so consumers must
-   * not also bind `style` to this value.
+   * restored from storage). Visual-viewport coordinates. `null` / `undefined`
+   * parks the element in the bottom-right corner. The action owns the DOM
+   * style, so consumers must not also bind `style` to this value.
    */
   position?: DragPosition | null;
   /** Re-clamp into the viewport on resize/zoom. Default `true`. */
   keepInViewport?: boolean;
+  /** 见文件头的坐标语义。Default `'fixed'`. */
+  anchor?: "fixed" | "page";
   /** Pointer released without exceeding `threshold`. */
   onTap?: (event: PointerEvent) => void;
   /** Gesture exceeded `threshold` and is now dragging. */
@@ -75,13 +87,43 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
+function visualViewport(): VisualViewport | null | undefined {
+  return typeof window === "undefined" ? undefined : window.visualViewport;
+}
+
 /** Visible viewport size; prefers `visualViewport` so pinch/soft-keyboard are respected. */
 export function viewportSize(): ViewportSize {
-  const viewport = typeof window === "undefined" ? undefined : window.visualViewport;
+  const viewport = visualViewport();
   return {
     width: viewport?.width ?? (typeof window === "undefined" ? 0 : window.innerWidth),
     height: viewport?.height ?? (typeof window === "undefined" ? 0 : window.innerHeight),
   };
+}
+
+/**
+ * 视觉视口相对**布局视口**的偏移：`position: fixed` 的元素要补它。
+ * 未缩放时为 (0, 0)，pinch 放大后平移就会出现非零值。
+ */
+export function visualViewportOffset(): DragPosition {
+  const viewport = visualViewport();
+  return { x: viewport?.offsetLeft ?? 0, y: viewport?.offsetTop ?? 0 };
+}
+
+/**
+ * 视觉视口相对**文档原点**的偏移：`position: absolute` 的元素要补它。
+ * `pageLeft/pageTop` 已经把页面滚动和 pinch 平移都算进去了。
+ */
+export function pageOffset(): DragPosition {
+  const viewport = visualViewport();
+  return {
+    x: viewport?.pageLeft ?? (typeof window === "undefined" ? 0 : window.scrollX),
+    y: viewport?.pageTop ?? (typeof window === "undefined" ? 0 : window.scrollY),
+  };
+}
+
+/** 视觉视口坐标 → 写进 DOM 的坐标（两个参考系只差一个偏移）。 */
+export function offsetPosition(position: DragPosition, offset: DragPosition): DragPosition {
+  return { x: position.x + offset.x, y: position.y + offset.y };
 }
 
 /** Size-aware bounds keeping a `size`×`size` element inside the viewport. */
@@ -128,8 +170,7 @@ interface DragGesture {
   pointerId: number;
   startX: number;
   startY: number;
-  offsetX: number;
-  offsetY: number;
+  start: DragPosition;
   moved: boolean;
   position: DragPosition;
 }
@@ -144,25 +185,56 @@ export const draggable: Action<HTMLElement, DraggableOptions | undefined> = (
   const previousTouchAction = node.style.touchAction;
   node.style.touchAction = "none";
 
-  function currentBounds(): DragBounds {
-    return boundsFor(node.offsetWidth, viewportSize(), options.margin ?? 0);
+  function margin(): number {
+    return options.margin ?? 0;
   }
 
+  function currentBounds(): DragBounds {
+    return boundsFor(node.offsetWidth, viewportSize(), margin());
+  }
+
+  /**
+   * 元素当前的视觉视口坐标。
+   *
+   * 优先用 action 自己写下去的 `applied`，**不要**用 `getBoundingClientRect()` 现算：
+   * DOM 里的 left/top 是按**上一次**的参考系写的，偏移一变（pinch 平移、页面滚动），
+   * 用新偏移去读旧坐标会得到错的值 —— 于是"贴右下角"的状态被判成"随便摆的"，
+   * 缩回去时元素就停在中途而不是贴回原来的边。
+   */
+  function currentVisualPosition(): DragPosition {
+    if (applied) return { x: applied.x, y: applied.y };
+    const rect = node.getBoundingClientRect();
+    const offset = visualViewportOffset();
+    return { x: rect.left - offset.x, y: rect.top - offset.y };
+  }
+
+  /** action 自己写下去的视觉视口位置（DOM 只是它的投影）。 */
   let applied: DragPosition | null = null;
+
+  /** 没有存过位置时的默认位置：可视区右下角。 */
+  function cornerPosition(): DragPosition {
+    const bounds = boundsFor(node.offsetWidth, viewportSize(), margin());
+    return { x: bounds.maxX, y: bounds.maxY };
+  }
+
+  function domOffset(): DragPosition {
+    return options.anchor === "page" ? pageOffset() : visualViewportOffset();
+  }
 
   function writePosition(position: DragPosition): void {
     applied = { x: position.x, y: position.y };
     if (options.apply === false) return;
-    node.style.left = `${position.x}px`;
-    node.style.top = `${position.y}px`;
+    const dom = offsetPosition(position, domOffset());
+    node.style.left = `${dom.x}px`;
+    node.style.top = `${dom.y}px`;
     node.style.right = "auto";
     node.style.bottom = "auto";
   }
 
-  /** Apply an external `position` (e.g. state restored after mount). */
+  /** Apply the external `position` (or the corner default) if it changed. */
   function applyExternalPosition(): void {
-    const wanted = options.position;
-    if (!wanted || gesture) return;
+    if (gesture) return;
+    const wanted = options.position ?? cornerPosition();
     if (
       applied &&
       Math.round(applied.x) === Math.round(wanted.x) &&
@@ -170,7 +242,7 @@ export const draggable: Action<HTMLElement, DraggableOptions | undefined> = (
     ) {
       return;
     }
-    writePosition({ x: wanted.x, y: wanted.y });
+    writePosition(wanted);
   }
 
   function settlePosition(position: DragPosition): void {
@@ -179,26 +251,52 @@ export const draggable: Action<HTMLElement, DraggableOptions | undefined> = (
   }
 
   let lastViewport = viewportSize();
+  // 记的是"写进 DOM 用"的偏移：`anchor: 'page'` 时它随页面滚动变化（球要跟着页面滚，
+  // 才能一直贴在看得见的那块区域的角上），`anchor: 'fixed'` 时只有 pinch 平移才会变。
+  let lastOffset = domOffset();
 
-  /** Reconcile the element after a resize/zoom (clamp back in, keep edge-hugging). */
+  /**
+   * 视口变化时重新安置元素：
+   * - 尺寸变了（pinch 缩放、旋转、软键盘、桌面 Ctrl+/-）：夹回可视区，并保持贴边意图；
+   * - 只是参考系偏移变了（pinch-pan / 页面滚动）：位置值不变，但 DOM 坐标要跟着重写，
+   *   否则元素会停在旧参考系里、看起来被"错误固定"。
+   */
   function reconcileViewport(): void {
-    if (options.keepInViewport === false || gesture) return;
-
-    const size = node.offsetWidth;
-    const margin = options.margin ?? 0;
+    const previousViewport = lastViewport;
+    const previousOffset = lastOffset;
     const viewport = viewportSize();
-    const previous = boundsFor(size, lastViewport, margin);
-    const next = boundsFor(size, viewport, margin);
+    const offset = domOffset();
     lastViewport = viewport;
+    lastOffset = offset;
 
-    const rect = node.getBoundingClientRect();
-    const resolved = reconcileBoundsPosition(
-      { x: rect.left, y: rect.top },
-      previous,
-      next,
-      EDGE_EPSILON,
-    );
-    if (resolved.x === rect.left && resolved.y === rect.top) return;
+    const viewportChanged =
+      viewport.width !== previousViewport.width || viewport.height !== previousViewport.height;
+    const offsetChanged = offset.x !== previousOffset.x || offset.y !== previousOffset.y;
+    if (!viewportChanged && !offsetChanged) return;
+    if (gesture) return;
+
+    const current = currentVisualPosition();
+    if (!viewportChanged) {
+      writePosition(current);
+      return;
+    }
+
+    const next = boundsFor(node.offsetWidth, viewport, margin());
+    const resolved =
+      options.keepInViewport === false
+        ? current
+        : reconcileBoundsPosition(
+            current,
+            boundsFor(node.offsetWidth, previousViewport, margin()),
+            next,
+            EDGE_EPSILON,
+          );
+
+    if (resolved.x === current.x && resolved.y === current.y) {
+      // 值没变：offset 变了就重写一次样式（元素要跟着视觉视口走），否则什么都不用做。
+      if (offsetChanged) writePosition(current);
+      return;
+    }
     settlePosition(resolved);
   }
 
@@ -224,15 +322,14 @@ export const draggable: Action<HTMLElement, DraggableOptions | undefined> = (
     if (!event.isPrimary) return;
     if (event.pointerType === "mouse" && event.button !== 0) return;
 
-    const rect = node.getBoundingClientRect();
+    const start = currentVisualPosition();
     gesture = {
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
-      offsetX: event.clientX - rect.left,
-      offsetY: event.clientY - rect.top,
+      start,
       moved: false,
-      position: { x: rect.left, y: rect.top },
+      position: start,
     };
     capturePointer(event.pointerId);
   }
@@ -241,15 +338,19 @@ export const draggable: Action<HTMLElement, DraggableOptions | undefined> = (
     const current = gesture;
     if (!current || current.pointerId !== event.pointerId) return;
 
+    // 用位移而不是「client - 元素位置」：位移在不同浏览器 / 不同缩放状态下都一致，
+    // 绝对坐标则要看 clientX 的参考系（视觉视口 vs 布局视口）是否和 rect 一致。
+    const deltaX = event.clientX - current.startX;
+    const deltaY = event.clientY - current.startY;
+
     if (!current.moved) {
-      const travel = Math.hypot(event.clientX - current.startX, event.clientY - current.startY);
-      if (travel <= (options.threshold ?? DEFAULT_DRAG_THRESHOLD)) return;
+      if (Math.hypot(deltaX, deltaY) <= (options.threshold ?? DEFAULT_DRAG_THRESHOLD)) return;
       current.moved = true;
       options.onDragStart?.(event);
     }
 
     current.position = clampToBounds(
-      { x: event.clientX - current.offsetX, y: event.clientY - current.offsetY },
+      { x: current.start.x + deltaX, y: current.start.y + deltaY },
       currentBounds(),
     );
     writePosition(current.position);
@@ -273,7 +374,9 @@ export const draggable: Action<HTMLElement, DraggableOptions | undefined> = (
 
   const viewportListeners: Array<[EventTarget, string]> = [];
   if (typeof window !== "undefined") {
-    viewportListeners.push([window, "resize"]);
+    // window scroll 只在 `anchor: 'page'` 下会改变偏移，但订阅成本极低，
+    // 两个 anchor 共用一条注册路径（reconcile 自己判断有没有真的变化）。
+    viewportListeners.push([window, "resize"], [window, "scroll"]);
     const viewport = window.visualViewport;
     if (viewport) viewportListeners.push([viewport, "resize"], [viewport, "scroll"]);
   }
@@ -286,8 +389,9 @@ export const draggable: Action<HTMLElement, DraggableOptions | undefined> = (
   node.addEventListener("pointerup", handlePointerEnd);
   node.addEventListener("pointercancel", handlePointerEnd);
 
-  // Run once after the initial style has been applied, so an externally
-  // restored position is applied and reconciled against the viewport.
+  // 先立即安置一次（此时可能还没完成布局，尺寸按 0 算），再在下一帧按真实尺寸修正，
+  // 这样首屏不会先闪现在左上角。
+  applyExternalPosition();
   const initialClamp = requestAnimationFrame(() => {
     applyExternalPosition();
     reconcileViewport();
