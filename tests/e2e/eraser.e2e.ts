@@ -1,19 +1,13 @@
 import { expect, test, type Page } from "playwright/test";
 
+import { openWorkspace } from "./helpers/workspace";
+
 /**
  * T10 / T11 回归：画笔参数落进协议 `ToolbarState`，橡皮按 `mode` 擦除。
  *
  * 三种擦除模式是 Blender 的真实语义（与枚举名相反，见 handoff §3）：
  * STROKE = 整笔删除、SOFT = 逐点降 opacity、HARD = 切开笔画。
  */
-async function openWorkspace(page: Page) {
-  await expect(page.locator(".blender-panel-menu, .floating-button").first()).toBeVisible();
-  if (await page.locator(".floating-button").isVisible()) {
-    await page.locator(".floating-button").click();
-  }
-  await expect(page.locator(".blender-panel-menu")).toBeVisible();
-  await expect(page.locator("canvas.stroke-surface")).toBeVisible();
-}
 
 function countInk(page: Page) {
   return page.evaluate(() => {
@@ -128,7 +122,7 @@ test.describe("brush and eraser", () => {
   test("a thicker brush writes bigger point radii into the document", async ({ page }) => {
     test.setTimeout(90_000);
     await page.goto("/");
-    await openWorkspace(page);
+    await openWorkspace(page, { canvas: true });
 
     // 默认画笔直径 4 → 半径 2。把直径调到 40 再画，落盘的字节数应当更大，
     // 并且像素更多（等长笔画、更粗的线）。
@@ -151,7 +145,7 @@ test.describe("brush and eraser", () => {
 
   test("STROKE mode erases a whole stroke and Ctrl+Z brings it back", async ({ page }) => {
     await page.goto("/");
-    await openWorkspace(page);
+    await openWorkspace(page, { canvas: true });
     await openPreferences(page);
     await setEraserMode(page, "笔画（整笔删除）");
     await page.keyboard.press("Escape");
@@ -175,7 +169,7 @@ test.describe("brush and eraser", () => {
 
   test("SOFT mode dims the stroke instead of deleting it", async ({ page }) => {
     await page.goto("/");
-    await openWorkspace(page);
+    await openWorkspace(page, { canvas: true });
     await openPreferences(page);
     await setEraserMode(page, "溶解（逐点降不透明度）");
     await page.keyboard.press("Escape");
@@ -195,7 +189,7 @@ test.describe("brush and eraser", () => {
 
   test("HARD mode cuts a stroke into two pieces", async ({ page }) => {
     await page.goto("/");
-    await openWorkspace(page);
+    await openWorkspace(page, { canvas: true });
     await openPreferences(page);
     await setEraserMode(page, "点（切开笔画）");
     await page.keyboard.press("Escape");
@@ -219,7 +213,7 @@ test.describe("brush and eraser", () => {
   test("the toolbar state is persisted with the document", async ({ page }) => {
     test.setTimeout(90_000);
     await page.goto("/");
-    await openWorkspace(page);
+    await openWorkspace(page, { canvas: true });
     await expect
       .poll(() => readToolbarStateFromStorage(page), { timeout: 25_000 })
       .toBeGreaterThan(0);
@@ -242,7 +236,7 @@ test.describe("properties panel", () => {
   test("follows the active tool and writes the same protocol state", async ({ page }) => {
     test.setTimeout(90_000);
     await page.goto("/");
-    await openWorkspace(page);
+    await openWorkspace(page, { canvas: true });
 
     const properties = page.locator(".blender-panel-properties");
     await expect(properties.getByText("笔刷设置")).toBeVisible();

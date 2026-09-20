@@ -47,6 +47,9 @@
 
 	const uiScale = $derived(state?.uiScale ?? 1);
 
+	/** 菜单栏按钮的触屏豁免属性：同一个写法的单一来源（见 `contextMenu.svelte.ts`）。 */
+	const TOUCH_OPT_OUT = { [TOUCH_OPT_OUT_ATTRIBUTE]: '' };
+
 	/**
 	 * 每个菜单一个具名注册表（`registerMenuItems`），按钮只关联名字 + 在点击时用
 	 * 按钮矩形锚定菜单（`openAt`）——和上一轮「窗口」菜单完全同一套，只是现在
@@ -86,26 +89,34 @@
 </script>
 
 <div class="blender-panel blender-panel-menu" aria-label="菜单栏和工具设置">
+	<!--
+		菜单栏按钮：`use:contextMenu` 只把按钮关联到具名注册表（provider 由
+		`registerMenuItems` 持有），点击时按按钮矩形锚定菜单（`openAt`）。
+
+		每个按钮都带 `TOUCH_OPT_OUT_ATTRIBUTE`：它们是「点一下开菜单」的普通按钮，
+		不该被当成触屏长按目标——长按定时器会吞掉浏览器自己的 click
+		（见 `contextMenu.svelte.ts` 里的注释）。右键照旧。
+	-->
+	{#snippet menuButton(id: string, label: string)}
+		<button
+			class="gpen-panel-button menu-item"
+			type="button"
+			aria-haspopup="menu"
+			aria-label={`${label}菜单`}
+			title={`${label}菜单`}
+			use:contextMenu={id}
+			{...TOUCH_OPT_OUT}
+			onclick={(event) => openMenuFromButton(event, id)}
+		>{label}</button>
+	{/snippet}
+
 	<div class="menu-row">
 		<span class="app-mark" aria-hidden="true">✦</span>
 		<nav class="menu-items" aria-label="主菜单">
 			{#each GPEN_MENU_BAR as menu (menu.id)}
-				<!-- `use:contextMenu` 只把按钮关联到具名注册表（provider 由 `registerMenuItems`
-				     持有），点击时按按钮矩形锚定菜单。
-				     `TOUCH_OPT_OUT_ATTRIBUTE` 让长按不再走「按住 500ms 弹菜单」那条路：
-				     菜单栏按钮本来就该是「点一下开菜单」，长按定时器只会吞掉浏览器
-				     自己的 click（见 `contextMenu.svelte.ts` 里的注释）。右键照旧。 -->
-				<button
-					class="gpen-panel-button menu-item"
-					type="button"
-					aria-haspopup="menu"
-					aria-label={`${menu.label}菜单`}
-					title={`${menu.label}菜单`}
-					use:contextMenu={menu.id}
-					{...{ [TOUCH_OPT_OUT_ATTRIBUTE]: "" }}
-					onclick={(event) => openMenuFromButton(event, menu.id)}
-				>{menu.label}</button>
+				{@render menuButton(menu.id, menu.label)}
 			{/each}
+			<!-- 齿轮只放图标，类名 / 标题 / 内容都不同，所以不走上面的 snippet。 -->
 			<button
 				class="gpen-panel-button menu-item menu-settings"
 				type="button"
@@ -113,7 +124,7 @@
 				aria-label="设置菜单"
 				title="偏好设置"
 				use:contextMenu={GPEN_MENU_IDS.settings}
-				{...{ [TOUCH_OPT_OUT_ATTRIBUTE]: "" }}
+				{...TOUCH_OPT_OUT}
 				onclick={(event) => openMenuFromButton(event, GPEN_MENU_IDS.settings)}
 			>
 				<sp-icon-settings></sp-icon-settings>
@@ -222,6 +233,31 @@
 		min-width: 0;
 	}
 
+	/* 顶部两条带（菜单行 / 工具设置行）都是**横向滚动的单行**：窄容器里装不下就滑，
+	   而不是被 `overflow: hidden` 裁掉——裁掉的结果是「看得见标签、点下去打在别处」。
+	   两条带各自的高度（2.4lh / 2.6lh）不能变，所以滚动条要隐掉；
+	   `touch-action: pan-x` 让顶部带上的滑动只用来翻菜单 / 字段，不会把宿主网页滚走。 */
+	.menu-items,
+	.tool-settings {
+		overflow-x: auto;
+		overflow-y: hidden;
+		overscroll-behavior-x: contain;
+		touch-action: pan-x;
+		scrollbar-width: none;
+	}
+
+	.menu-items::-webkit-scrollbar,
+	.tool-settings::-webkit-scrollbar {
+		display: none;
+	}
+
+	/* 滚动容器里的项不缩：宽度不够时滑动，而不是把标签 / 字段挤成一团。 */
+	.menu-items > *,
+	.tool-settings > * {
+		flex: 0 0 auto;
+		white-space: nowrap;
+	}
+
 	/* --- 菜单行 --- */
 
 	.menu-row {
@@ -245,27 +281,9 @@
 		align-items: center;
 		gap: 0.25ch;
 		min-width: 0;
-		/* 窄屏（手机竖屏 ≈ 50ch）装不下 8 个菜单 + 右侧动作组。原来 `overflow: hidden`
-		   直接把后几个菜单裁掉：标签看不见、手指点下去落在动作组的药丸上，
-		   看起来就是「顶部菜单栏不响应点击」。改成横向可滚，多出来的菜单滑得到，
-		   点击仍然按按钮矩形锚定（`openAt` 用 `getBoundingClientRect`，与滚动位置无关）。
-		   滚动条隐掉，行高必须还是 2.4lh。
-		   `touch-action: pan-x`：菜单栏上的滑动只用来翻菜单，不会把宿主的网页滚走。 */
-		overflow-x: auto;
-		overflow-y: hidden;
-		overscroll-behavior-x: contain;
-		touch-action: pan-x;
-		scrollbar-width: none;
-	}
-
-	.menu-items::-webkit-scrollbar {
-		display: none;
 	}
 
 	.menu-item {
-		/* 不缩：宽度不够时让菜单行滚动，而不是把标签压成一团。 */
-		flex: 0 0 auto;
-		white-space: nowrap;
 		padding: 0.25lh 1ch;
 		border-radius: var(--gpen-radius);
 	}
@@ -319,8 +337,8 @@
 		}
 	}
 
-	/* 最窄一档（≈ iPhone 竖屏）：标签两侧的留白再收一点，8 个菜单挤进 385px
-	   以内（未收之前 367px 的内容要塞进 317px 的可视区，最后一个齿轮要滑才看得到）。 */
+	/* 最窄一档（≈ iPhone 竖屏）：标签两侧的留白再收一点。实测 360px 容器下
+	   可视菜单 5 → 6 个、滚动距离 142 → 91px；8 个菜单仍然要滑才看得全。 */
 	@container (max-width: 52ch) {
 		.menu-item {
 			padding-inline: 0.5ch;
@@ -385,21 +403,6 @@
 		height: 2.6lh;
 		padding: 0 1.5ch;
 		background: var(--gpen-chrome-background-subtle);
-		/* 同菜单行：窄屏装不下就横向滑，而不是把后面的字段裁掉。 */
-		overflow-x: auto;
-		overflow-y: hidden;
-		overscroll-behavior-x: contain;
-		touch-action: pan-x;
-		scrollbar-width: none;
-	}
-
-	.tool-settings::-webkit-scrollbar {
-		display: none;
-	}
-
-	.tool-settings > * {
-		flex: 0 0 auto;
-		white-space: nowrap;
 	}
 
 	.setting-tool {

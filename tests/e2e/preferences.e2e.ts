@@ -1,16 +1,10 @@
 import { expect, test, type Page } from "playwright/test";
 
+import { expectInsideViewport, gridSnapshot, openWorkspace } from "./helpers/workspace";
+
 /**
  * T8 回归：偏好设置面板（浮动）+ 主题三态 + 偏好持久化。
  */
-async function openWorkspace(page: Page) {
-  await expect(page.locator(".blender-panel-menu, .floating-button").first()).toBeVisible();
-  if (await page.locator(".floating-button").isVisible()) {
-    await page.locator(".floating-button").click();
-  }
-  await expect(page.locator(".blender-panel-menu")).toBeVisible();
-}
-
 async function openPreferences(page: Page) {
   await page.keyboard.press("Control+Alt+u");
   await expect(page.locator(".blender-panel-preferences")).toBeVisible();
@@ -50,41 +44,6 @@ function countInk(page: Page) {
     let count = 0;
     for (let index = 3; index < data.length; index += 4) if (data[index] > 0) count += 1;
     return count;
-  });
-}
-
-/**
- * 网格布局快照：所有**非浮动**组的矩形 + 几个关键面板的矩形。
- *
- * 用来断言「打开浮动面板不能动到网格」——dockview 的 `addPanel` 在没有 `floating` 时会把
- * `initialWidth/Height` 应用给 active 组（`group.api.setSize(...)`），一次性重排整个网格，
- * 之后把面板挪成浮窗也不会恢复（实测：菜单行被撑高、视口/状态栏尺寸全变）。
- */
-function gridSnapshot(page: Page) {
-  return page.evaluate(() => {
-    const round = (n: number) => Math.round(n);
-    const box = (el: Element) => {
-      const r = el.getBoundingClientRect();
-      return `${round(r.x)},${round(r.y)} ${round(r.width)}x${round(r.height)}`;
-    };
-    const groups = [...document.querySelectorAll(".dv-groupview")]
-      .filter((el) => !el.classList.contains("dv-groupview-floating"))
-      .map(box)
-      .join(" | ");
-    const panels = [
-      ".blender-panel-menu",
-      ".menu-row",
-      ".tool-settings",
-      ".blender-panel-viewport",
-      ".blender-panel-statusbar",
-      ".blender-panel-timeline",
-    ]
-      .map((selector) => {
-        const el = document.querySelector(selector);
-        return el ? box(el) : "missing";
-      })
-      .join(" | ");
-    return { groups, panels };
   });
 }
 
@@ -132,6 +91,41 @@ test.describe("preferences panel", () => {
     expect(menuAfter?.height).toBe(menuBefore?.height);
     expect(toolSettingsAfter?.height).toBe(toolSettingsBefore?.height);
   });
+
+  /**
+   * 浮窗几何：首选 420×520 且四边留 16px，装不下就夹到容器内并居中。
+   *
+   * 这段以前只在 `openPreferences()` 里，没有断言：消融（去掉夹取、直接把 420×520 和
+   * 未夹取的居中坐标交给 dockview）能跑绿全部测试，但实测下边缘会跑到视口外。
+   * `boundedWithinViewport` 只约束**用户拖动**的浮窗，不管初始请求，所以夹取是我们的责任。
+   *
+   * 每个尺寸一个 describe：`test.use({ viewport })` 只对 describe 生效，而且一个用例里
+   * 连续换尺寸会走到「还原持久化布局」那条路（存下来的浮窗不经过 `openPreferences`），
+   * 测的就不是这里要测的东西了。
+   */
+  for (const viewport of [
+    { width: 560, height: 460 }, // 比首选尺寸矮 → 高度必须夹
+    { width: 360, height: 340 }, // 比最小可用尺寸还窄 → 交给 dockview 再夹一次
+  ]) {
+    test.describe(`floating panel at ${viewport.width}x${viewport.height}`, () => {
+      test.use({ viewport });
+
+      test("stays inside the viewport and is centered", async ({ page }) => {
+        await page.goto("/");
+        await openWorkspace(page);
+        await openPreferences(page);
+
+        const panel = page.locator(".dv-groupview-floating");
+        await expectInsideViewport(page, panel, "浮窗");
+
+        // 水平居中：左右留白差不超过 1px（dockview 有自己的夹取，所以只查左右）。
+        const box = (await panel.boundingBox())!;
+        const left = box.x;
+        const right = viewport.width - (box.x + box.width);
+        expect(Math.abs(left - right)).toBeLessThanOrEqual(1);
+      });
+    });
+  }
 
   test("switches the theme tri-state and applies it immediately", async ({ page }) => {
     await page.goto("/");

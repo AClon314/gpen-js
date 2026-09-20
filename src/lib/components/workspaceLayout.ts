@@ -20,10 +20,21 @@
  *
  * Kept as plain functions (`bun test`) so the policy can be checked without a
  * browser; `GpenWorkspace` only pushes the result into
- * `group.api.setConstraints`.
+ * `group.api.setConstraints` / `addPanel({ floating })`.
  */
 
-/** Desktop minimums, mirroring the `minimumWidth`s in `buildDefaultLayout`. */
+/** Container / panel sizes as plain numbers, so the policy stays DOM-free. */
+export interface LayoutSize {
+  width: number;
+  height: number;
+}
+
+/** A non-negative, finite size number (dockview reports NaN before its first layout). */
+function positive(value: number): number {
+  return Number.isFinite(value) ? Math.max(0, value) : 0;
+}
+
+/** Desktop minimums, used by `buildDefaultLayout` for `tools` / `viewport` / `outliner`. */
 export const COLUMN_MINIMUM_WIDTHS = { tools: 52, viewport: 240, side: 160 } as const;
 
 /** The narrowest container that can honour all three desktop minimums. */
@@ -42,7 +53,7 @@ export interface ColumnMinimumWidths {
  */
 export function minimumColumnWidths(available: number): ColumnMinimumWidths {
   const { tools, viewport, side } = COLUMN_MINIMUM_WIDTHS;
-  const width = Math.max(0, Number.isFinite(available) ? available : 0);
+  const width = positive(available);
   if (width >= MINIMUM_GRID_WIDTH) return { tools, viewport, side };
 
   const chrome = tools + side;
@@ -50,4 +61,56 @@ export function minimumColumnWidths(available: number): ColumnMinimumWidths {
   const toolsMin = Math.round(tools * chromeScale);
   const sideMin = Math.round(side * chromeScale);
   return { tools: toolsMin, viewport: Math.round(width) - toolsMin - sideMin, side: sideMin };
+}
+
+/**
+ * A floating panel narrower / shorter than this is not usable, so ask for at
+ * least this much and let dockview's `boundedWithinViewport` trim it back.
+ */
+export const FLOATING_MINIMUM_SIZE = { width: 240, height: 200 } as const;
+
+export interface FloatingBounds extends LayoutSize {
+  x: number;
+  y: number;
+}
+
+/**
+ * Where a floating panel goes: preferred size shrunk to fit the container with
+ * `margin` on every side, then centered.
+ *
+ * `addPanel({ floating })` has no `'center'` anchor (`FloatingGroupOptions.position`
+ * is `AnchorPosition`: four corners only), so the coordinates are ours to compute.
+ *
+ * Both clamps are load-bearing even though dockview has
+ * `floatingGroupBounds: 'boundedWithinViewport'`: that option bounds a float the
+ * *user* drags, but an oversized initial request is placed as-is. Ablation: drop
+ * the clamps and a 420×520 panel in a 560×460 container lands at y=27 with its
+ * bottom edge 59px below the viewport, and in 360×340 it covers the screen
+ * off-center instead of sitting at (17,43) with a 16px margin.
+ *
+ * Known gap (not this function's job): a float that is already open is not
+ * re-bounded when the container shrinks or when a stored layout is restored —
+ * dockview only bounds drags. See `docs/panel.md`.
+ */
+export function centeredFloatingBounds(
+  container: LayoutSize,
+  preferred: LayoutSize,
+  margin: number,
+): FloatingBounds {
+  const gap = positive(margin);
+  const available = { width: positive(container.width), height: positive(container.height) };
+  const width = Math.min(
+    preferred.width,
+    Math.max(FLOATING_MINIMUM_SIZE.width, available.width - 2 * gap),
+  );
+  const height = Math.min(
+    preferred.height,
+    Math.max(FLOATING_MINIMUM_SIZE.height, available.height - 2 * gap),
+  );
+  return {
+    x: Math.max(gap, Math.round((available.width - width) / 2)),
+    y: Math.max(gap, Math.round((available.height - height) / 2)),
+    width,
+    height,
+  };
 }

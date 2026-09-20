@@ -1,16 +1,13 @@
 import { expect, test, type Page } from "playwright/test";
 
+import { openWorkspace } from "./helpers/workspace";
+
 /**
  * T3 回归：相机（spacer）、Web 图层旋转、沉浸模式。
  *
  * 用首页 `/`：它的 `main` 足够高（`'测试'.repeat(9999)`），能同时测到「绕视口中心
  * 旋转不会把正在看的内容甩出视口」和「相机 spacer 扩大滚动范围」。
  */
-async function openWorkspace(page: Page) {
-  await page.locator(".floating-button").click();
-  await expect(page.locator(".blender-panel-menu")).toBeVisible();
-}
-
 function readMain(page: Page) {
   return page.evaluate(() => {
     const main = document.querySelector("main");

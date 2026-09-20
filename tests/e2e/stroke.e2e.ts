@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "playwright/test";
 
+import { openWorkspace } from "./helpers/workspace";
+
 /**
  * T4 回归：stroke 最小写入路径。
  *
@@ -7,16 +9,6 @@ import { expect, test, type Page } from "playwright/test";
  * 打开工作区 = 绘制模式：视口洞被 `canvas.stroke-surface` 接管（见 docs/stroke.md），
  * 宿主网页的交互交还给「最小化」（tests/embed/embed.e2e.ts）。
  */
-async function openWorkspace(page: Page) {
-  // 重载后 `open` 是持久化偏好，工作区可能已经自己打开了；也可能还没渲染完。
-  // 先等「菜单栏或悬浮球」任一出现，再决定要不要点开。
-  await expect(page.locator(".blender-panel-menu, .floating-button").first()).toBeVisible();
-  if (await page.locator(".floating-button").isVisible()) {
-    await page.locator(".floating-button").click();
-  }
-  await expect(page.locator(".blender-panel-menu")).toBeVisible();
-  await expect(page.locator("canvas.stroke-surface")).toBeVisible();
-}
 
 /** Count non-transparent pixels in the stroke canvas backing store. */
 function countInkPixels(page: Page) {
@@ -78,7 +70,7 @@ function readMetadata(page: Page) {
 test.describe("stroke write path", () => {
   test("draws ink and Ctrl+Z removes it (Ctrl+Shift+Z restores it)", async ({ page }) => {
     await page.goto("/");
-    await openWorkspace(page);
+    await openWorkspace(page, { canvas: true });
     expect(await countInkPixels(page)).toBe(0);
 
     await drawStroke(page);
@@ -93,7 +85,7 @@ test.describe("stroke write path", () => {
 
   test("exposes undo/redo in the status bar and keeps a deep history", async ({ page }) => {
     await page.goto("/");
-    await openWorkspace(page);
+    await openWorkspace(page, { canvas: true });
     const undo = page.getByLabel("撤销（Ctrl+Z）");
     const redo = page.getByLabel("重做（Ctrl+Shift+Z）");
     await expect(undo).toBeDisabled();
@@ -124,7 +116,7 @@ test.describe("stroke write path", () => {
     // 之后同一页面复用回落结果（见 docs/storage.md）。所以第一次读 / 写要等得久一点。
     test.setTimeout(90_000);
     await page.goto("/");
-    await openWorkspace(page);
+    await openWorkspace(page, { canvas: true });
 
     // The default document is saved as soon as the (missing) save slot settles.
     await expect.poll(() => readMetadata(page), { timeout: 25_000 }).not.toBeNull();
@@ -139,7 +131,7 @@ test.describe("stroke write path", () => {
       .toBeGreaterThan(before!.size);
 
     await page.reload();
-    await openWorkspace(page);
+    await openWorkspace(page, { canvas: true });
     // Reload re-selects the blob backend from scratch: same ~10s broker timeout, then
     // the stored document is loaded and the stroke is repainted.
     await expect.poll(() => countInkPixels(page), { timeout: 25_000 }).toBeGreaterThan(0);

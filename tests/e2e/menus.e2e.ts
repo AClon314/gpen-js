@@ -1,18 +1,21 @@
 import { expect, test, type Page } from "playwright/test";
 
+import {
+  expectHitsItself,
+  expectInsideViewport,
+  expectUserScrollable,
+  horizontalOverflow,
+  openWorkspace,
+} from "./helpers/workspace";
+
 /**
  * T9 回归：菜单栏全铺。
  *
  * 覆盖「每个菜单都能打开」「真项能执行」「假项灰掉且 hover 有说明」，
  * 以及菜单快捷键（Ctrl+S / Ctrl+N / F2）真的生效（不是只写在菜单里的假承诺）。
  */
-async function openWorkspace(page: Page) {
-  await expect(page.locator(".blender-panel-menu, .floating-button").first()).toBeVisible();
-  if (await page.locator(".floating-button").isVisible()) {
-    await page.locator(".floating-button").click();
-  }
-  await expect(page.locator(".blender-panel-menu")).toBeVisible();
-}
+/** 菜单栏上的七个应用菜单（齿轮「设置」不在里面）。 */
+const MENU_LABELS = ["文件", "编辑", "渲染", "窗口", "帮助", "切换", "实用工具"];
 
 async function openMenu(page: Page, label: string) {
   await page.getByRole("button", { name: `${label}菜单`, exact: true }).click();
@@ -26,7 +29,7 @@ test.describe("menu bar", () => {
   });
 
   test("every menu in the bar opens with items", async ({ page }) => {
-    for (const label of ["文件", "编辑", "渲染", "窗口", "帮助", "切换", "实用工具"]) {
+    for (const label of MENU_LABELS) {
       await openMenu(page, label);
       await expect(page.getByRole("menu")).toBeVisible();
       expect(await page.getByRole("menuitem").count()).toBeGreaterThan(0);
@@ -135,55 +138,37 @@ test.describe("menu bar", () => {
 test.describe("menu bar on a phone-width viewport", () => {
   test.use({ viewport: { width: 360, height: 844 }, hasTouch: true });
 
-  const MENUS = ["文件", "编辑", "渲染", "窗口", "帮助", "切换", "实用工具"];
-
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
     await openWorkspace(page);
   });
 
   test("the grid stays inside the viewport instead of overflowing it", async ({ page }) => {
-    const grid = await page.locator(".dv-groupview").first().boundingBox();
-    expect(grid).not.toBeNull();
     // 溢出时每列右侧（顶栏动作按钮、属性面板）都会落到屏幕外。
-    expect(grid!.width).toBeLessThanOrEqual(360);
-    expect(grid!.x + grid!.width).toBeLessThanOrEqual(361);
+    await expectInsideViewport(page, page.locator(".dv-groupview").first(), "网格");
 
     // 顶栏右侧的外壳按钮（沉浸 / 最小化）必须真的在屏内，
     // 否则「看得见半截、点不到」——网格溢出的直接后果。
     for (const name of [/沉浸模式/, "最小化 gpen（把网页交还给页面）"]) {
-      const button = page.getByRole("button", { name });
-      const box = await button.boundingBox();
-      expect(box, `${String(name)} 应该有布局盒子`).not.toBeNull();
-      expect(box!.x + box!.width, `${String(name)} 不能被裁到屏幕外`).toBeLessThanOrEqual(361);
-      expect(box!.x).toBeGreaterThanOrEqual(0);
+      await expectInsideViewport(page, page.getByRole("button", { name }), String(name));
     }
   });
 
   test("every menu button is hit-testable after scrolling the row", async ({ page }) => {
-    const row = page.locator("nav[aria-label='主菜单']");
     // 8 个菜单的自然宽度超过手机屏宽：菜单行必须能横向滚，而不是把后面的裁掉。
-    const overflow = await row.evaluate((nav) => nav.scrollWidth - nav.clientWidth);
-    expect(overflow).toBeGreaterThan(0);
+    expect(await horizontalOverflow(page, "nav[aria-label='主菜单']")).toBeGreaterThan(0);
 
-    for (const label of [...MENUS, "设置"]) {
+    for (const label of [...MENU_LABELS, "设置"]) {
       const button = page.getByRole("button", { name: `${label}菜单`, exact: true });
       await button.scrollIntoViewIfNeeded();
-      const box = await button.boundingBox();
-      expect(box, `${label}菜单 应该有布局盒子`).not.toBeNull();
-      expect(box!.x + box!.width).toBeLessThanOrEqual(361);
       // 关键：按钮中心点下面必须是它自己——原来这里是动作组的药丸。
-      const hit = await page.evaluate(
-        ([x, y]) =>
-          document.elementFromPoint(x, y)?.closest("button")?.getAttribute("aria-label") ?? null,
-        [box!.x + box!.width / 2, box!.y + box!.height / 2] as const,
-      );
-      expect(hit, `${label}菜单 的中心点应该打在按钮上`).toBe(`${label}菜单`);
+      await expectHitsItself(page, button, `${label}菜单`);
+      await expectInsideViewport(page, button, `${label}菜单`);
     }
   });
 
   test("every menu opens with a tap", async ({ page }) => {
-    for (const label of MENUS) {
+    for (const label of MENU_LABELS) {
       const button = page.getByRole("button", { name: `${label}菜单`, exact: true });
       await button.tap();
       await expect(page.getByRole("menu")).toBeVisible();
@@ -198,9 +183,16 @@ test.describe("menu bar on a phone-width viewport", () => {
     await expect(page.getByRole("menuitem", { name: "偏好设置" })).toBeVisible();
   });
 
-  test("the tool settings row scrolls instead of clipping its fields", async ({ page }) => {
-    const row = page.locator(".tool-settings");
-    expect(await row.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeGreaterThan(0);
+  test("both top strips are user-scrollable, not just cropped", async ({ page }) => {
+    // 两条带都要能滚：只查 `scrollWidth > clientWidth` 不够——`overflow: hidden`
+    // 的盒子同样溢出，但用户滚不动（见 `expectUserScrollable` 的注释）。
+    for (const selector of ["nav[aria-label='主菜单']", ".tool-settings"]) {
+      expect(await horizontalOverflow(page, selector)).toBeGreaterThan(0);
+      await expectUserScrollable(page, selector);
+    }
+  });
+
+  test("the tool settings row can reach its last field", async ({ page }) => {
     const last = page.getByText("游标", { exact: false }).last();
     await last.scrollIntoViewIfNeeded();
     await expect(last).toBeInViewport();

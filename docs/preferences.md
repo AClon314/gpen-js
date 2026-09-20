@@ -54,13 +54,17 @@ runes 模块（不进 `#lib` 桶，理由同 `themes/theme.svelte.ts`）：`pref
 ```ts
 const existing = dockview.getPanel(PREFERENCES_PANEL_ID);
 if (existing) { existing.api.setActive(); return; }   // 幂等，不开第二个
-const width = …; const height = …;                     // 按容器尺寸算居中
-const x = …; const y = …;
+// 几何是纯函数（有单测）：夹到容器内 + 居中 + 四边留 16px，见 lib/components/workspaceLayout.ts
+const bounds = centeredFloatingBounds(
+  { width: instance.width, height: instance.height },
+  { width: PREFERENCES_WIDTH, height: PREFERENCES_HEIGHT },
+  FLOAT_MARGIN
+);
 dockview.addPanel({
   id: PREFERENCES_PANEL_ID,
   component: 'preferences',
   title: '偏好设置',
-  floating: { x, y, width, height, dragHandle: 'titlebar' },
+  floating: { ...bounds, dragHandle: 'titlebar' },
 });
 ```
 
@@ -78,7 +82,11 @@ dockview.addPanel({
 - **`position` 与 `floating` 互斥**（同时传 dockview 会抛错）；`FloatingGroupOptions.position`
   的类型是 `AnchorPosition`（`TopLeft` / `TopRight` / `BottomLeft` / `BottomRight`），
   **没有 `'center'`**，传 `'center'` 编译报错、运行时落回默认左上角 `{left: 100, top: 100}`。
-  所以居中坐标自己算（`floatingGroupBounds: 'boundedWithinViewport'` 会再夹一次）。
+  所以居中坐标自己算，**夹取也得自己算**：`floatingGroupBounds: 'boundedWithinViewport'`
+  只管用户拖动，初始请求大了它照放——消融实测（去掉夹取、直接请求 420×520）在 560×460 的
+  容器里下边缘落到 519、在 360×340 里铺满到 418×492 @ (1,27)，全部测试仍然跑绿。
+  所以这段几何被提成 `centeredFloatingBounds()` 并单测（`tests/workspaceLayout.test.ts`），
+  e2e 再补一条「浮窗在视口内且水平居中」。
 - **不进 `buildDefaultLayout`**：否则默认布局变大，且老用户存下的布局里没有它。
 - **保留标题栏**（不加进 `:has(.blender-panel-...) > .dv-tabs-and-actions-container { display: none }`
   那组）：它是浮动的，需要标题栏当拖动手柄（`dragHandle: 'titlebar'`）。

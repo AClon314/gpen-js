@@ -59,7 +59,7 @@
 		type GpenWorkspaceState
 	} from './gpenWorkspaceState';
 	import { readGpenViewportZoomFactor } from './gpenViewport';
-	import { minimumColumnWidths } from './workspaceLayout.js';
+	import { centeredFloatingBounds, COLUMN_MINIMUM_WIDTHS, minimumColumnWidths } from './workspaceLayout.js';
 	import {
 		brushRadiusOf,
 		defaultToolbarState,
@@ -813,20 +813,10 @@
 	 * 打开偏好设置：幂等的**浮动** dockview 面板。
 	 *
 	 * ⚠️ 必须用 `addPanel({ floating: {...} })`，**不要**写成
-	 * `addPanel({initialWidth, initialHeight})` + `addFloatingGroup(panel)`。
-	 *
-	 * 原因（dockview 8.2 `_doAddPanel` 实测读源码）：没有 `position` / `floating` 时，
-	 * `addPanel` 会把面板开进 **active 组**，并在最后对那个组调
-	 * `group.api.setSize({width: initialWidth, height: initialHeight})` —— 这一下就把整个网格
-	 * 重新分配了（实测：视口组从 918×442 变成 860×654，右列 300×221 缩成 260×200，
-	 * 状态栏被撑成 420×406）。随后 `addFloatingGroup` 把面板挪出去，但网格的尺寸已经改了，
-	 * 不会自己恢复（用户看到的「Airbrush 那一行被撑高 / 整个网格溢出容器」就是这个）。
-	 *
-	 * 走 `floating:` 分支则完全不碰网格：dockview 新建一个组、直接把它挂成浮窗
-	 * （`skipRemoveGroup: true`，因为那个组本来就不在网格里），**不会对任何网格组 setSize**。
-	 *
-	 * `position` 与 `floating` 互斥（同时传 dockview 会抛错）；`FloatingGroupOptions.position`
-	 * 只有四个角（`AnchorPosition`），没有 `'center'`，所以居中坐标自己算。
+	 * `addPanel({initialWidth, initialHeight})` + `addFloatingGroup(panel)`：前者会把面板
+	 * 开进活动组、顺手 `setSize()` 那个组，**整个网格被重排一次且不会恢复**。
+	 * 浮窗的几何（夹到容器内 + 居中）在 `workspaceLayout.ts` 里，有单测。
+	 * 详细坑与实测数据见 `docs/preferences.md`。
 	 */
 	function openPreferences(): void {
 		const instance = dockview;
@@ -836,19 +826,16 @@
 			existing.api.setActive();
 			return;
 		}
-		const width = Math.min(PREFERENCES_WIDTH, Math.max(240, instance.width - 2 * FLOAT_MARGIN));
-		const height = Math.min(PREFERENCES_HEIGHT, Math.max(200, instance.height - 2 * FLOAT_MARGIN));
+		const bounds = centeredFloatingBounds(
+			{ width: instance.width, height: instance.height },
+			{ width: PREFERENCES_WIDTH, height: PREFERENCES_HEIGHT },
+			FLOAT_MARGIN
+		);
 		instance.addPanel({
 			id: PREFERENCES_PANEL_ID,
 			component: PREFERENCES_PANEL_ID,
 			title: '偏好设置',
-			floating: {
-				x: Math.max(FLOAT_MARGIN, Math.round((instance.width - width) / 2)),
-				y: Math.max(FLOAT_MARGIN, Math.round((instance.height - height) / 2)),
-				width,
-				height,
-				dragHandle: 'titlebar'
-			}
+			floating: { ...bounds, dragHandle: 'titlebar' }
 		});
 	}
 
@@ -919,23 +906,6 @@
 		viewportHeight = Math.max(0, parent?.clientHeight ?? window.innerHeight);
 	}
 
-	/**
-	 * 把容器宽度对应的列最小宽度交给 dockview。
-	 *
-	 * 策略本体在 `workspaceLayout.ts`（纯函数 + 单测）：窄容器必须收小三列的
-	 * `minimumWidth`，否则 dockview 会把**整个网格**撑到 452px，每列右侧被裁到
-	 * 容器外——顶栏的动作按钮、右侧「场景集合 / 属性」全都点不到。
-	 */
-	function applyMinimumWidths(available: number) {
-		const instance = dockview;
-		if (!instance) return;
-		const { tools, viewport, side } = minimumColumnWidths(available);
-		instance.getPanel('tools')?.group.api.setConstraints({ minimumWidth: tools });
-		instance.getPanel('viewport')?.group.api.setConstraints({ minimumWidth: viewport });
-		instance.getPanel('outliner')?.group.api.setConstraints({ minimumWidth: side });
-		instance.getPanel('properties')?.group.api.setConstraints({ minimumWidth: side });
-	}
-
 	function layoutDockview() {
 		if (!dockview) return;
 		const width = layoutWidth ?? container.clientWidth;
@@ -949,7 +919,7 @@
 		layoutFrame = requestAnimationFrame(() => {
 			layoutFrame = undefined;
 			measureViewport();
-			applyMinimumWidths(layoutWidth ?? container.clientWidth);
+			applyGroupConstraints(layoutWidth ?? container.clientWidth);
 			layoutDockview();
 			// Both of these need a laid-out grid: dockview ignores size requests
 			// made before the first layout pass (the grid falls back to each
@@ -1070,13 +1040,41 @@
 	 * layer/property work area, and the top / bottom strips are chrome whose
 	 * height follows their content.
 	 */
+	/**
+	 * 各组的**高度**最小值（宽度的最小值随容器变，见 `workspaceLayout.ts`）。
+	 *
+	 * dockview 自己的组最小值是 100×100，而 `addPanel` 的 `minimumWidth/Height`
+	 * 只对新建组生效（split 出来的组会退回组默认值），所以建完布局还得
+	 * `setConstraints` 再落一次——两处都从这里取数，别写裸数字。
+	 */
+	const CHROME_MINIMUM_HEIGHTS = { menu: 28, timeline: 48, statusbar: 22 } as const;
+
+	/**
+	 * 把高度 / 宽度约束落到 dockview 组上（建布局后一次，容器尺寸变时每次）。
+	 * 策略本体在 `workspaceLayout.ts`：窄容器必须收小三列的 `minimumWidth`，
+	 * 否则 dockview 会把**整个网格**撑到 452px，每列右侧被裁到容器外——顶栏动作按钮、
+	 * 右侧「场景集合 / 属性」全都点不到（详见那里的注释）。
+	 */
+	function applyGroupConstraints(available: number) {
+		const instance = dockview;
+		if (!instance) return;
+		for (const [id, minimumHeight] of Object.entries(CHROME_MINIMUM_HEIGHTS)) {
+			instance.getPanel(id)?.group.api.setConstraints({ minimumHeight });
+		}
+		const { tools, viewport, side } = minimumColumnWidths(available);
+		instance.getPanel('tools')?.group.api.setConstraints({ minimumWidth: tools });
+		instance.getPanel('viewport')?.group.api.setConstraints({ minimumWidth: viewport });
+		instance.getPanel('outliner')?.group.api.setConstraints({ minimumWidth: side });
+		instance.getPanel('properties')?.group.api.setConstraints({ minimumWidth: side });
+	}
+
 	function buildDefaultLayout() {
 		if (!dockview) return;
 		dockview.addPanel({
 			id: 'viewport',
 			component: 'viewport',
 			title: '视口',
-			minimumWidth: 240,
+			minimumWidth: COLUMN_MINIMUM_WIDTHS.viewport,
 			minimumHeight: 160
 		});
 		dockview.addPanel({
@@ -1085,7 +1083,7 @@
 			title: '菜单',
 			position: { referencePanel: 'viewport', direction: 'above' },
 			initialHeight: 66,
-			minimumHeight: 28
+			minimumHeight: CHROME_MINIMUM_HEIGHTS.menu
 		});
 		dockview.addPanel({
 			id: 'tools',
@@ -1093,7 +1091,7 @@
 			title: '工具',
 			position: { referencePanel: 'viewport', direction: 'left' },
 			initialWidth: 62,
-			minimumWidth: 52
+			minimumWidth: COLUMN_MINIMUM_WIDTHS.tools
 		});
 		dockview.addPanel({
 			id: 'timeline',
@@ -1101,7 +1099,7 @@
 			title: '时间轴',
 			position: { referencePanel: 'viewport', direction: 'below' },
 			initialHeight: 190,
-			minimumHeight: 48
+			minimumHeight: CHROME_MINIMUM_HEIGHTS.timeline
 		});
 		dockview.addPanel({
 			id: 'outliner',
@@ -1109,7 +1107,7 @@
 			title: '场景集合',
 			position: { referencePanel: 'viewport', direction: 'right' },
 			initialWidth: 300,
-			minimumWidth: 160
+			minimumWidth: COLUMN_MINIMUM_WIDTHS.side
 		});
 		dockview.addPanel({
 			id: 'properties',
@@ -1127,12 +1125,9 @@
 			minimumHeight: 22
 		});
 
-		// Dockview groups have a 100px default minimum of their own. Relax the
-		// chrome / rail groups so the requested initial sizes can take effect.
-		dockview.getPanel('menu')?.group.api.setConstraints({ minimumHeight: 28 });
-		dockview.getPanel('timeline')?.group.api.setConstraints({ minimumHeight: 48 });
-		dockview.getPanel('statusbar')?.group.api.setConstraints({ minimumHeight: 22 });
-		dockview.getPanel('tools')?.group.api.setConstraints({ minimumWidth: 52 });
+		// dockview 组默认最小值 100×100，而 `addPanel` 的 minimum* 只对新建组生效：
+		// 建完布局把约束表整体落一次（`CHROME_MINIMUM_HEIGHTS` / `COLUMN_MINIMUM_WIDTHS`）。
+		applyGroupConstraints(layoutWidth ?? container.clientWidth);
 	}
 
 	/**

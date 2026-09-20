@@ -36,10 +36,10 @@
   `/demo/widgets` 一致，不是另写一套只读展示。
 - **偏好设置是浮动面板**（`areas/Preferences.svelte`，T8）：`addPanel({ floating: {...} })`
   幂等打开，**不进默认布局**，保留标题栏当拖动手柄（`dragHandle: 'titlebar'`）。
-  ⚠️ 不要写成 `addPanel({initialWidth, initialHeight})` + `addFloatingGroup(panel)`：前者会把
-  面板先开进活动组并对那组 `setSize()`，**整个网格被重排一次且不会还原**（顶栏被撑高的来源）。
+  浮窗几何（夹到容器内 + 居中）在 `components/workspaceLayout.ts`。
   三层数据并排：用户偏好（`gpen.preferences` KV）/ 工具栏（协议 `ToolbarState`）/ 布局
-  （`gpen.workspaceState` KV）——见 [`preferences.md`](preferences.md)。
+  （`gpen.workspaceState` KV）。面板形态、`floating` 的坑与实测数据见
+  [`preferences.md`](preferences.md)。
 - **标题栏的菜单行**由 `components/menuBar.ts` 的节点表驱动（T9），节点引用命令 id，
   快捷键提示从命令注册表读；灰掉的项带 `title` 说明。见 [`commands.md`](commands.md)。
   菜单栏按钮带的 `data-context-menu-touch-opt-out`（导出为 `TOUCH_OPT_OUT_ATTRIBUTE`）
@@ -59,6 +59,11 @@
   行高仍是 `2.4lh` / `2.6lh`（隐掉滚动条，不能让顶部两条带变高）。
   **已知缺口**：这只是「装得下」，不是小屏布局；窄屏下面板本身仍然拥挤，
   按下面的「可访问性和响应式要求」应该做 bottom sheet / 全屏 sheet / rail。
+  另一个缺口：**浮窗不会跟着容器变小而夹回来**——dockview 的
+  `floatingGroupBounds: 'boundedWithinViewport'` 只约束用户拖动，容器缩小时
+  （横竖屏切换 / 拖窗口）以及还原持久化布局时，浮窗按老尺寸留在原地。
+  实测：900×700 打开偏好设置（418×492 @ (241,117)），缩到 420×360 后仍在
+  (1,27)、下边缘到 519（重载后一样）。绕法：标题栏拖回来，或窗口 → 重置面板布局。
 - **默认尺寸**在首次 layout 之后用 `group.api.setSize()` 显式设置：`addPanel` 的
   `initialWidth` / `initialHeight` 只对“新建组”的面板生效，split 出来的组会退回组最小值。
 - **持久化**：`panelLayout` 存 dockview 的 `toJSON()`，`uiScale` / `activeTool` / 浮球位置
