@@ -132,6 +132,48 @@ test.describe("context menu", () => {
     await expect(page.getByRole("menuitem", { name: "重置面板布局" })).toBeVisible();
   });
 
+  test("menu-bar buttons are not long-press targets", async ({ page }) => {
+    // 菜单栏按钮走的是「点一下开菜单」（`openAt`）。如果它们被当成触屏长按目标，
+    // 按住 500ms 的定时器会吃掉浏览器自己的 click（`touchend.preventDefault()`），
+    // 而菜单行在窄屏上又是可横向滚的——按住拖动本该只是滚动，不应该弹菜单。
+    await page.goto("/");
+    await page.locator(".floating-button").click();
+    const button = page.getByRole("button", { name: "文件菜单", exact: true });
+    await expect(button).toBeVisible();
+
+    // 合成一次「按住 700ms」：超过了长按阈值。行为断言在前——真正要保的是
+    // 「按住不该弹菜单」，属性只是它当下的实现方式。
+    const box = (await button.boundingBox())!;
+    await button.evaluate((node) => {
+      const touch = new Touch({
+        identifier: 1,
+        target: node,
+        clientX: node.getBoundingClientRect().x + 4,
+        clientY: node.getBoundingClientRect().y + 4,
+      });
+      node.dispatchEvent(
+        new TouchEvent("touchstart", {
+          bubbles: true,
+          cancelable: true,
+          touches: [touch],
+          targetTouches: [touch],
+          changedTouches: [touch],
+        }),
+      );
+    });
+    await page.waitForTimeout(700);
+    await expect(page.getByRole("menu")).toHaveCount(0);
+
+    // 抬手后的 click 照常开菜单（不会被吞掉），而且是锚定在按钮上的。
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await expect(page.getByRole("menu")).toBeVisible();
+    const menu = (await page.locator("[data-context-menu-root]").boundingBox())!;
+    expect(Math.abs(menu.x - box.x)).toBeLessThan(24);
+
+    // 机制备注：豁免是挂在按钮上的属性（`contextMenu.svelte.ts` 读到就跳过长按定时器）。
+    await expect(button).toHaveAttribute("data-context-menu-touch-opt-out", "");
+  });
+
   test("paints with theme tokens in dark mode", async ({ page }) => {
     await page.emulateMedia({ colorScheme: "dark" });
     await page.reload();

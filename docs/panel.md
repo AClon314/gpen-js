@@ -34,12 +34,31 @@
   所以能压过它）。
 - **属性面板**直接吃 `InputSlider`（半径带 `STD_UNITS.length`），所以面板里的数值行为与
   `/demo/widgets` 一致，不是另写一套只读展示。
-- **偏好设置是浮动面板**（`areas/Preferences.svelte`，T8）：`addPanel` + `addFloatingGroup`
+- **偏好设置是浮动面板**（`areas/Preferences.svelte`，T8）：`addPanel({ floating: {...} })`
   幂等打开，**不进默认布局**，保留标题栏当拖动手柄（`dragHandle: 'titlebar'`）。
+  ⚠️ 不要写成 `addPanel({initialWidth, initialHeight})` + `addFloatingGroup(panel)`：前者会把
+  面板先开进活动组并对那组 `setSize()`，**整个网格被重排一次且不会还原**（顶栏被撑高的来源）。
   三层数据并排：用户偏好（`gpen.preferences` KV）/ 工具栏（协议 `ToolbarState`）/ 布局
   （`gpen.workspaceState` KV）——见 [`preferences.md`](preferences.md)。
 - **标题栏的菜单行**由 `components/menuBar.ts` 的节点表驱动（T9），节点引用命令 id，
   快捷键提示从命令注册表读；灰掉的项带 `title` 说明。见 [`commands.md`](commands.md)。
+  菜单栏按钮带的 `data-context-menu-touch-opt-out`（导出为 `TOUCH_OPT_OUT_ATTRIBUTE`）
+  让它们**不参与触屏长按**：它们是普通按钮，点一下就该开菜单（`openAt`），
+  长按定时器只会吞掉浏览器自己的 click（`context-menu.e2e.ts` 有回归）。
+- **窄容器（手机竖屏 / 拖窄的面板）按容器宽度让位**，不是按窗口宽度：
+  1. 三列的最小宽度（`minimumWidth: 52 / 240 / 160`）由
+     `components/workspaceLayout.ts` 按容器收——容器 < 452px 时 dockview 无法同时满足三个最小值，
+     会把**整个网格**撑到 452 并把每列右侧裁到容器外（顶栏动作按钮、右侧属性面板全够不着）；
+     收的顺序是**先收视口**（画布是弹性的），chrome 的 52 / 160 尽量保住，
+     连这些都放不下（< 212px）才一起收。容器 ≥ 452px 时完全不动。
+  2. 标题栏两行（`.menu-items` / `.tool-settings`）横向可滚（`overflow-x: auto` +
+     `touch-action: pan-x` + 隐滚动条），菜单项 `flex: 0 0 auto`——装不下时能滑到，
+     而不是被 `overflow: hidden` 裁掉（裁掉的结果是「看得见标签、点下去打在动作组的药丸上」）。
+  3. 菜单行自己是 `container`，按 `@container` 逐档让出**装饰性 / 别处也有**的动作
+     （工作区名标签 → 界面缩放），沉浸 / 最小化 / 关闭永远保留。
+  行高仍是 `2.4lh` / `2.6lh`（隐掉滚动条，不能让顶部两条带变高）。
+  **已知缺口**：这只是「装得下」，不是小屏布局；窄屏下面板本身仍然拥挤，
+  按下面的「可访问性和响应式要求」应该做 bottom sheet / 全屏 sheet / rail。
 - **默认尺寸**在首次 layout 之后用 `group.api.setSize()` 显式设置：`addPanel` 的
   `initialWidth` / `initialHeight` 只对“新建组”的面板生效，split 出来的组会退回组最小值。
 - **持久化**：`panelLayout` 存 dockview 的 `toJSON()`，`uiScale` / `activeTool` / 浮球位置

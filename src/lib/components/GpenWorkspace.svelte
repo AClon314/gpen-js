@@ -59,6 +59,7 @@
 		type GpenWorkspaceState
 	} from './gpenWorkspaceState';
 	import { readGpenViewportZoomFactor } from './gpenViewport';
+	import { minimumColumnWidths } from './workspaceLayout.js';
 	import {
 		brushRadiusOf,
 		defaultToolbarState,
@@ -918,6 +919,23 @@
 		viewportHeight = Math.max(0, parent?.clientHeight ?? window.innerHeight);
 	}
 
+	/**
+	 * 把容器宽度对应的列最小宽度交给 dockview。
+	 *
+	 * 策略本体在 `workspaceLayout.ts`（纯函数 + 单测）：窄容器必须收小三列的
+	 * `minimumWidth`，否则 dockview 会把**整个网格**撑到 452px，每列右侧被裁到
+	 * 容器外——顶栏的动作按钮、右侧「场景集合 / 属性」全都点不到。
+	 */
+	function applyMinimumWidths(available: number) {
+		const instance = dockview;
+		if (!instance) return;
+		const { tools, viewport, side } = minimumColumnWidths(available);
+		instance.getPanel('tools')?.group.api.setConstraints({ minimumWidth: tools });
+		instance.getPanel('viewport')?.group.api.setConstraints({ minimumWidth: viewport });
+		instance.getPanel('outliner')?.group.api.setConstraints({ minimumWidth: side });
+		instance.getPanel('properties')?.group.api.setConstraints({ minimumWidth: side });
+	}
+
 	function layoutDockview() {
 		if (!dockview) return;
 		const width = layoutWidth ?? container.clientWidth;
@@ -931,6 +949,7 @@
 		layoutFrame = requestAnimationFrame(() => {
 			layoutFrame = undefined;
 			measureViewport();
+			applyMinimumWidths(layoutWidth ?? container.clientWidth);
 			layoutDockview();
 			// Both of these need a laid-out grid: dockview ignores size requests
 			// made before the first layout pass (the grid falls back to each

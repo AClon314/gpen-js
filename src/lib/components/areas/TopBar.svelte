@@ -19,7 +19,8 @@
 		contextMenu,
 		menuState,
 		openAt,
-		registerMenuItems
+		registerMenuItems,
+		TOUCH_OPT_OUT_ATTRIBUTE
 	} from '../contextMenu/contextMenu.svelte';
 	import { GPEN_MENU_BAR, GPEN_MENU_IDS, menuProvider } from '../menuBar';
 
@@ -90,7 +91,10 @@
 		<nav class="menu-items" aria-label="主菜单">
 			{#each GPEN_MENU_BAR as menu (menu.id)}
 				<!-- `use:contextMenu` 只把按钮关联到具名注册表（provider 由 `registerMenuItems`
-				     持有），点击时按按钮矩形锚定菜单。 -->
+				     持有），点击时按按钮矩形锚定菜单。
+				     `TOUCH_OPT_OUT_ATTRIBUTE` 让长按不再走「按住 500ms 弹菜单」那条路：
+				     菜单栏按钮本来就该是「点一下开菜单」，长按定时器只会吞掉浏览器
+				     自己的 click（见 `contextMenu.svelte.ts` 里的注释）。右键照旧。 -->
 				<button
 					class="gpen-panel-button menu-item"
 					type="button"
@@ -98,6 +102,7 @@
 					aria-label={`${menu.label}菜单`}
 					title={`${menu.label}菜单`}
 					use:contextMenu={menu.id}
+					{...{ [TOUCH_OPT_OUT_ATTRIBUTE]: "" }}
 					onclick={(event) => openMenuFromButton(event, menu.id)}
 				>{menu.label}</button>
 			{/each}
@@ -108,6 +113,7 @@
 				aria-label="设置菜单"
 				title="偏好设置"
 				use:contextMenu={GPEN_MENU_IDS.settings}
+				{...{ [TOUCH_OPT_OUT_ATTRIBUTE]: "" }}
 				onclick={(event) => openMenuFromButton(event, GPEN_MENU_IDS.settings)}
 			>
 				<sp-icon-settings></sp-icon-settings>
@@ -223,6 +229,9 @@
 		padding: 0 0.5ch 0 1ch;
 		background: var(--gpen-chrome-background);
 		border-bottom: 1px solid var(--gpen-panel-border);
+		/* 菜单行自己当查询容器：dockview 面板可以被拖窄（宽窗口里也会有窄菜单行），
+		   所以让位规则按**行**宽度算，不是按窗口宽度。 */
+		container-type: inline-size;
 	}
 
 	.app-mark {
@@ -236,10 +245,27 @@
 		align-items: center;
 		gap: 0.25ch;
 		min-width: 0;
-		overflow: hidden;
+		/* 窄屏（手机竖屏 ≈ 50ch）装不下 8 个菜单 + 右侧动作组。原来 `overflow: hidden`
+		   直接把后几个菜单裁掉：标签看不见、手指点下去落在动作组的药丸上，
+		   看起来就是「顶部菜单栏不响应点击」。改成横向可滚，多出来的菜单滑得到，
+		   点击仍然按按钮矩形锚定（`openAt` 用 `getBoundingClientRect`，与滚动位置无关）。
+		   滚动条隐掉，行高必须还是 2.4lh。
+		   `touch-action: pan-x`：菜单栏上的滑动只用来翻菜单，不会把宿主的网页滚走。 */
+		overflow-x: auto;
+		overflow-y: hidden;
+		overscroll-behavior-x: contain;
+		touch-action: pan-x;
+		scrollbar-width: none;
+	}
+
+	.menu-items::-webkit-scrollbar {
+		display: none;
 	}
 
 	.menu-item {
+		/* 不缩：宽度不够时让菜单行滚动，而不是把标签压成一团。 */
+		flex: 0 0 auto;
+		white-space: nowrap;
 		padding: 0.25lh 1ch;
 		border-radius: var(--gpen-radius);
 	}
@@ -270,9 +296,35 @@
 	.title-bar-actions {
 		display: flex;
 		align-items: center;
+		flex: 0 0 auto;
 		gap: 0.75ch;
 		margin-left: auto;
 		padding-right: 2.25lh;
+	}
+
+	/* 窄容器：依次让出「装饰性 / 别处也有」的动作，把宽度还给菜单。
+	   工作区名只是个标签（没有 onclick）；界面缩放在偏好设置里有同一项。
+	   沉浸 / 最小化 / 关闭是外壳控件，任何宽度都留在原位。
+	   阈值按实测档位定（本行 1ch ≈ 7.4px）：一行菜单的自然宽度 = 8 个菜单 367px
+	   + 完整动作组 ≈ 620px（84ch），去掉工作区名后 ≈ 460px（62ch）。 */
+	@container (max-width: 84ch) {
+		.workspace-switcher {
+			display: none;
+		}
+	}
+
+	@container (max-width: 62ch) {
+		.ui-scale {
+			display: none;
+		}
+	}
+
+	/* 最窄一档（≈ iPhone 竖屏）：标签两侧的留白再收一点，8 个菜单挤进 385px
+	   以内（未收之前 367px 的内容要塞进 317px 的可视区，最后一个齿轮要滑才看得到）。 */
+	@container (max-width: 52ch) {
+		.menu-item {
+			padding-inline: 0.5ch;
+		}
 	}
 
 	.workspace-switcher {
@@ -333,7 +385,21 @@
 		height: 2.6lh;
 		padding: 0 1.5ch;
 		background: var(--gpen-chrome-background-subtle);
-		overflow: hidden;
+		/* 同菜单行：窄屏装不下就横向滑，而不是把后面的字段裁掉。 */
+		overflow-x: auto;
+		overflow-y: hidden;
+		overscroll-behavior-x: contain;
+		touch-action: pan-x;
+		scrollbar-width: none;
+	}
+
+	.tool-settings::-webkit-scrollbar {
+		display: none;
+	}
+
+	.tool-settings > * {
+		flex: 0 0 auto;
+		white-space: nowrap;
 	}
 
 	.setting-tool {

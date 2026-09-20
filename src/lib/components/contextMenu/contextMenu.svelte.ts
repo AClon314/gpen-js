@@ -22,7 +22,18 @@ const GLOBAL_ID = "*";
 const ANONYMOUS_ID_PREFIX = "__context_menu_";
 const CONTEXT_MENU_ID_ATTRIBUTE = "data-context-menu-id";
 const LEGACY_CONTEXT_MENU_ID_ATTRIBUTE = "data-contextmenu-id";
-const TOUCH_OPT_OUT_ATTRIBUTE = "data-context-menu-touch-opt-out";
+/**
+ * Marks an element that is a long-press context-menu target **only** in the
+ * `contextmenu` sense: the touch long-press timer is skipped, so the platform's
+ * own click/tap behaviour is left alone.
+ *
+ * Menu-bar buttons need this. They are ordinary buttons whose tap opens their
+ * menu (`openAt`), so a long-press timer that swallows the synthetic click can
+ * only take behaviour away — and since the menu row scrolls sideways on narrow
+ * screens, a slow press that drifts would scroll the row, open the menu at the
+ * finger and then have the scroll close it again.
+ */
+export const TOUCH_OPT_OUT_ATTRIBUTE = "data-context-menu-touch-opt-out";
 const MENU_MARGIN_PX = 8;
 
 /** UI state consumed by the singleton ContextMenu component. */
@@ -204,6 +215,10 @@ export const openMenu = open;
 
 /**
  * Open a menu anchored to a DOM element instead of a pointer position.
+ *
+ * Re-opening an id that is already visible is idempotent (it re-anchors, never
+ * toggles): a long-press can legitimately be followed by the platform's own
+ * click, and two calls must not fight over the same menu.
  *
  * Menu-bar entries are buttons, not pointer targets: the menu belongs below
  * the button (or above it when there is not enough room), left-aligned with

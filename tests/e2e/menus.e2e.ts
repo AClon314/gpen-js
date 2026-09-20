@@ -15,7 +15,7 @@ async function openWorkspace(page: Page) {
 }
 
 async function openMenu(page: Page, label: string) {
-  await page.getByRole("button", { name: `${label}菜单` }).click();
+  await page.getByRole("button", { name: `${label}菜单`, exact: true }).click();
   await expect(page.getByRole("menu")).toBeVisible();
 }
 
@@ -119,5 +119,90 @@ test.describe("menu bar", () => {
       "aria-disabled",
       "false",
     );
+  });
+});
+
+/**
+ * 手机竖屏回归。
+ *
+ * 容器比桌面级最小宽度（工具 52 + 视口 240 + 右侧 160 = 452）窄时，dockview 会把
+ * **整个网格**撑到 452：菜单行右侧被裁到屏幕外，后几个菜单的标签看不见、手指点下去
+ * 落在动作组的药丸上——表现就是「点顶部菜单栏没反应」。修法两处：网格最小宽度按容器
+ * 收（`workspaceLayout.ts`），菜单行自己横向可滚（`TopBar.svelte`）。
+ *
+ * 这里断言的是**可达性**，不是布局细节：每个菜单滑到可见区后必须真能被点中并打开。
+ */
+test.describe("menu bar on a phone-width viewport", () => {
+  test.use({ viewport: { width: 360, height: 844 }, hasTouch: true });
+
+  const MENUS = ["文件", "编辑", "渲染", "窗口", "帮助", "切换", "实用工具"];
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/");
+    await openWorkspace(page);
+  });
+
+  test("the grid stays inside the viewport instead of overflowing it", async ({ page }) => {
+    const grid = await page.locator(".dv-groupview").first().boundingBox();
+    expect(grid).not.toBeNull();
+    // 溢出时每列右侧（顶栏动作按钮、属性面板）都会落到屏幕外。
+    expect(grid!.width).toBeLessThanOrEqual(360);
+    expect(grid!.x + grid!.width).toBeLessThanOrEqual(361);
+
+    // 顶栏右侧的外壳按钮（沉浸 / 最小化）必须真的在屏内，
+    // 否则「看得见半截、点不到」——网格溢出的直接后果。
+    for (const name of [/沉浸模式/, "最小化 gpen（把网页交还给页面）"]) {
+      const button = page.getByRole("button", { name });
+      const box = await button.boundingBox();
+      expect(box, `${String(name)} 应该有布局盒子`).not.toBeNull();
+      expect(box!.x + box!.width, `${String(name)} 不能被裁到屏幕外`).toBeLessThanOrEqual(361);
+      expect(box!.x).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  test("every menu button is hit-testable after scrolling the row", async ({ page }) => {
+    const row = page.locator("nav[aria-label='主菜单']");
+    // 8 个菜单的自然宽度超过手机屏宽：菜单行必须能横向滚，而不是把后面的裁掉。
+    const overflow = await row.evaluate((nav) => nav.scrollWidth - nav.clientWidth);
+    expect(overflow).toBeGreaterThan(0);
+
+    for (const label of [...MENUS, "设置"]) {
+      const button = page.getByRole("button", { name: `${label}菜单`, exact: true });
+      await button.scrollIntoViewIfNeeded();
+      const box = await button.boundingBox();
+      expect(box, `${label}菜单 应该有布局盒子`).not.toBeNull();
+      expect(box!.x + box!.width).toBeLessThanOrEqual(361);
+      // 关键：按钮中心点下面必须是它自己——原来这里是动作组的药丸。
+      const hit = await page.evaluate(
+        ([x, y]) =>
+          document.elementFromPoint(x, y)?.closest("button")?.getAttribute("aria-label") ?? null,
+        [box!.x + box!.width / 2, box!.y + box!.height / 2] as const,
+      );
+      expect(hit, `${label}菜单 的中心点应该打在按钮上`).toBe(`${label}菜单`);
+    }
+  });
+
+  test("every menu opens with a tap", async ({ page }) => {
+    for (const label of MENUS) {
+      const button = page.getByRole("button", { name: `${label}菜单`, exact: true });
+      await button.tap();
+      await expect(page.getByRole("menu")).toBeVisible();
+      expect(await page.getByRole("menuitem").count()).toBeGreaterThan(0);
+      await page.keyboard.press("Escape");
+      await expect(page.getByRole("menu")).toHaveCount(0);
+    }
+  });
+
+  test("the settings gear opens the preferences entry", async ({ page }) => {
+    await page.getByRole("button", { name: "设置菜单", exact: true }).tap();
+    await expect(page.getByRole("menuitem", { name: "偏好设置" })).toBeVisible();
+  });
+
+  test("the tool settings row scrolls instead of clipping its fields", async ({ page }) => {
+    const row = page.locator(".tool-settings");
+    expect(await row.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeGreaterThan(0);
+    const last = page.getByText("游标", { exact: false }).last();
+    await last.scrollIntoViewIfNeeded();
+    await expect(last).toBeInViewport();
   });
 });
