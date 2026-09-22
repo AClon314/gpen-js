@@ -48,6 +48,7 @@
 	import { serializeGpenPreferences } from './gpenPreferences';
 	import { readGpenViewportZoomFactor } from './gpenViewport';
 	import { setWorkspaceZoomVariable } from './workspaceZoom';
+	import { installSashZoomCorrection } from './workspaceSashZoom';
 	import { centeredFloatingBounds } from './workspaceLayout.js';
 	import {
 		createPanelLayoutController,
@@ -120,6 +121,8 @@
 	let disposeCodeAreaSource: (() => void) | undefined;
 	let layoutSubscriptions: { dispose(): void }[] = [];
 	let viewportResizeObserver: ResizeObserver | undefined;
+	/// sash 拖动的坐标修正（zoom ≠ 1 时，见 `workspaceSashZoom.ts`）。
+	let disposeSashZoom: (() => void) | undefined;
 	let removeViewportListeners: (() => void) | undefined;
 	let mounted = false;
 
@@ -870,6 +873,10 @@
 			panelLayout.schedule();
 		};
 		removeViewportListeners = observeViewport(onViewportChange);
+		disposeSashZoom = installSashZoomCorrection({
+			container,
+			getZoom: () => workspaceZoom
+		}).dispose;
 
 		const parent = container.parentElement;
 		if (typeof ResizeObserver !== 'undefined' && parent) {
@@ -886,6 +893,8 @@
 		layerView = undefined;
 		infiniteCanvas?.destroy();
 		infiniteCanvas = undefined;
+		disposeSashZoom?.();
+		disposeSashZoom = undefined;
 		panelLayout.dispose();
 		// 工作区没了就把缩放变量收回 1：菜单在别的页面（`/demo/menu`）还得按 1× 渲染。
 		setWorkspaceZoomVariable(1);

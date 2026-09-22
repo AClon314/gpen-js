@@ -43,6 +43,11 @@
   三层数据并排：用户偏好（`gpen.preferences` KV）/ 工具栏（协议 `ToolbarState`）/ 布局
   （`gpen.workspaceState` KV）。面板形态、`floating` 的坑与实测数据见
   [`preferences.md`](preferences.md)。
+- **缩放下的指针坐标**：容器那句 `style:zoom={workspaceZoom}` 让「客户端 px」与
+  「容器内 px」差一个缩放倍数，而 dockview 内部按 1:1 算 —— 于是 uiScale / pinch ≠ 1 时
+  sash 拖动会按倍数跑（实测 2× 时手指 10px → 面板 20px）。`components/workspaceSashZoom.ts`
+  只在拖动期间把指针坐标换算回容器坐标再重新派发；`zoom = 1` 时完全不介入。
+  右键菜单同理，但它靠根元素上的 `--gpen-workspace-zoom` 跟（见 [`theme.md`](theme.md)）。
 - **CodeArea 是 viewport 组里的「文件 tab」**（`areas/CodeArea.svelte`，一个组件服务所有
   数据源，面板 id 是 `codearea:<sourceId>`）：默认当 `viewport` 组的新 tab 打开，切过去时那一组
   不再是「洞」；**不跨会话保留**，还原因此会在 `fromJSON` 之后把它们摘掉。它的数据同步、
