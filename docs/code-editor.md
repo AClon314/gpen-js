@@ -42,6 +42,7 @@ props 基于 `Omit<HTMLTextareaAttributes, …>`，被显式接管的属性：
 | `rows`                  | → `min-height: N * 1lh`（缺省 2，与原生一致）                                                   |
 | `wrap`                  | `off` → 不折行；其余（含缺省 `soft`）→ `EditorView.lineWrapping`                                |
 | `extensions`            | 追加到 CM 配置 compartment，`@codemirror/state` 的 `Extension[]`                                |
+| `preserveViewOnExternalChange` | 外部改值时保住 caret / 选择与滚动位置（实时视图用）。内部走「最小单段变更 + 显式恢复」，两个坑的实测见 `codeEditorView.ts` |
 | `class`                 | 加在外层 `.code-editor` 上（CM 自己的主题变量走 `--gpen-*`）                                     |
 | `aria-label`            | `contentAttributes`（CM 已自带 `role="textbox"` + `aria-multiline="true"`）                     |
 | 其余（`spellcheck` / `autocomplete` / `id` / `data-*` / `aria-*` …） | 透传进 `contentAttributes`；**函数值（事件处理器）**与 `cols` / `minlength` / `defaultValue` / `dirname` 会被丢弃 |
@@ -63,10 +64,13 @@ props 基于 `Omit<HTMLTextareaAttributes, …>`，被显式接管的属性：
 外部 value ──(①)──► CM doc ──(②)──► 绑定 value ──(③)──► 镜像 textarea.value / setCustomValidity
 ```
 
-- **① 外部值 → 文档**：`view.dispatch({ changes: {from:0, to:doc.length, insert} })` **整篇替换**。
-  绝不重建 `EditorView`（`destroy()` + `new` 只用于挂载 / 卸载与 extensions 变化），所以 undo 历史保留。
+- **① 外部值 → 文档**：默认整篇替换（`from: 0, to: doc.length`），**不重建** `EditorView`。
   替换事务带 `isolateHistory.of('full')`：CM 默认会把「无 userEvent 的事务」并进 500ms 内上一次键入，
   不加注解时一次 `Ctrl+Z` 会把用户刚打的字一起撤掉。
+  `preserveViewOnExternalChange` 打开时改成「公共前缀/后缀裁剪出的最小单段变更 + 显式恢复
+  selection/滚动」：整篇替换会让 CM 把 viewport 映射到顶部、把 caret 夹到 0（实时面板会
+  「每次更新跳回开头」），而事后写回又会被 CM 的 measure 周期覆盖（实测数据在
+  `components/widgets/inputs/codeEditorView.ts` 的文件头）。
 - **② 文档 → 绑定值**：只在 `EditorView.updateListener` 的 `update.docChanged` 分支里取一次
   `update.state.doc.toString()`（不要每次按键全量物化），写回 `value` 并同步镜像。
 - **③ 镜像**：见下。`maxlength` 变化单独用 `$effect` 重算 `setCustomValidity`。

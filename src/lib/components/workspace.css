@@ -1,0 +1,196 @@
+/*
+ * 工作区外壳的全局样式（从 `GpenWorkspace.svelte` 的 <style> 搬出来，186 行）。
+ *
+ * 为什么是独立文件：这些规则大半要命中 dockview 自己创建的 DOM（`.dv-*`）与
+ * `createComponent` 挂的 div，本来就得用 `:global(...)`；搬出来之后组件文件不再背一个
+ * 200 行的样式块（同目录的 `areas/panel.css` 也是这个模式，由本组件 import）。
+ *
+ * 注意：这里是**全局** CSS（没有 Svelte 的 scoped 哈希），选择器都带 `.dockview-container`
+ * 或 `.gpen-*` 前缀，所以不会外溢到宿主网页。
+ */
+
+	html,
+	body {
+		margin: 0;
+		min-width: 0;
+		min-height: 0;
+	}
+
+	.dockview-container {
+		/* The parent overlay is an unzoomed visual-viewport box. This child is
+		 * absolute instead of fixed so its size remains tied to that box. */
+		position: absolute;
+		top: 0;
+		left: 0;
+		box-sizing: border-box;
+		z-index: 0;
+		overflow: hidden;
+		/* 工作区铺满整个 overlay（没有外边距 / 圆角），面板一直贴到视口边缘。
+		 * 容器本身不能有底色——视口那一格是真正的洞（宿主网页从那里透出来），
+		 * 底色只能由各个面板自己画：`--dv-group-view-background-color` 指回 chrome
+		 * 底色，只有视口那一组把它改回 transparent。 */
+		background: var(--gpen-workspace-background);
+		color: var(--gpen-panel-foreground);
+		font-family: var(--gpen-font-sans);
+		font-size: var(--gpen-font-size);
+		line-height: var(--gpen-line-height);
+		/* Leave the transparent viewport as a hit-test hole. Individual dockview
+		 * chrome groups opt back in below, as do sashes and our scale controls. */
+		pointer-events: none;
+	}
+
+	/* 最小化只是隐藏，不卸载：dockview 的实例、面板尺寸和浮动组都原样留着，
+	 * 还原时不需要从存储里重建布局（那正是尺寸失真的来源）。
+	 *
+	 * 隐藏必须显式写到整棵子树：dockview 会给 `.dv-view` 挂一个 `visible` class，
+	 * 而 Tailwind 的 `.visible` 工具类正好也是 `visibility: visible`，于是它把继承下来
+	 * 的 hidden 顶掉了。组件样式不在 `@layer utilities` 里，所以这里能压过它。 */
+	.dockview-container.minimized,
+	.dockview-container.minimized * {
+		visibility: hidden;
+	}
+
+	/* 沉浸模式：隐藏四周面板，视口洞 = 整个可视区。与 minimized 一样必须写到整棵子树
+	 * （dockview 的 `.visible` 会顶掉继承的 hidden）。区别是语义与入口：沉浸模式保留
+	 * 绘制面（T4 起由画布接管），只由 GpenOverlay 的退出按钮 / Esc 退出。 */
+	.dockview-container.immersive,
+	.dockview-container.immersive * {
+		visibility: hidden;
+	}
+
+	/* 沉浸模式保留视口那一组（含画布）：chrome 全隐，但绘制面不能跟着消失。
+	 * 注意洞仍只占它原来的 dockview 格位，不会铺满整个可视区（网格没变，
+	 * 见 docs/stroke.md 的已知缺口）。 */
+	.dockview-container.immersive .dv-groupview.gpen-hole,
+	.dockview-container.immersive .dv-groupview.gpen-hole * {
+		visibility: visible;
+	}
+
+	/* dockview 的 shell 和 content 层不上色，由面板组件自己画表面。
+	 * group 层保留 `--dv-group-view-background-color`（= chrome 底色）。 */
+	.dockview-container .dv-dockview,
+	.dockview-container .dv-content-container {
+		background-color: transparent;
+	}
+
+	/* T3: the overlay and workspace shell opt out of hit testing. Non-viewport
+	 * groups, tabs, sashes, and controls opt back in, leaving the transparent
+	 * viewport content available to the webpage for click/wheel/touch events.
+	 * A child such as the viewport minimap may opt in without making the whole
+	 * hole opaque. */
+	.dockview-container .dv-groupview {
+		pointer-events: auto;
+	}
+
+	/* 视口那一组的“洞”样式（`.gpen-hole`）在 themes/dockview.css 里，由
+	 * markHoleGroup() 按面板 id 打标记——不依赖面板内容是否挂载成功。 */
+	.dockview-container .dv-sash,
+	.dockview-container .dv-resize-handle,
+	.dockview-container .dv-drop-target-container {
+		pointer-events: auto;
+	}
+
+	/* Chrome panels are not dockable work areas: their title bar would only
+	 * repeat what the panel already shows, and the tool rail is too narrow for a
+	 * title. Removing the strip keeps their full height for content; the tab
+	 * context menu (float / popout / close) stays available on the other panels. */
+	.dockview-container .dv-groupview:has(.blender-panel-menu) > .dv-tabs-and-actions-container,
+	.dockview-container .dv-groupview:has(.blender-panel-statusbar) > .dv-tabs-and-actions-container,
+	.dockview-container .dv-groupview:has(.blender-panel-tools) > .dv-tabs-and-actions-container {
+		display: none;
+	}
+
+	.gpen-workspace-content {
+		display: block;
+		box-sizing: border-box;
+		width: 100%;
+		height: 100%;
+		min-width: 0;
+		min-height: 0;
+		overflow: hidden;
+	}
+
+	/* --- panel content --- */
+	/* These classes are applied to elements created imperatively by dockview's
+	 * createComponent (not Svelte-managed DOM), so they must be :global to
+	 * match and to avoid false "unused selector" warnings. */
+	.gpen-workspace-placeholder {
+		position: relative;
+		box-sizing: border-box;
+		width: 100%;
+		height: 100%;
+		min-height: 1.75lh;
+		padding: 0.5lh 2ch 0.75lh;
+		color: var(--gpen-panel-muted);
+		background: var(--gpen-panel-background);
+		overflow: auto;
+	}
+
+	.gpen-placeholder-label {
+		display: grid;
+		place-items: center;
+		height: 100%;
+		color: var(--gpen-panel-muted);
+	}
+
+
+	.gpen-timeline-header {
+		margin-bottom: 0.5lh;
+		font-weight: 600;
+		color: var(--gpen-panel-foreground);
+	}
+
+	.gpen-layer-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.15lh;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.gpen-layer-row {
+		display: flex;
+		align-items: center;
+		gap: 1ch;
+		padding: 0.2lh 1ch;
+		border: 1px solid transparent;
+		border-radius: var(--gpen-radius);
+		color: var(--gpen-panel-foreground);
+	}
+
+	.gpen-layer-row-active {
+		border-color: var(--gpen-panel-border);
+		background: var(--gpen-panel-selection);
+	}
+
+	.gpen-layer-kind {
+		margin-left: auto;
+		padding: 0 0.5ch;
+		border-radius: var(--gpen-radius);
+		font-size: 0.7rem;
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
+		color: var(--gpen-panel-background);
+	}
+
+	.gpen-layer-kind-gpen {
+		background: var(--gpen-panel-accent);
+	}
+
+	.gpen-layer-kind-html {
+		background: var(--gpen-panel-muted);
+	}
+
+	.gpen-layer-active {
+		font-size: 0.6rem;
+		color: var(--gpen-panel-accent);
+	}
+
+	.gpen-layer-empty {
+		color: var(--gpen-panel-muted);
+	}
+
+	/* dockview's own stylesheet (dockview/dist/styles/dockview.css) styles the
+	 * core DOM (tabs, sashes, dock/drop overlays, groups). Only gpen-specific
+	 * classes below need local rules. */

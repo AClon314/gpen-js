@@ -4,7 +4,10 @@
 
 ## 当前实现（快照 2026-09-19）
 
-下面这些是已落地的结构，读后续设计稿时以它们为前提：
+下面这些是已落地的结构，读后续设计稿时以它们为前提。
+**2026-09-21 起**，布局策略（默认布局 / 还原 / 快照 / 约束 / 「洞」标记）集中在
+`components/workspacePanelLayout.ts`，组件只负责「什么时候调」——下文提到的
+`markHoleGroup()` / `captureDockviewLayout()` / `buildDefaultLayout()` 都在那个文件里。
 
 - **外壳**：`GpenOverlay` 的 `.overlay` 是绝对定位（跟 `visualViewport` 走）的盒子，
   `GpenWorkspace` 的 dockview 容器铺满它（没有外边距 / 圆角），面板一直贴到视口边缘。
@@ -40,6 +43,10 @@
   三层数据并排：用户偏好（`gpen.preferences` KV）/ 工具栏（协议 `ToolbarState`）/ 布局
   （`gpen.workspaceState` KV）。面板形态、`floating` 的坑与实测数据见
   [`preferences.md`](preferences.md)。
+- **CodeArea 是 viewport 组里的「文件 tab」**（`areas/CodeArea.svelte`，一个组件服务所有
+  数据源，面板 id 是 `codearea:<sourceId>`）：默认当 `viewport` 组的新 tab 打开，切过去时那一组
+  不再是「洞」；**不跨会话保留**，还原因此会在 `fromJSON` 之后把它们摘掉。它的数据同步、
+  `value`（提交值）/ `realtimeValue`（实时值）两条通道，见 [`code-area.md`](code-area.md)。
 - **标题栏的菜单行**由 `components/menuBar.ts` 的节点表驱动（T9），节点引用命令 id，
   快捷键提示从命令注册表读；灰掉的项带 `title` 说明。见 [`commands.md`](commands.md)。
   菜单栏按钮带的 `data-context-menu-touch-opt-out`（导出为 `TOUCH_OPT_OUT_ATTRIBUTE`）

@@ -11,6 +11,8 @@
 		placeholder as cmPlaceholder,
 	} from '@codemirror/view';
 
+	import { clampSelectionToLength, minimalTextChange } from './codeEditorView';
+
 	// CodeEditor：多行输入统一用的 CodeMirror 6 壳（可注入语言 / 扩展，将来挂语法高亮）。
 	//
 	// 为什么自研（对照 docs/code-editor.md 的「缺口 + 自研代价」）：原生 <textarea> 除了
@@ -54,6 +56,14 @@
 		wrap?: 'hard' | 'soft' | 'off';
 		/** 调用方注入的语言 / 扩展（如 `numberStepper`）。 */
 		extensions?: Extension[];
+		/**
+		 * 外部**整篇替换**时尽量保住 caret / 选择与滚动位置。
+		 *
+		 * 默认 false（CM 的默认行为：替换后 selection 回到 (0,0)）。实时视图（CodeArea）
+		 * 每来一帧更新就整篇替换，不保位的话用户正在看的行会被弹回开头。
+		 * 只能「夹」不能「映射」（没有 diff），行号会漂，见 `codeEditorView.ts`。
+		 */
+		preserveViewOnExternalChange?: boolean;
 		class?: string;
 	}
 
@@ -82,6 +92,7 @@
 		rows = 2,
 		wrap = 'soft',
 		extensions = [],
+		preserveViewOnExternalChange = false,
 		class: editorClass,
 		'aria-label': ariaLabel,
 		...rest
@@ -190,13 +201,31 @@
 		return list;
 	}
 
-	/** 外部值 → 文档：整篇替换（不重建 view，undo 历史保留）。 */
+	/**
+	 * 外部值 → 文档（不重建 view，undo 历史保留）。
+	 *
+	 * 默认整篇替换；`preserveViewOnExternalChange` 下改成**最小单段变更 + 显式恢复
+	 * caret / 滚动**（实时视图要的行为）——两个坑的实测数据见 `codeEditorView.ts`。
+	 */
 	function writeExternal(current: EditorView, next: string) {
-		if (current.state.doc.toString() === next) return;
+		const previous = current.state.doc.toString();
+		if (previous === next) return;
+		const change = preserveViewOnExternalChange
+			? minimalTextChange(previous, next)
+			: { from: 0, to: current.state.doc.length, insert: next };
+		if (change.from === change.to && change.insert === '') return;
+		// 实时视图：把 caret 与滚动位置记下来。单段变更一旦跨过 caret（多个数字同时变时很常见），
+		// CM 会把它夹到变更边界 = 跳到别处；viewport 稳定性也只对「变更不在视口内」有效。
+		const preserved = preserveViewOnExternalChange ? current.state.selection : undefined;
+		const scroller = preserveViewOnExternalChange ? current.scrollDOM : undefined;
+		const scrollTop = scroller?.scrollTop ?? 0;
+		const scrollLeft = scroller?.scrollLeft ?? 0;
 		ignoreLengthFilter = true;
 		try {
 			current.dispatch({
-				changes: { from: 0, to: current.state.doc.length, insert: next },
+				changes: change,
+				// `selection` 在同一个事务里按**变更后**的文档解释。
+				selection: preserved ? clampSelectionToLength(preserved, next.length) : undefined,
 				// 外部改值是独立的一步 undo：不加注解时 CM 会把它并进 500ms 内上一次键入
 				// （无 userEvent 的事务仍是 joinable），一次 Ctrl+Z 会把用户刚打的字也撤掉。
 				annotations: isolateHistory.of('full'),
@@ -205,6 +234,16 @@
 			});
 		} finally {
 			ignoreLengthFilter = false;
+		}
+		if (scroller) {
+			// 同步写一次不够：CM 的 measure 周期会把映射后的 viewport 再应用一次，
+			// 所以下一帧（CM 那轮 measure 之后）再写一次。
+			scroller.scrollTop = scrollTop;
+			scroller.scrollLeft = scrollLeft;
+			requestAnimationFrame(() => {
+				scroller.scrollTop = scrollTop;
+				scroller.scrollLeft = scrollLeft;
+			});
 		}
 	}
 

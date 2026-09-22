@@ -44,8 +44,13 @@ export interface WorkspaceCommandDeps {
   openRecent(): void;
   /** Save the current document under a new id (copy). */
   saveCopy(): void;
-  /** Download the document as a FlatBuffer (`.gpen.json`). */
-  exportJson(): void;
+  /**
+   * Open the **internal JSON state tree** debug area (live workspace / preference /
+   * document / viewport state + a gpenBinary KV snapshot). Replaced the old
+   * "export JSON" entry: the encoded document is still downloadable from the
+   * storage layer, but this is what actually gets used while debugging.
+   */
+  openInternalJsonState(): void;
   /** Close the workspace (give the page back). */
   closeWorkspace(): void;
 }
@@ -63,7 +68,7 @@ export const GPEN_COMMAND_IDS = {
   newDocument: "gpen.new",
   openDocument: "gpen.open",
   openRecent: "gpen.open_recent",
-  exportJson: "gpen.export_json",
+  debugInternalJsonState: "gpen.debug_internal_json_state",
   closeWorkspace: "gpen.close_workspace",
   about: "gpen.about",
   openPreferences: "gpen.open_preferences",
@@ -170,9 +175,9 @@ export function registerWorkspaceCommands(deps: WorkspaceCommandDeps): () => voi
       run: () => deps.saveCopy(),
     }),
     registerCommand({
-      id: GPEN_COMMAND_IDS.exportJson,
-      label: "导出 JSON",
-      run: () => deps.exportJson(),
+      id: GPEN_COMMAND_IDS.debugInternalJsonState,
+      label: "调试：内部 JSON 状态树",
+      run: () => deps.openInternalJsonState(),
     }),
     registerCommand({
       id: GPEN_COMMAND_IDS.closeWorkspace,

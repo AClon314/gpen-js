@@ -71,7 +71,7 @@ export function fileMenuItems(): MenuItem[] {
     { command: GPEN_COMMAND_IDS.save, order: 50 },
     { command: GPEN_COMMAND_IDS.saveCopy, order: 60 },
     { separator: true, order: 70 },
-    { command: GPEN_COMMAND_IDS.exportJson, order: 80 },
+    { command: GPEN_COMMAND_IDS.debugInternalJsonState, order: 80 },
     { separator: true, order: 90 },
     todo("重新加载", 100),
     todo("恢复", 110),
