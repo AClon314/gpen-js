@@ -29,6 +29,7 @@ describe("gpen preferences", () => {
       locale: "system",
       defaultTool: "brush",
       showStatusBar: true,
+      blur: false,
       autoSaveDebounceMs: AUTO_SAVE_DEBOUNCE_DEFAULT_MS,
     });
   });
@@ -39,6 +40,7 @@ describe("gpen preferences", () => {
       locale: "klingon",
       defaultTool: "laser",
       showStatusBar: "yes",
+      blur: "yes",
       autoSaveDebounceMs: Number.NaN,
     });
     expect(normalized.theme).toBe("dark");
@@ -46,6 +48,9 @@ describe("gpen preferences", () => {
     expect(normalized.locale).toBe("system");
     expect(normalized.defaultTool).toBe("brush");
     expect(normalized.showStatusBar).toBe(true);
+    // 磨砂玻璃也是布尔：非布尔（这里是字符串）回落到 fallback 的 false。
+    expect(normalized.blur).toBe(false);
+    expect(normalizeGpenPreferences({ blur: true }).blur).toBe(true);
     expect(normalized.autoSaveDebounceMs).toBe(AUTO_SAVE_DEBOUNCE_DEFAULT_MS);
   });
 

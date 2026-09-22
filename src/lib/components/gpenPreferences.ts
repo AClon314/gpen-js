@@ -45,6 +45,11 @@ export interface GpenPreferences {
   /** Tool selected when a workspace opens with no session of its own. */
   defaultTool: GpenToolId;
   showStatusBar: boolean;
+  /**
+   * 磨砂玻璃外观：面板 / chrome / 菜单半透明 + `backdrop-filter`（默认关）。
+   * 只有颜色 token 与 filter 随之变化，见 `themes/blur.css`。
+   */
+  blur: boolean;
   /** Document write debounce in milliseconds (0 = write on every change). */
   autoSaveDebounceMs: number;
 }
@@ -68,6 +73,7 @@ export function createDefaultGpenPreferences(): GpenPreferences {
     locale: "system",
     defaultTool: "brush",
     showStatusBar: true,
+    blur: false,
     autoSaveDebounceMs: AUTO_SAVE_DEBOUNCE_DEFAULT_MS,
   };
 }
@@ -105,6 +111,7 @@ export function normalizeGpenPreferences(
     defaultTool: isOneOf(TOOL_IDS, source.defaultTool) ? source.defaultTool : fallback.defaultTool,
     showStatusBar:
       typeof source.showStatusBar === "boolean" ? source.showStatusBar : fallback.showStatusBar,
+    blur: typeof source.blur === "boolean" ? source.blur : fallback.blur,
     autoSaveDebounceMs: normalizeDebounce(source.autoSaveDebounceMs, fallback.autoSaveDebounceMs),
   };
 }

@@ -9,6 +9,7 @@
 	import favicon from '#lib/assets/favicon.svg';
 	import ContextMenu from '#lib/components/contextMenu/ContextMenu.svelte';
 	import { initTheme, setThemePreference } from '#lib/themes/theme.svelte';
+	import { applyBlurPreference } from '#lib/themes/theme';
 	import { loadPreferences, preferences } from '#lib/components/gpenPreferencesState.svelte';
 	import '#lib/components/contextMenu/contextMenu.svelte';
 
@@ -24,6 +25,8 @@
 		// Keep the DOM attribute in sync when the settings panel changes it.
 		$effect.root(() => {
 			$effect(() => setThemePreference(preferences().theme));
+			// 磨砂玻璃是布尔偏好：只写根属性，token 与 filter 在 themes/blur.css 里。
+			$effect(() => applyBlurPreference(preferences().blur));
 		});
 		overlay = mount(GpenOverlay, { target: document.body });
 	});

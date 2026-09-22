@@ -293,3 +293,62 @@ test("comes back inside when the container shrinks, and stays put when it does n
   await openWorkspace(page);
   await expectInsideViewport(page, page.locator(".dv-groupview-floating"), "重载后的浮窗");
 });
+
+/**
+ * 磨砂玻璃（可选外观，默认关）：偏好 → 根属性 `data-gpen-blur` + 容器 class →
+ * `themes/blur.css` 的 token / filter。这里守住：默认关、开了之后 chrome 真半透明 + 真模糊、
+ * **视口那个「洞」不受影响**、关掉能完全回到原样。
+ */
+test("toggles the blur (glass) appearance without touching the viewport hole", async ({ page }) => {
+  await page.goto("/");
+  await openWorkspace(page);
+  await openPreferences(page);
+
+  const read = () =>
+    page.evaluate(() => {
+      const group = document.querySelector(".dv-groupview:not(.gpen-hole)");
+      const hole = document.querySelector(".dv-groupview.gpen-hole");
+      return {
+        attribute: document.documentElement.getAttribute("data-gpen-blur"),
+        containerClass: document
+          .querySelector(".dockview-container")
+          ?.classList.contains("gpen-blur"),
+        groupFilter: group ? getComputedStyle(group).backdropFilter : null,
+        groupBackground: group ? getComputedStyle(group).backgroundColor : null,
+        holeFilter: hole ? getComputedStyle(hole).backdropFilter : null,
+        holeBackground: hole ? getComputedStyle(hole).backgroundColor : null,
+      };
+    });
+
+  const off = await read();
+  expect(off.attribute).toBeNull();
+  expect(off.groupFilter).toBe("none");
+  expect(off.holeBackground).toBe("rgba(0, 0, 0, 0)");
+
+  await page.getByLabel("磨砂玻璃").check();
+  await expect.poll(async () => (await read()).groupFilter).not.toBe("none");
+  const on = await read();
+  expect(on.attribute).toBe("");
+  expect(on.containerClass).toBe(true);
+  // 半透明与模糊必须一起给（只给一个就是糊状或看不出）。
+  expect(on.groupBackground).toMatch(/rgba\(.*0\.\d+\)/);
+  // 洞必须保持原样：否则宿主网页会被糊住。
+  expect(on.holeFilter).toBe("none");
+  expect(on.holeBackground).toBe("rgba(0, 0, 0, 0)");
+
+  // 菜单不在 dockview 子树里，靠自己的 class 吃上同一套。
+  await page.getByRole("button", { name: "切换菜单" }).click();
+  await expect(page.locator("[data-context-menu-root]")).toHaveClass(/gpen-blur/);
+  expect(
+    await page
+      .locator("[data-context-menu-root]")
+      .evaluate((element) => getComputedStyle(element).backdropFilter),
+  ).not.toBe("none");
+  await page.keyboard.press("Escape");
+
+  await page.getByLabel("磨砂玻璃").uncheck();
+  await expect.poll(async () => (await read()).groupFilter).toBe("none");
+  const back = await read();
+  expect(back.attribute).toBeNull();
+  expect(back.groupBackground).toBe(off.groupBackground);
+});

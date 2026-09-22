@@ -24,6 +24,7 @@ interface GpenPreferences {
   locale: 'system' | 'en' | 'zh-cn';
   defaultTool: GpenToolId;
   showStatusBar: boolean;
+  blur: boolean; // 磨砂玻璃（默认 false；见 theme.md）
   autoSaveDebounceMs: number; // 0..10000
 }
 ```
@@ -104,6 +105,13 @@ dockview.addPanel({
 
 见 [`theme.md`](theme.md)「三态」一节：`light-dark()` + `data-gpen-theme` 属性，没有
 `@media (prefers-color-scheme: dark)` 覆盖块。
+
+## 磨砂玻璃（`blur`，默认关）
+
+`blur: true` → 面板 / chrome / 右键菜单半透明 + `backdrop-filter`，实现全在
+[`themes/blur.css`](../src/lib/themes/blur.css)（token 覆盖 + filter），JS 只写
+`data-gpen-blur` 根属性与容器 / 菜单上的一对 class —— 理由与「视口那个洞不能糊」的约束
+见 [`theme.md`](theme.md)「磨砂玻璃」一节。
 
 ## 消融结论（实测）
 

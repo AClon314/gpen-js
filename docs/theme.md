@@ -90,6 +90,32 @@ dockview 用 `--dv-*` 变量描述 tab 条、sash、drop preview、浮动组。�
 - 读写入口在 `components/workspaceZoom.ts`（`setWorkspaceZoomVariable` /
   `readWorkspaceZoomVariable`）；写变量的是 `GpenWorkspace` 的 zoom effect，工作区卸载时收回 1。
 
+## 磨砂玻璃（可选外观，默认关）
+
+`GpenPreferences.blur` → `themes/blur.css`：面板 / chrome / 右键菜单半透明 +
+`backdrop-filter: blur(var(--gpen-blur))`（`--gpen-blur` 是 `day-night.css` 里的形状 token，
+已加进 `GPEN_TOKENS`）。
+
+实现上只有两处 JS：
+
+- `applyBlurPreference(enabled, target)` 写一个**布尔**根属性 `data-gpen-blur`
+  （同 `data-gpen-theme` 的做法；`+layout.svelte` 里跟着偏好走），CSS 用它覆盖
+  `--gpen-panel-background` 等 token 为半透明；
+- `GpenWorkspace` 给容器加 `gpen-blur` class、`ContextMenu` 给自己加同一个 class ——
+  `:host` 选择器带不了后代组合子，embed 目标里光靠根属性选不到内部的 `.dv-groupview`。
+
+三条约束（写进 `blur.css` 的文件头）：
+
+1. **视口的「洞」保持原样**（`.gpen-hole` 既不半透明也不加 filter）——它透出的是宿主网页，
+   糊了就等于把洞补上；
+2. 半透明与模糊必须一起给；
+3. 整个文件包在 `@supports (backdrop-filter: blur(1px))` 里：不支持的浏览器保持不透明，
+   而不是退化成「半透明但没模糊」的糊状。
+
+代价：`backdrop-filter` 在移动端是 GPU 大头，且每个面板一层合成层 —— 所以默认关，而且
+filter 只加在「组」这一层（不是每个面板内容各加一次）。实测截图见 `tmp/blur-on.png`
+（工作区）与 `tmp/blur-on-menu.png`（右键菜单）。
+
 ## 三态：`system` / `light` / `dark`（2026-09-19）
 
 `GpenPreferences.theme` 是三态，不是「一对解析好的 token」：`system` 必须与「用户手动选了

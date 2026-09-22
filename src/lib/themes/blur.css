@@ -1,0 +1,42 @@
+/*
+ * 磨砂玻璃（可选外观）：面板 / chrome / 菜单半透明 + backdrop-filter。
+ *
+ * 开关是 `GpenPreferences.blur`（默认关）——JS 只写一个根属性 `data-gpen-blur`
+ * （同 `data-gpen-theme` 的做法，见 docs/theme.md）；工作区容器与右键菜单额外各带一个
+ * `gpen-blur` class，因为 `:host` 选择器不能带后代组合子，embed 目标里光靠根属性
+ * 选不到内部的 `.dv-groupview`。
+ *
+ * 三条硬约束：
+ *
+ * 1. **洞必须保持原样**：`.gpen-hole` 既不半透明也不加 `backdrop-filter`，否则宿主网页
+ *    就被糊住了 —— 它本来就是“洞”（见 docs/panel.md）。
+ * 2. **半透明与模糊必须一起给**：底色不透明时加 filter 也看不见；反过来只做半透明会糊成
+ *    一片没有层次的灰。
+ * 3. **不支持 `backdrop-filter` 就整体回退**：全部规则包在 `@supports` 里，老浏览器保持
+ *    不透明（而不是变成半透明但没模糊的糊状）。
+ *
+ * 性能：`backdrop-filter` 在移动端是 GPU 大头，且每个面板一个合成层 —— 所以默认关，
+ * 而且只加在“组”这一层（不是每个面板内容各加一次）。
+ */
+
+@supports (backdrop-filter: blur(1px)) {
+	:root[data-gpen-blur],
+	:host([data-gpen-blur]) {
+		/* 面板本体 / chrome / 次级面：同一套 light-dark 三态，只是多了透明度。 */
+		--gpen-panel-background: light-dark(rgb(255 255 255 / 0.72), rgb(30 41 59 / 0.72));
+		--gpen-chrome-background: light-dark(rgb(230 234 241 / 0.7), rgb(16 24 39 / 0.7));
+		--gpen-chrome-background-subtle: light-dark(rgb(221 227 236 / 0.66), rgb(26 36 54 / 0.66));
+		--gpen-panel-background-raised: light-dark(rgb(241 244 249 / 0.82), rgb(51 65 85 / 0.82));
+		--gpen-panel-background-hover: light-dark(rgb(229 234 243 / 0.85), rgb(42 53 70 / 0.85));
+	}
+
+	/* 工作区：每个“组”一层模糊（视口那一组是洞，排除）。 */
+	.dockview-container.gpen-blur .gpen-dockview .dv-groupview:not(.gpen-hole) {
+		backdrop-filter: blur(var(--gpen-blur));
+	}
+
+	/* 右键菜单不在 dockview 子树里，自己带 class（见 ContextMenu.svelte）。 */
+	.contextMenu.gpen-blur {
+		backdrop-filter: blur(var(--gpen-blur));
+	}
+}

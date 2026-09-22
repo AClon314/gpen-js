@@ -76,6 +76,8 @@
 	/* shape（非布局长度，保留 px） */
 	--gpen-radius: 4px;
 	--gpen-radius-sm: 3px;
+	/* 磨砂玻璃的模糊半径（只有开启「磨砂玻璃」时才用到，见 themes/blur.css）。 */
+	--gpen-blur: 2px;
 }
 
 /* 手动主题：JS 只写这一个属性（见 themes/theme.ts 的 applyThemePreference）。 */

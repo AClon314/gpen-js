@@ -33,10 +33,27 @@ export const GPEN_TOKENS = [
   "--gpen-danger",
   "--gpen-radius",
   "--gpen-radius-sm",
+  "--gpen-blur",
 ] as const;
 
 export type GpenToken = (typeof GPEN_TOKENS)[number];
 export type GpenTokens = Partial<Record<GpenToken, string>>;
+
+/**
+ * 磨砂玻璃开关的根属性（presence-only）：CSS 变体在 `themes/blur.css`，
+ * 由 `applyBlurPreference()` 维护，和 `data-gpen-theme` 是一对（但它是布尔，不是三态）。
+ */
+export const GPEN_BLUR_ATTRIBUTE = "data-gpen-blur";
+
+/** 开 / 关磨砂玻璃：只写一个属性，token 与 filter 全在 CSS 里（不把调色板抄进 JS）。 */
+export function applyBlurPreference(
+  enabled: boolean,
+  target: HTMLElement | undefined = defaultTarget(),
+): void {
+  if (target === undefined) return;
+  if (enabled) target.setAttribute(GPEN_BLUR_ATTRIBUTE, "");
+  else target.removeAttribute(GPEN_BLUR_ATTRIBUTE);
+}
 
 /** Default target: the document root (the embed passes its shadow host instead). */
 function defaultTarget(): HTMLElement | undefined {

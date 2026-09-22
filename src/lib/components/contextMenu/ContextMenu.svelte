@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { tick } from 'svelte';
 	import { executeCommand } from '#lib/commands';
+	import { preferences } from '../gpenPreferencesState.svelte';
 	import {
 		clampMenuPosition,
 		close,
@@ -26,6 +27,8 @@
 	let activePath = $state<number[]>([]);
 
 	const items = $derived(visibleMenuItems(menuState.items));
+	/** 磨砂玻璃（见 themes/blur.css）：菜单在工作区子树之外，所以自己带 class。 */
+	const blurred = $derived(preferences().blur);
 
 	function pathKey(path: readonly number[]): string {
 		return path.join('.');
@@ -282,6 +285,7 @@
 			bind:this={root}
 			data-context-menu-root
 			class="contextMenu"
+			class:gpen-blur={blurred}
 			role="menu"
 			aria-label="上下文菜单"
 			tabindex="-1"

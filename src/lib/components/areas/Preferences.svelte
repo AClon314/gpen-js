@@ -162,6 +162,17 @@
 			onchange={(theme) => patchPreferences({ theme })}
 		/>
 
+		<div class="property-row">
+			<span class="property-label">磨砂玻璃</span>
+			<input
+				type="checkbox"
+				aria-label="磨砂玻璃"
+				title="面板与菜单半透明 + 背景模糊（移动端会更吃 GPU）"
+				checked={preferences.blur}
+				onchange={(event) => patchPreferences({ blur: (event.currentTarget as HTMLInputElement).checked })}
+			/>
+		</div>
+
 		<SelectRow
 			label="语言"
 			value={preferences.locale}

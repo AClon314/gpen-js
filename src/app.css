@@ -9,3 +9,5 @@
 
 /* 设计 token（--gpen-*）：静态 CSS 定义，白天 / 夜间两套。 */
 @import "./lib/themes/day-night.css";
+/* 可选外观「磨砂玻璃」：由根属性 data-gpen-blur 打开（默认关），见 docs/theme.md。 */
+@import "./lib/themes/blur.css";
