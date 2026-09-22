@@ -52,6 +52,9 @@
   菜单栏按钮带的 `data-context-menu-touch-opt-out`（导出为 `TOUCH_OPT_OUT_ATTRIBUTE`）
   让它们**不参与触屏长按**：它们是普通按钮，点一下就该开菜单（`openAt`），
   长按定时器只会吞掉浏览器自己的 click（`context-menu.e2e.ts` 有回归）。
+  菜单本体不在 dockview 子树里，所以它靠根元素上的 `--gpen-workspace-zoom` 跟工作区缩放
+  （DOM 上是「不缩放的定位壳 + 吃 zoom 的菜单」两层，见 [`theme.md`](theme.md) 与
+  `components/workspaceZoom.ts`）。
 - **窄容器（手机竖屏 / 拖窄的面板）按容器宽度让位**，不是按窗口宽度：
   1. 三列的最小宽度（`minimumWidth: 52 / 240 / 160`）由
      `components/workspaceLayout.ts` 按容器收——容器 < 452px 时 dockview 无法同时满足三个最小值，

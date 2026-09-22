@@ -47,6 +47,7 @@
 	} from './gpenWorkspaceState';
 	import { serializeGpenPreferences } from './gpenPreferences';
 	import { readGpenViewportZoomFactor } from './gpenViewport';
+	import { setWorkspaceZoomVariable } from './workspaceZoom';
 	import { centeredFloatingBounds } from './workspaceLayout.js';
 	import {
 		createPanelLayoutController,
@@ -679,7 +680,10 @@
 	// The container's unzoomed px box is enlarged by 1/effectiveZoom so its
 	// visual box still exactly fills the absolute visual-viewport overlay.
 	$effect(() => {
-		const _zoom = workspaceZoom;
+		const zoom = workspaceZoom;
+		// 右键菜单不在 dockview 子树里，拿不到那句 `style:zoom`：把缩放写到根元素上，
+		// 菜单用 `zoom: var(--gpen-workspace-zoom, 1)` 跟上（见 workspaceZoom.ts）。
+		setWorkspaceZoomVariable(zoom);
 		if (!mounted) return;
 		measureViewport();
 		panelLayout.schedule();
@@ -883,6 +887,8 @@
 		infiniteCanvas?.destroy();
 		infiniteCanvas = undefined;
 		panelLayout.dispose();
+		// 工作区没了就把缩放变量收回 1：菜单在别的页面（`/demo/menu`）还得按 1× 渲染。
+		setWorkspaceZoomVariable(1);
 		removeViewportListeners?.();
 		removeViewportListeners = undefined;
 		viewportResizeObserver?.disconnect();

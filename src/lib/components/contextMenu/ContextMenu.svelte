@@ -175,7 +175,10 @@
 
 		void tick().then(() => {
 			if (!menuState.visible || menuState.openVersion !== openVersion || root !== menu) return;
-			clampMenuPosition(menu.offsetWidth, menu.offsetHeight);
+			// 量**视觉**尺寸：菜单吃 `zoom`，`offsetWidth` 是局部 px（zoom=2 时只有一半），
+			// 拿它夹取会让菜单挂到视口外面。
+			const rect = menu.getBoundingClientRect();
+			clampMenuPosition(rect.width, rect.height);
 			const first = nextMenuIndex(items, -1, 'Home');
 			if (first >= 0) focusPath([first]);
 			else menu.focus();
@@ -190,7 +193,8 @@
 
 		const observer = new ResizeObserver(() => {
 			if (menuState.visible && root === menu) {
-				clampMenuPosition(menu.offsetWidth, menu.offsetHeight);
+				const rect = menu.getBoundingClientRect();
+				clampMenuPosition(rect.width, rect.height);
 			}
 		});
 		observer.observe(menu);
@@ -270,26 +274,36 @@
 {/snippet}
 
 {#if menuState.visible}
-	<div
-		bind:this={root}
-		data-context-menu-root
-		class="contextMenu"
-		role="menu"
-		aria-label="上下文菜单"
-		tabindex="-1"
-		style:left={`${menuState.x}px`}
-		style:top={`${menuState.y}px`}
-		oncontextmenu={preventContextMenu}
-		onkeydown={handleRootKeydown}
-	>
-		{@render menuList(items, [])}
+	<!-- 定位壳：`position: fixed` + 原始 client 坐标，**不吃 zoom**。
+	     `zoom` 会把它自己声明的 left/top 一起放大，所以坐标与缩放必须分在两层
+	     （见 workspaceZoom.ts 的实测）。z-index 也留在壳上。 -->
+	<div class="contextMenu-anchor" style:left={`${menuState.x}px`} style:top={`${menuState.y}px`}>
+		<div
+			bind:this={root}
+			data-context-menu-root
+			class="contextMenu"
+			role="menu"
+			aria-label="上下文菜单"
+			tabindex="-1"
+			oncontextmenu={preventContextMenu}
+			onkeydown={handleRootKeydown}
+		>
+			{@render menuList(items, [])}
+		</div>
 	</div>
 {/if}
 
 <style>
-	.contextMenu {
+	.contextMenu-anchor {
+		/* 只负责定位：fixed + 原始 client 坐标，z-index 高于工作区 overlay。 */
 		position: fixed;
 		z-index: 2147483500;
+	}
+
+	.contextMenu {
+		/* 跟工作区 chrome 同一套缩放（uiScale / 抵消 pinch）：变量由 GpenWorkspace 写在
+		 * 根元素上；工作区没开时回落到 1（见 components/workspaceZoom.ts）。 */
+		zoom: var(--gpen-workspace-zoom, 1);
 		box-sizing: border-box;
 		min-width: 20ch;
 		padding: 0.35lh 0.35ch;

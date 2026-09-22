@@ -46,6 +46,15 @@ export function initTheme(host?: HTMLElement, theme: GpenThemePreference = "syst
   return store.tokens;
 }
 
+/**
+ * 主题 / 全局 CSS 变量的目标元素：网页目标是 `<html>`，embed 目标传的是自己的
+ * ShadowHost（见 `initTheme(host)`）。工作区缩放变量（`components/workspaceZoom.ts`）
+ * 也写在这里，保证「菜单跟工作区缩放」在两种宿主下都成立。
+ */
+export function themeTarget(): HTMLElement | undefined {
+  return target;
+}
+
 /** Current tokens (reactive). */
 export function themeTokens(): GpenTokens {
   return store.tokens;

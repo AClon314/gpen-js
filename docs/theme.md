@@ -71,6 +71,25 @@ dockview 用 `--dv-*` 变量描述 tab 条、sash、drop preview、浮动组。�
 
 引入顺序必须在 `dockview/dist/styles/dockview.css` **之后**，否则 `--dv-*` 会被 dockview 自己的主题覆盖。
 
+## 工作区缩放变量（`--gpen-workspace-zoom`）
+
+工作区把 `uiScale / 外部缩放` 的结果写在**根元素**（网页 `<html>`，embed 是 ShadowHost
+——就是 `themeTarget()` 返回的那个）上，供**不在 dockview 子树里**的浮层跟上缩放：
+
+```css
+.contextMenu { zoom: var(--gpen-workspace-zoom, 1); }
+```
+
+- 消费者目前只有右键菜单（`components/contextMenu/ContextMenu.svelte`）：它挂在根 layout，
+  拿不到 `.dockview-container` 那句 `style:zoom`，不跟上就会出现「chrome 2 倍大、菜单 1 倍小」。
+- DOM 上必须分两层：**不缩放的定位壳**（`position: fixed` + 原始 client 坐标 + z-index）
+  ＋**吃 `zoom` 的菜单本体**。原因是 `zoom` 会把元素**自己声明的** `left/top` 一起放大
+  （实测：`fixed; left:100px; zoom:2` → 视觉 200px），所以坐标与缩放不能在同一层。
+- 量尺寸一律用 `getBoundingClientRect()`（视觉 px）：`offsetWidth` 是未缩放的局部 px，
+  拿它夹取会让菜单挂到视口外。夹取逻辑因此完全不需要知道缩放值。
+- 读写入口在 `components/workspaceZoom.ts`（`setWorkspaceZoomVariable` /
+  `readWorkspaceZoomVariable`）；写变量的是 `GpenWorkspace` 的 zoom effect，工作区卸载时收回 1。
+
 ## 三态：`system` / `light` / `dark`（2026-09-19）
 
 `GpenPreferences.theme` 是三态，不是「一对解析好的 token」：`system` 必须与「用户手动选了

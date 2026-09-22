@@ -3,6 +3,7 @@
 // 节点模型（label/disabled/when/children/keyBind、分隔项、键盘导航）在纯函数模块
 // `menuModel.ts` 里，类型也从那里再导出，消费方继续从本模块 import 即可。
 import { observeViewport, viewportSize } from "../../visualViewport.js";
+import { readWorkspaceZoomVariable } from "../workspaceZoom.js";
 import type { MenuItem, MenuItemProviderInput } from "./menuModel.js";
 
 export type {
@@ -234,7 +235,10 @@ export function openAt(id: string, anchor: Element, options: { gap?: number } = 
   // Guess the menu height from the item count so a menu that would overflow the
   // bottom is flipped above the anchor. `clampMenuPosition` corrects the exact
   // position once the real size is known.
-  const estimatedHeight = (menuState.items.length || collect(id).length) * 2 * 16 + 16;
+  // 条目高度是**局部 px**（菜单自己吃 `zoom`），锚点矩形是视觉 px：估算也要乘上当前
+  // 工作区缩放，否则放大界面后「要不要翻到锚点上方」会判断错。
+  const estimatedHeight =
+    ((menuState.items.length || collect(id).length) * 2 * 16 + 16) * readWorkspaceZoomVariable();
   const below = rect.bottom + gap;
   const y =
     below + estimatedHeight > viewport.height

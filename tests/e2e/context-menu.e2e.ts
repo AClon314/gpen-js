@@ -1,5 +1,7 @@
 import { expect, test } from "playwright/test";
 
+import { openWorkspace } from "./helpers/workspace";
+
 /**
  * 上下文菜单回归：键盘导航（↑↓/Home/End、跳过禁用项与分隔项）、子菜单展开/返回、
  * `when` 可见性与主题 token 配色。
@@ -192,5 +194,54 @@ test.describe("context menu", () => {
     // 菜单表面必须来自 token，而不是写死的浅色。
     expect(colors.tokenBackground).not.toBe("rgb(255, 255, 255)");
     expect(colors.menu).toBe(colors.tokenBackground);
+  });
+});
+
+/**
+ * 工作区缩放下的菜单几何（2026-09-21 修复）：菜单挂在根 layout，不在 dockview 子树里，
+ * 所以它拿不到 `.dockview-container` 那句 `style:zoom`。修法是「不缩放的定位壳 +
+ * `zoom: var(--gpen-workspace-zoom)`」，这里守住三件事：跟着缩放、锚在按钮上、夹在视口内。
+ */
+test.describe("context menu under workspace zoom", () => {
+  test("follows uiScale, stays anchored to its button and inside the viewport", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await openWorkspace(page);
+
+    const button = page.locator('.blender-panel-menu button[aria-label="切换菜单"]');
+    const menu = page.locator("[data-context-menu-root]");
+    const firstItem = page.locator("[data-context-menu-root] .contextMenu-item").first();
+
+    const openFromButton = async () => {
+      await button.click();
+      await expect(menu).toBeVisible();
+      await page.waitForTimeout(150);
+    };
+
+    await openFromButton();
+    const baseItem = (await firstItem.boundingBox())!;
+    const baseMenu = (await menu.boundingBox())!;
+    const baseAnchor = (await button.boundingBox())!;
+    // 锚定：菜单左边缘贴着按钮左边缘（视觉 px）。
+    expect(Math.abs(baseMenu.x - baseAnchor.x)).toBeLessThanOrEqual(1);
+    await page.keyboard.press("Escape");
+    await expect(menu).toHaveCount(0);
+
+    // 界面缩放 2×：菜单必须跟着放大（回归：它曾经永远 1×，看起来比 chrome 小一半）。
+    for (let index = 0; index < 4; index += 1) {
+      await page.locator(".blender-panel-menu").getByRole("button", { name: "放大界面" }).click();
+    }
+    await openFromButton();
+    const scaledItem = (await firstItem.boundingBox())!;
+    const scaledMenu = (await menu.boundingBox())!;
+    const scaledAnchor = (await button.boundingBox())!;
+    expect(scaledItem.height).toBeGreaterThan(baseItem.height * 1.8);
+    expect(Math.abs(scaledMenu.x - scaledAnchor.x)).toBeLessThanOrEqual(1);
+
+    // 夹取按**视觉**尺寸算：放大后菜单更大，也不能出视口。
+    const viewport = page.viewportSize()!;
+    expect(scaledMenu.x + scaledMenu.width).toBeLessThanOrEqual(viewport.width + 1);
+    expect(scaledMenu.y + scaledMenu.height).toBeLessThanOrEqual(viewport.height + 1);
   });
 });
