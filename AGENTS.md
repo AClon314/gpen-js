@@ -47,6 +47,19 @@
 - `bun run dev` 启动 SvelteKit 开发服务器；应用为客户端渲染，`src/routes/+layout.ts` 设置了 `ssr = false`。
 - 浏览器行为验证用 `agent-browser`；交互（拖拽 / 触摸 / 缩放）改动必须真机或模拟实测。
 
+### 文件体量
+
+- **单个文件不超过 1000 行**。超了就要动结构：先把职责拆成模块（优先拆「纯逻辑」出去，让它可 `bun test`），
+  而不是继续往下堆。
+- 拆之前先做**消融实验**：确认那段代码真的是复杂度来源（去掉它行为是否变、测试是否仍能守住），
+  别为了行数做无收益的搬家。
+- **不要和功能改动混在一起做**：先把功能加完、测试跑绿，再单独一轮做模块化重构。
+  混着做，多数情况会变成「重构把新功能改坏」而两边都没测住。
+- 超限文件按上面顺序处理（一次一轮、每轮跑绿再合）。2026-09-21 已把
+  `GpenWorkspace.svelte`（1824 行）拆到 915 行：布局策略 → `workspacePanelLayout.ts`、
+  文档会话 → `gpenDocumentSession.svelte.ts`、外壳样式 → `workspace.css`、tab 菜单 →
+  `workspaceTabMenu.ts`。
+
 ### 校验与测试
 
 - `bun run lint` 等价于 `bun run typecheck && oxlint && eslint`。
