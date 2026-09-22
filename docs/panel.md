@@ -44,10 +44,17 @@
   （`gpen.workspaceState` KV）。面板形态、`floating` 的坑与实测数据见
   [`preferences.md`](preferences.md)。
 - **缩放下的指针坐标**：容器那句 `style:zoom={workspaceZoom}` 让「客户端 px」与
-  「容器内 px」差一个缩放倍数，而 dockview 内部按 1:1 算 —— 于是 uiScale / pinch ≠ 1 时
-  sash 拖动会按倍数跑（实测 2× 时手指 10px → 面板 20px）。`components/workspaceSashZoom.ts`
-  只在拖动期间把指针坐标换算回容器坐标再重新派发；`zoom = 1` 时完全不介入。
-  右键菜单同理，但它靠根元素上的 `--gpen-workspace-zoom` 跟（见 [`theme.md`](theme.md)）。
+  「容器内 px」差一个缩放倍数，而 dockview 内部按 1:1 算。三个已修的交互：
+  - **sash**（实测 2× 时手指 10px → 面板 20px）：`components/workspaceSashZoom.ts` 只在拖动
+    期间把指针坐标换算回容器坐标再重新派发；
+  - **右键菜单**（chrome 2 倍大、菜单 1 倍小）：靠根元素上的 `--gpen-workspace-zoom` 跟
+    （见 [`theme.md`](theme.md)）；
+  - **浮窗拖动**（实测 2× 时 10px → 1328px）：dockview 的实现连 `offset` 与夹取边界都是
+    `getBoundingClientRect()` 派生的，改坐标救不回来，所以 `components/workspaceFloatingDrag.ts`
+    在 `zoom ≠ 1` 时直接接管拖动（自己算局部增量、夹在容器局部盒内、写 `left/top`）。
+  `zoom = 1` 时三者都不介入。
+  **已知缺口**：浮窗的 **resize 手柄**走的是同一套混单位数学（实测 10px → 856px），
+  `zoom ≠ 1` 时按 `.gpen-zoomed` 直接禁用（宁可没有这个交互，也不要乱跳）。
 - **CodeArea 是 viewport 组里的「文件 tab」**（`areas/CodeArea.svelte`，一个组件服务所有
   数据源，面板 id 是 `codearea:<sourceId>`）：默认当 `viewport` 组的新 tab 打开，切过去时那一组
   不再是「洞」；**不跨会话保留**，还原因此会在 `fromJSON` 之后把它们摘掉。它的数据同步、

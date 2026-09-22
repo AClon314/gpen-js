@@ -85,9 +85,19 @@
 	/* 视口那一组的“洞”样式（`.gpen-hole`）在 themes/dockview.css 里，由
 	 * markHoleGroup() 按面板 id 打标记——不依赖面板内容是否挂载成功。 */
 	.dockview-container .dv-sash,
-	.dockview-container .dv-resize-handle,
+	/* 注意：手柄元素带的是 `dv-resize-handle-<方向>`，没有裸的 `.dv-resize-handle`
+	 * 这个类（dockview 在 `Overlay.setupResize` 里按方向拼类名）。 */
+	.dockview-container [class^='dv-resize-handle'],
 	.dockview-container .dv-drop-target-container {
 		pointer-events: auto;
+	}
+
+	/* 缩放 ≠ 1 时禁用浮窗的 resize 手柄：它走的是与浮窗拖动同一套混单位数学
+	 * （把 `getBoundingClientRect()` 的视觉 px 当容器 px），实测 uiScale=2 时拖 10px
+	 * 尺寸变化 856px。**宁可没有这个交互，也不要让它乱跳**；拖动本身已由
+	 * `workspaceFloatingDrag.ts` 接管。class 由 GpenWorkspace 的 zoom effect 维护。 */
+	.dockview-container.gpen-zoomed [class^='dv-resize-handle'] {
+		pointer-events: none;
 	}
 
 	/* Chrome panels are not dockable work areas: their title bar would only

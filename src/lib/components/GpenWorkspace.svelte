@@ -49,6 +49,7 @@
 	import { readGpenViewportZoomFactor } from './gpenViewport';
 	import { setWorkspaceZoomVariable } from './workspaceZoom';
 	import { installSashZoomCorrection } from './workspaceSashZoom';
+	import { installFloatingDragZoomCorrection } from './workspaceFloatingDrag';
 	import { centeredFloatingBounds } from './workspaceLayout.js';
 	import {
 		createPanelLayoutController,
@@ -121,8 +122,9 @@
 	let disposeCodeAreaSource: (() => void) | undefined;
 	let layoutSubscriptions: { dispose(): void }[] = [];
 	let viewportResizeObserver: ResizeObserver | undefined;
-	/// sash 拖动的坐标修正（zoom ≠ 1 时，见 `workspaceSashZoom.ts`）。
+	/// sash 拖动 / 浮窗拖动的缩放修正（zoom ≠ 1 时，见 `workspaceSashZoom.ts` / `workspaceFloatingDrag.ts`）。
 	let disposeSashZoom: (() => void) | undefined;
+	let disposeFloatingDrag: (() => void) | undefined;
 	let removeViewportListeners: (() => void) | undefined;
 	let mounted = false;
 
@@ -687,6 +689,8 @@
 		// 右键菜单不在 dockview 子树里，拿不到那句 `style:zoom`：把缩放写到根元素上，
 		// 菜单用 `zoom: var(--gpen-workspace-zoom, 1)` 跟上（见 workspaceZoom.ts）。
 		setWorkspaceZoomVariable(zoom);
+		// 浮窗 resize 手柄在缩放下的数学是错的（见 workspace.css 的注释），先按 class 关掉。
+		container.classList.toggle('gpen-zoomed', Math.abs(zoom - 1) > 1e-3);
 		if (!mounted) return;
 		measureViewport();
 		panelLayout.schedule();
@@ -877,6 +881,12 @@
 			container,
 			getZoom: () => workspaceZoom
 		}).dispose;
+		disposeFloatingDrag = installFloatingDragZoomCorrection({
+			container,
+			getZoom: () => workspaceZoom,
+			// 自己写的 left/top 也要进布局快照（`toJSON()` 读的就是它们）。
+			onDragEnd: () => panelLayout.handleLayoutEvent()
+		}).dispose;
 
 		const parent = container.parentElement;
 		if (typeof ResizeObserver !== 'undefined' && parent) {
@@ -895,6 +905,8 @@
 		infiniteCanvas = undefined;
 		disposeSashZoom?.();
 		disposeSashZoom = undefined;
+		disposeFloatingDrag?.();
+		disposeFloatingDrag = undefined;
 		panelLayout.dispose();
 		// 工作区没了就把缩放变量收回 1：菜单在别的页面（`/demo/menu`）还得按 1× 渲染。
 		setWorkspaceZoomVariable(1);

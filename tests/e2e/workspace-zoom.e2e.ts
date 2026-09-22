@@ -60,3 +60,42 @@ for (const scale of [1, 2, 0.5]) {
     expect(moved).toBeLessThan(12);
   });
 }
+
+/**
+ * 浮窗拖动：dockview 的实现在 zoom ≠ 1 下混用视觉 px 与容器 px
+ * （`offset`/夹取边界都是 `getBoundingClientRect()` 派生的），实测 uiScale=2 时
+ * 拖 10px 浮窗跳 1328px。修法是 `workspaceFloatingDrag.ts` 直接接管拖动。
+ */
+test("floating window drag tracks the pointer at uiScale 2", async ({ page }) => {
+  await page.goto("/");
+  await openWorkspace(page);
+  await setUiScale(page, 2);
+
+  await page.keyboard.press("Control+Alt+u");
+  const float = page.locator(".dv-groupview-floating");
+  await expect(float).toBeVisible();
+  const grip = (await page
+    .locator(".dv-resize-container .dv-floating-titlebar")
+    .first()
+    .boundingBox())!;
+  const before = (await float.boundingBox())!;
+
+  // 浮窗在 uiScale=2 下会被夹在容器右缘，所以往**左**拖。
+  await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(grip.x + grip.width / 2 - 10, grip.y + grip.height / 2, { steps: 6 });
+  await page.mouse.up();
+  await page.waitForTimeout(250);
+
+  const after = (await float.boundingBox())!;
+  const moved = Math.round(after.x - before.x);
+  // 修好之后 1:1（我们接管后没有 dockview 那个启动阈值）；回归时是几百上千 px。
+  expect(moved).toBeGreaterThanOrEqual(-13);
+  expect(moved).toBeLessThanOrEqual(-7);
+
+  // 还得在容器里（夹取写的是容器局部 px）。
+  const viewport = page.viewportSize()!;
+  expect(after.x).toBeGreaterThanOrEqual(-1);
+  expect(after.x + after.width).toBeLessThanOrEqual(viewport.width + 1);
+  expect(after.y + after.height).toBeLessThanOrEqual(viewport.height + 1);
+});
