@@ -24,7 +24,11 @@ import {
   type GpenPanelLayout,
   type GpenWorkspaceState,
 } from "./gpenWorkspaceState";
-import { COLUMN_MINIMUM_WIDTHS, minimumColumnWidths } from "./workspaceLayout.js";
+import {
+  centeredFloatingBounds,
+  COLUMN_MINIMUM_WIDTHS,
+  minimumColumnWidths,
+} from "./workspaceLayout.js";
 
 export const STATUS_BAR_PANEL_ID = "statusbar";
 
@@ -49,6 +53,10 @@ export interface PanelLayoutDeps {
   /** 容器未缩放 px 盒（`layoutWidth/Height`）；拿不到时退回 `clientWidth/Height`。 */
   getLayoutSize(): { width: number | undefined; height: number | undefined };
   getContainer(): HTMLElement | undefined;
+  /** 浮动面板的首选尺寸（按面板 id）：装不下时用它重算落位。 */
+  getFloatingPreferred(panelId: string): { width: number; height: number } | undefined;
+  /** 浮窗与容器边缘的最小间距（与首次打开时同一个值）。 */
+  getFloatingMargin(): number;
 }
 
 export interface PanelLayoutController {
@@ -64,6 +72,8 @@ export interface PanelLayoutController {
   applyDefaultSizesOnNextLayout(): void;
   /** 「重置面板布局」：丢掉存储里的布局并重建默认布局。 */
   reset(): void;
+  /** 容器变小 / 还原布局之后，把**装不下**的浮窗拉回容器内（用户自己摆的、装得下的不碰）。 */
+  reclampFloatingGroups(): void;
   dispose(): void;
 }
 
@@ -269,6 +279,44 @@ export function createPanelLayoutController(deps: PanelLayoutDeps): PanelLayoutC
     applyGroupConstraints(containerWidth());
   }
 
+  /**
+   * 浮窗夹回：dockview 的 `floatingGroupBounds` 只约束**用户拖动**，不管初始请求、
+   * 也不管容器变小（`constrainBounds` 只夹位置、不改尺寸）。所以这里在每趟布局末尾检查
+   * 「局部盒是否还在容器内」，只对**装不下**的浮窗重算一次落位
+   * （`centeredFloatingBounds`：缩到装得下 + 居中）；装得下的不动——不碰用户摆好的位置。
+   *
+   * `addFloatingGroup(panel, …)` 对已在浮动的组是「删组 + 重建浮窗」（面板实例不销毁），
+   * 所以只在真的越界时才调，别每帧都调。
+   */
+  function reclampFloatingGroups(): void {
+    const dockview = instance();
+    const container = deps.getContainer();
+    if (!dockview || !container) return;
+    const box = { width: container.clientWidth, height: container.clientHeight };
+    if (box.width <= 0 || box.height <= 0) return;
+    for (const group of dockview.groups) {
+      if (group.api.location.type !== "floating") continue;
+      const element = group.element.closest<HTMLElement>(".dv-resize-container");
+      if (!element) continue;
+      const left = Number.parseFloat(element.style.left);
+      const top = Number.parseFloat(element.style.top);
+      const width = element.offsetWidth;
+      const height = element.offsetHeight;
+      const inside =
+        Number.isFinite(left) &&
+        Number.isFinite(top) &&
+        left >= 0 &&
+        top >= 0 &&
+        left + width <= box.width + 1 &&
+        top + height <= box.height + 1;
+      if (inside) continue;
+      const panelId = group.activePanel?.id ?? group.id;
+      const preferred = deps.getFloatingPreferred(panelId) ?? { width, height };
+      const bounds = centeredFloatingBounds(box, preferred, deps.getFloatingMargin());
+      dockview.addFloatingGroup(group, bounds);
+    }
+  }
+
   function schedule(): void {
     if (frame !== undefined) cancelAnimationFrame(frame);
     frame = requestAnimationFrame(() => {
@@ -297,6 +345,7 @@ export function createPanelLayoutController(deps: PanelLayoutDeps): PanelLayoutC
       // 尺寸落定后再落一次布局：`setSize` 之后的变更事件是在 dockview 还在
       // 100×100 时发出的，那一次会被 capture 的尺寸守卫挡掉。
       if (layoutDirty) capture();
+      reclampFloatingGroups();
     });
   }
 
@@ -323,6 +372,7 @@ export function createPanelLayoutController(deps: PanelLayoutDeps): PanelLayoutC
     applyDefaultSizesOnNextLayout() {
       applyDefaultSizes = true;
     },
+    reclampFloatingGroups,
     reset() {
       const dockview = instance();
       if (!dockview) return;

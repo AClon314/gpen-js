@@ -253,3 +253,43 @@ test.describe("preferences panel", () => {
     );
   });
 });
+
+/**
+ * 浮窗夹回（回归 `docs/panel.md` 的已知缺口）：`floatingGroupBounds` 只约束**用户拖动**，
+ * 容器变小（横竖屏切换 / 拖窗口）与还原布局时浮窗会按老尺寸留在原地、甚至有一半在屏外。
+ * 修法见 `workspacePanelLayout.ts` 的 `reclampFloatingGroups()`：每趟布局末尾只把
+ * **装不下**的浮窗重算一次落位（装得下的不碰，用户摆好的位置不会被重置）。
+ */
+test("comes back inside when the container shrinks, and stays put when it does not", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 900, height: 700 });
+  await page.goto("/");
+  await openWorkspace(page);
+  await openPreferences(page);
+
+  const panel = page.locator(".dv-groupview-floating");
+  await expectInsideViewport(page, panel, "浮窗");
+  const before = (await panel.boundingBox())!;
+
+  // 缩小到装不下：必须夹回容器内（回归时下边缘会超出视口 159px）。
+  await page.setViewportSize({ width: 420, height: 360 });
+  await expect
+    .poll(async () => (await panel.boundingBox())?.y, { timeout: 5_000 })
+    .toBeLessThan(360);
+  await expectInsideViewport(page, panel, "缩小后的浮窗");
+
+  // 再放大：位置不重置（容器变宽不会把浮窗“归位”，那是 ① 的语义）。
+  await page.setViewportSize({ width: 900, height: 700 });
+  await page.waitForTimeout(500);
+  await expectInsideViewport(page, panel, "放大后的浮窗");
+  const after = (await panel.boundingBox())!;
+  expect(after.width).toBeLessThanOrEqual(before.width + 1);
+
+  // 重载（还原持久化布局）之后仍在容器内：浮窗的几何是从存储里摊回来的，
+  // 走的是同一段 `reclampFloatingGroups()`。
+  await page.waitForTimeout(1200);
+  await page.reload();
+  await openWorkspace(page);
+  await expectInsideViewport(page, page.locator(".dv-groupview-floating"), "重载后的浮窗");
+});

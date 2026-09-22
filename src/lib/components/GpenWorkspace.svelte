@@ -163,7 +163,13 @@
 		getState: () => workspaceState,
 		measure: measureViewport,
 		getLayoutSize: () => ({ width: layoutWidth, height: layoutHeight }),
-		getContainer: () => container
+		getContainer: () => container,
+		// 偏好设置是唯一「有首选尺寸」的浮窗；其余浮窗装不下时按当前尺寸缩。
+		getFloatingPreferred: (panelId) =>
+			panelId === PREFERENCES_PANEL_ID
+				? { width: PREFERENCES_WIDTH, height: PREFERENCES_HEIGHT }
+				: undefined,
+		getFloatingMargin: () => FLOAT_MARGIN
 	});
 
 	function changeUiScale(delta: number) {

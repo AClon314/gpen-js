@@ -81,11 +81,14 @@
   行高仍是 `2.4lh` / `2.6lh`（隐掉滚动条，不能让顶部两条带变高）。
   **已知缺口**：这只是「装得下」，不是小屏布局；窄屏下面板本身仍然拥挤，
   按下面的「可访问性和响应式要求」应该做 bottom sheet / 全屏 sheet / rail。
-  另一个缺口：**浮窗不会跟着容器变小而夹回来**——dockview 的
-  `floatingGroupBounds: 'boundedWithinViewport'` 只约束用户拖动，容器缩小时
-  （横竖屏切换 / 拖窗口）以及还原持久化布局时，浮窗按老尺寸留在原地。
-  实测：900×700 打开偏好设置（418×492 @ (241,117)），缩到 420×360 后仍在
-  (1,27)、下边缘到 519（重载后一样）。绕法：标题栏拖回来，或窗口 → 重置面板布局。
+  ~~另一个缺口：**浮窗不会跟着容器变小而夹回来**~~（2026-09-21 已修）：
+  每趟布局末尾由 `workspacePanelLayout.ts` 的 `reclampFloatingGroups()` 检查
+  「装不下就重算落位」——dockview 的 `floatingGroupBounds: 'boundedWithinViewport'`
+  只约束用户拖动，容器缩小（横竖屏切换 / 拖窗口）与还原持久化布局都得自己管。
+  实测（修之前）：900×700 打开偏好设置（418×492 @ (241,117)），缩到 420×360 后仍在
+  (1,27)、下边缘到 519（重载后一样）。
+  只动**装不下**的浮窗（`centeredFloatingBounds`：缩到装得下 + 居中），
+  装得下的不碰——用户自己摆好的位置不会被窗口 resize 重置。
 - **默认尺寸**在首次 layout 之后用 `group.api.setSize()` 显式设置：`addPanel` 的
   `initialWidth` / `initialHeight` 只对“新建组”的面板生效，split 出来的组会退回组最小值。
 - **持久化**：`panelLayout` 存 dockview 的 `toJSON()`，`uiScale` / `activeTool` / 浮球位置
