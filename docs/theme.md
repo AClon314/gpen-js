@@ -90,16 +90,17 @@ dockview 用 `--dv-*` 变量描述 tab 条、sash、drop preview、浮动组。�
 - 读写入口在 `components/workspaceZoom.ts`（`setWorkspaceZoomVariable` /
   `readWorkspaceZoomVariable`）；写变量的是 `GpenWorkspace` 的 zoom effect，工作区卸载时收回 1。
 
-## 磨砂玻璃（可选外观，默认关）
+## 磨砂玻璃（可选外观，默认 0 = 关）
 
-`GpenPreferences.blur` → `themes/blur.css`：面板 / chrome / 右键菜单半透明 +
-`backdrop-filter: blur(var(--gpen-blur))`（`--gpen-blur` 是 `day-night.css` 里的形状 token，
-已加进 `GPEN_TOKENS`）。
+`GpenPreferences.blur` 是**模糊半径**（CSS px，`0` = 关、默认 0、上限 16）→ `themes/blur.css`：
+面板 / chrome / 右键菜单半透明 + `backdrop-filter: blur(var(--gpen-blur))`。静态 `--gpen-blur: 2px`
+（`day-night.css` 的形状 token，已加进 `GPEN_TOKENS`）只在没有内联值时兜底。
 
 实现上只有两处 JS：
 
-- `applyBlurPreference(enabled, target)` 写一个**布尔**根属性 `data-gpen-blur`
-  （同 `data-gpen-theme` 的做法；`+layout.svelte` 里跟着偏好走），CSS 用它覆盖
+- `applyBlurPreference(amount, target)` 写一个**存在即开**的根属性 `data-gpen-blur`
+  （同 `data-gpen-theme` 的做法；`+layout.svelte` 里跟着偏好走）并把半径内联成
+  `--gpen-blur: <amount>px`；`amount <= 0` 时移除属性与内联值。CSS 用根属性覆盖
   `--gpen-panel-background` 等 token 为半透明；
 - `GpenWorkspace` 给容器加 `gpen-blur` class、`ContextMenu` 给自己加同一个 class ——
   `:host` 选择器带不了后代组合子，embed 目标里光靠根属性选不到内部的 `.dv-groupview`。

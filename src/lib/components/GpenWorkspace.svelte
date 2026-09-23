@@ -527,7 +527,7 @@
 	// 磨砂玻璃：容器 class 给 CSS 挂 filter（`:host` 选择器带不了后代组合子，
 	// 所以 embed 目标也靠这个 class）；根属性只管 token，由 +layout 维护。
 	$effect(() => {
-		container.classList.toggle('gpen-blur', preferencesState().blur);
+		container.classList.toggle('gpen-blur', preferencesState().blur > 0);
 	});
 
 	/** tab 右键菜单 + timeline 占位面板的图层列表（见 `workspaceTabMenu.ts`）。 */

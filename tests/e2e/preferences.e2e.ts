@@ -397,9 +397,10 @@ test("comes back inside when the container shrinks, and stays put when it does n
 });
 
 /**
- * 磨砂玻璃（可选外观，默认关）：偏好 → 根属性 `data-gpen-blur` + 容器 class →
- * `themes/blur.css` 的 token / filter。这里守住：默认关、开了之后 chrome 真半透明 + 真模糊、
- * **视口那个「洞」不受影响**、关掉能完全回到原样。
+ * 磨砂玻璃（可选外观，默认 0 = 关）：偏好（模糊半径 px）→ 根属性 `data-gpen-blur` + 内联
+ * `--gpen-blur` + 容器 class → `themes/blur.css` 的 token / filter。这里守住：默认关、
+ * 调到 8 后 chrome 真半透明 + 真模糊（半径就是 8px）、**视口那个「洞」不受影响**、
+ * 调回 0 能完全回到原样。
  */
 test("toggles the blur (glass) appearance without touching the viewport hole", async ({ page }) => {
   await page.goto("/");
@@ -412,6 +413,7 @@ test("toggles the blur (glass) appearance without touching the viewport hole", a
       const hole = document.querySelector(".dv-groupview.gpen-hole");
       return {
         attribute: document.documentElement.getAttribute("data-gpen-blur"),
+        blurRadius: document.documentElement.style.getPropertyValue("--gpen-blur"),
         containerClass: document
           .querySelector(".dockview-container")
           ?.classList.contains("gpen-blur"),
@@ -424,13 +426,18 @@ test("toggles the blur (glass) appearance without touching the viewport hole", a
 
   const off = await read();
   expect(off.attribute).toBeNull();
+  expect(off.blurRadius).toBe("");
   expect(off.groupFilter).toBe("none");
   expect(off.holeBackground).toBe("rgba(0, 0, 0, 0)");
 
-  await page.getByLabel("磨砂玻璃").check();
+  // 磨砂玻璃是「模糊半径」数值偏好：0 = 关，输入 8 就是 8px 半径。
+  const blur = page.getByLabel("磨砂玻璃（模糊半径）");
+  await blur.fill("8");
+  await blur.press("Enter");
   await expect.poll(async () => (await read()).groupFilter).not.toBe("none");
   const on = await read();
   expect(on.attribute).toBe("");
+  expect(on.blurRadius).toBe("8px");
   expect(on.containerClass).toBe(true);
   // 半透明与模糊必须一起给（只给一个就是糊状或看不出）。
   expect(on.groupBackground).toMatch(/rgba\(.*0\.\d+\)/);
@@ -448,9 +455,11 @@ test("toggles the blur (glass) appearance without touching the viewport hole", a
   ).not.toBe("none");
   await page.keyboard.press("Escape");
 
-  await page.getByLabel("磨砂玻璃").uncheck();
+  await blur.fill("0");
+  await blur.press("Enter");
   await expect.poll(async () => (await read()).groupFilter).toBe("none");
   const back = await read();
   expect(back.attribute).toBeNull();
+  expect(back.blurRadius).toBe("");
   expect(back.groupBackground).toBe(off.groupBackground);
 });

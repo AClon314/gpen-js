@@ -8,6 +8,9 @@ import {
   AUTO_SAVE_DEBOUNCE_DEFAULT_MS,
   AUTO_SAVE_DEBOUNCE_MAX_MS,
   AUTO_SAVE_DEBOUNCE_MIN_MS,
+  BLUR_LEGACY_AMOUNT,
+  BLUR_MAX,
+  BLUR_MIN,
   createDefaultGpenPreferences,
   createKvGpenPreferencesStorage,
   createMemoryGpenPreferencesStorage,
@@ -29,7 +32,7 @@ describe("gpen preferences", () => {
       locale: "system",
       defaultTool: "brush",
       showStatusBar: true,
-      blur: false,
+      blur: 0,
       autoSaveDebounceMs: AUTO_SAVE_DEBOUNCE_DEFAULT_MS,
     });
   });
@@ -48,10 +51,25 @@ describe("gpen preferences", () => {
     expect(normalized.locale).toBe("system");
     expect(normalized.defaultTool).toBe("brush");
     expect(normalized.showStatusBar).toBe(true);
-    // 磨砂玻璃也是布尔：非布尔（这里是字符串）回落到 fallback 的 false。
-    expect(normalized.blur).toBe(false);
-    expect(normalizeGpenPreferences({ blur: true }).blur).toBe(true);
+    // 磨砂玻璃是「模糊半径」数值，不是布尔：字符串（非法）回落到 fallback 的 0。
+    expect(normalized.blur).toBe(0);
     expect(normalized.autoSaveDebounceMs).toBe(AUTO_SAVE_DEBOUNCE_DEFAULT_MS);
+  });
+
+  test("normalize migrates the legacy boolean blur and clamps the radius", () => {
+    // 旧版本存过 boolean：`true` 迁到原来的 2px 观感，`false` 就是 0。
+    expect(normalizeGpenPreferences({ blur: true }).blur).toBe(BLUR_LEGACY_AMOUNT);
+    expect(normalizeGpenPreferences({ blur: false }).blur).toBe(BLUR_MIN);
+    expect(normalizeGpenPreferences({ blur: 8 }).blur).toBe(8);
+    expect(normalizeGpenPreferences({ blur: 999 }).blur).toBe(BLUR_MAX);
+    expect(normalizeGpenPreferences({ blur: -4 }).blur).toBe(BLUR_MIN);
+    // 半径是整数：小数四舍五入（与 debounce 同一策略）。
+    expect(normalizeGpenPreferences({ blur: 3.6 }).blur).toBe(4);
+    // fallback 也是数值时，非法输入回落到该数值。
+    expect(
+      normalizeGpenPreferences({ blur: "nope" }, { ...createDefaultGpenPreferences(), blur: 6 })
+        .blur,
+    ).toBe(6);
   });
 
   test("normalize clamps the debounce into the supported range", () => {

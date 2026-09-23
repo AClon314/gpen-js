@@ -162,14 +162,22 @@
 			onchange={(theme) => patchPreferences({ theme })}
 		/>
 
+		<!-- 磨砂玻璃是**数值**偏好（模糊半径，0 = 关），不再是 checkbox：滑条就是开关。 -->
 		<div class="property-row">
-			<span class="property-label">磨砂玻璃</span>
-			<input
-				type="checkbox"
-				aria-label="磨砂玻璃"
+			<span
+				class="property-label"
 				title="面板与菜单半透明 + 背景模糊（移动端会更吃 GPU）"
-				checked={preferences.blur}
-				onchange={(event) => patchPreferences({ blur: (event.currentTarget as HTMLInputElement).checked })}
+			>磨砂玻璃</span>
+			<InputSlider
+				value={preferences.blur}
+				units={{ base: 'px', units: { px: 1 } }}
+				min={0}
+				max={16}
+				step={1}
+				aria-label="磨砂玻璃（模糊半径）"
+				onvalidvalue={(value) => {
+					if (typeof value === 'number') patchPreferences({ blur: value });
+				}}
 			/>
 		</div>
 

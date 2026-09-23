@@ -33,6 +33,17 @@ export const AUTO_SAVE_DEBOUNCE_MIN_MS = 0;
 export const AUTO_SAVE_DEBOUNCE_MAX_MS = 10_000;
 export const AUTO_SAVE_DEBOUNCE_DEFAULT_MS = 250;
 
+/** 磨砂玻璃的可调范围（CSS px，模糊半径；0 = 关）。 */
+export const BLUR_MIN = 0;
+export const BLUR_MAX = 16;
+/** 默认关：`backdrop-filter` 在移动端是 GPU 大头。 */
+export const BLUR_DEFAULT = 0;
+/**
+ * 旧版本（boolean 时代）的 `true` 迁移到哪个半径：原来的 `--gpen-blur` 静态 token 是 2px
+ * （见 `themes/day-night.css`），迁过来外观不变。
+ */
+export const BLUR_LEGACY_AMOUNT = 2;
+
 /**
  * All persisted user preferences. Keep this JSON-serializable: it goes through
  * the KV adapter untouched.
@@ -46,10 +57,10 @@ export interface GpenPreferences {
   defaultTool: GpenToolId;
   showStatusBar: boolean;
   /**
-   * 磨砂玻璃外观：面板 / chrome / 菜单半透明 + `backdrop-filter`（默认关）。
-   * 只有颜色 token 与 filter 随之变化，见 `themes/blur.css`。
+   * 磨砂玻璃外观：面板 / chrome / 菜单半透明 + `backdrop-filter`（默认 0 = 关）。
+   * 数值是模糊半径（CSS px），只写根属性 + 内联 `--gpen-blur`，见 `themes/blur.css`。
    */
-  blur: boolean;
+  blur: number;
   /** Document write debounce in milliseconds (0 = write on every change). */
   autoSaveDebounceMs: number;
 }
@@ -73,7 +84,7 @@ export function createDefaultGpenPreferences(): GpenPreferences {
     locale: "system",
     defaultTool: "brush",
     showStatusBar: true,
-    blur: false,
+    blur: BLUR_DEFAULT,
     autoSaveDebounceMs: AUTO_SAVE_DEBOUNCE_DEFAULT_MS,
   };
 }
@@ -90,6 +101,19 @@ function normalizeDebounce(value: unknown, fallback: number): number {
   if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
   const rounded = Math.round(value);
   return Math.min(AUTO_SAVE_DEBOUNCE_MAX_MS, Math.max(AUTO_SAVE_DEBOUNCE_MIN_MS, rounded));
+}
+
+/**
+ * 磨砂玻璃半径：整数化后钳到 `[BLUR_MIN, BLUR_MAX]`。
+ *
+ * **旧 boolean 迁移**：`true` → `BLUR_LEGACY_AMOUNT`（维持原来的 2px 观感）、`false` → 0；
+ * 其余（字符串、`null`…）回落到 fallback。
+ */
+function normalizeBlur(value: unknown, fallback: number): number {
+  if (typeof value === "boolean") return value ? BLUR_LEGACY_AMOUNT : BLUR_MIN;
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  const rounded = Math.round(value);
+  return Math.min(BLUR_MAX, Math.max(BLUR_MIN, rounded));
 }
 
 /**
@@ -111,7 +135,7 @@ export function normalizeGpenPreferences(
     defaultTool: isOneOf(TOOL_IDS, source.defaultTool) ? source.defaultTool : fallback.defaultTool,
     showStatusBar:
       typeof source.showStatusBar === "boolean" ? source.showStatusBar : fallback.showStatusBar,
-    blur: typeof source.blur === "boolean" ? source.blur : fallback.blur,
+    blur: normalizeBlur(source.blur, fallback.blur),
     autoSaveDebounceMs: normalizeDebounce(source.autoSaveDebounceMs, fallback.autoSaveDebounceMs),
   };
 }

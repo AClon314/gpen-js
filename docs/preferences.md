@@ -24,7 +24,7 @@ interface GpenPreferences {
   locale: 'system' | 'en' | 'zh-cn';
   defaultTool: GpenToolId;
   showStatusBar: boolean;
-  blur: boolean; // 磨砂玻璃（默认 false；见 theme.md）
+  blur: number; // 磨砂玻璃模糊半径 px（0 = 关，0..16；见 theme.md）
   autoSaveDebounceMs: number; // 0..10000
 }
 ```
@@ -32,6 +32,9 @@ interface GpenPreferences {
 - `normalizeGpenPreferences(value, fallback?)` **逐字段**校验并回退：一个坏字段不会把整份记录
   重置掉（旧版本写下的偏好里，它认识的部分必须留下）。
 - `autoSaveDebounceMs` 会被 clamp 到 `[0, 10000]` 并取整；`NaN` / 非数字回退到默认。
+- `blur` 是**模糊半径**（CSS px，`0` = 关），clamp 到 `[BLUR_MIN, BLUR_MAX]` = `[0, 16]` 并取整。
+  **旧 boolean 迁移**：`true` → `BLUR_LEGACY_AMOUNT`（2，对应原来的 `--gpen-blur` 静态 token）、
+  `false` → 0；其它非数字回退到 fallback（旧版本存过 boolean，必须能读回来）。
 - 适配器：`createKvGpenPreferencesStorage`（KV 根）/ `createMemoryGpenPreferencesStorage`
   （测试与降级）/ `createRuntimeGpenPreferencesStorage`（运行时 KV，**建不出来时降级到内存**，
   这样面板还能用而不是打开就抛）。
@@ -106,12 +109,16 @@ dockview.addPanel({
 见 [`theme.md`](theme.md)「三态」一节：`light-dark()` + `data-gpen-theme` 属性，没有
 `@media (prefers-color-scheme: dark)` 覆盖块。
 
-## 磨砂玻璃（`blur`，默认关）
+## 磨砂玻璃（`blur`，默认 0 = 关）
 
-`blur: true` → 面板 / chrome / 右键菜单半透明 + `backdrop-filter`，实现全在
-[`themes/blur.css`](../src/lib/themes/blur.css)（token 覆盖 + filter），JS 只写
-`data-gpen-blur` 根属性与容器 / 菜单上的一对 class —— 理由与「视口那个洞不能糊」的约束
-见 [`theme.md`](theme.md)「磨砂玻璃」一节。
+`blur` 是**模糊半径**（CSS px，0 = 关，默认 0）：`blur > 0` → 面板 / chrome / 右键菜单半透明 +
+`backdrop-filter`，实现全在 [`themes/blur.css`](../src/lib/themes/blur.css)（token 覆盖 + filter），
+JS 只写 `data-gpen-blur` 根属性（存在即开）、把半径内联成 `--gpen-blur`，以及容器 / 菜单上的
+一对 class —— 理由与「视口那个洞不能糊」的约束见 [`theme.md`](theme.md)「磨砂玻璃」一节。
+
+偏好面板里用 `InputSlider`（`min=0` / `max=16` / `step=1` / `units={{ base: 'px', units: { px: 1 } }}`，
+`aria-label="磨砂玻璃（模糊半径）"`）——滑条本身就是开关，0 即关；写入走 `patchPreferences`，
+等值回发由 `changedPreferences` 守卫接住（见下「消融」1）。
 
 ## 消融结论（实测）
 

@@ -1,8 +1,9 @@
 /*
  * 磨砂玻璃（可选外观）：面板 / chrome / 菜单半透明 + backdrop-filter。
  *
- * 开关是 `GpenPreferences.blur`（默认关）——JS 只写一个根属性 `data-gpen-blur`
- * （同 `data-gpen-theme` 的做法，见 docs/theme.md）；工作区容器与右键菜单额外各带一个
+ * 开关与半径是 `GpenPreferences.blur`（模糊半径 px，`0` = 关、默认 0）——JS 写一个根属性
+ * `data-gpen-blur`（存在即开，同 `data-gpen-theme` 的做法，见 docs/theme.md）并把半径内联成
+ * `--gpen-blur`（未内联时回落到 day-night.css 的 2px 静态 token）；工作区容器与右键菜单额外各带一个
  * `gpen-blur` class，因为 `:host` 选择器不能带后代组合子，embed 目标里光靠根属性
  * 选不到内部的 `.dv-groupview`。
  *

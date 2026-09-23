@@ -41,18 +41,28 @@ export type GpenTokens = Partial<Record<GpenToken, string>>;
 
 /**
  * 磨砂玻璃开关的根属性（presence-only）：CSS 变体在 `themes/blur.css`，
- * 由 `applyBlurPreference()` 维护，和 `data-gpen-theme` 是一对（但它是布尔，不是三态）。
+ * 由 `applyBlurPreference()` 维护，和 `data-gpen-theme` 是一对（但它是数值半径，不是三态）。
  */
 export const GPEN_BLUR_ATTRIBUTE = "data-gpen-blur";
 
-/** 开 / 关磨砂玻璃：只写一个属性，token 与 filter 全在 CSS 里（不把调色板抄进 JS）。 */
+/**
+ * 设置磨砂玻璃的模糊半径（CSS px，`0` = 关）。
+ *
+ * 只写根属性（presence-only）+ 一个内联 `--gpen-blur`：半透明 token 与 `filter` 全在
+ * `themes/blur.css` 里（不把调色板抄进 JS）；半径本身是用户可调的数值，只能内联下发。
+ */
 export function applyBlurPreference(
-  enabled: boolean,
+  amount: number,
   target: HTMLElement | undefined = defaultTarget(),
 ): void {
   if (target === undefined) return;
-  if (enabled) target.setAttribute(GPEN_BLUR_ATTRIBUTE, "");
-  else target.removeAttribute(GPEN_BLUR_ATTRIBUTE);
+  if (amount > 0) {
+    target.setAttribute(GPEN_BLUR_ATTRIBUTE, "");
+    target.style.setProperty("--gpen-blur", `${amount}px`);
+  } else {
+    target.removeAttribute(GPEN_BLUR_ATTRIBUTE);
+    target.style.removeProperty("--gpen-blur");
+  }
 }
 
 /** Default target: the document root (the embed passes its shadow host instead). */

@@ -25,7 +25,8 @@
 		// Keep the DOM attribute in sync when the settings panel changes it.
 		$effect.root(() => {
 			$effect(() => setThemePreference(preferences().theme));
-			// 磨砂玻璃是布尔偏好：只写根属性，token 与 filter 在 themes/blur.css 里。
+			// 磨砂玻璃是数值偏好（模糊半径，0 = 关）：写根属性 + 内联 `--gpen-blur`，
+			// 半透明 token 与 filter 在 themes/blur.css 里。
 			$effect(() => applyBlurPreference(preferences().blur));
 		});
 		overlay = mount(GpenOverlay, { target: document.body });
