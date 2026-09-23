@@ -4,7 +4,15 @@
   <head>
     <meta charset="utf-8" />
 
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!--
+      `minimum-scale=1` 把最小缩放钉在 1：`applyInfiniteCanvas()` 往 body 追加一个
+      200000px 的 spacer，文档内容宽度远大于视口，Android Chrome 的 shrink-to-fit 会把
+      初始缩放钳到 1 以下（表现为「进 workspace 网页整体被缩小」，并让
+      `workspaceZoom = 1/scale > 1`）。钉住最小缩放即可保持 1，pinch 放大仍可用。
+      只对 website 目标有效；embed / userscript / 扩展注入的宿主页改不了它的 meta。
+      详见 docs/layer-view.md「相机 spacer」。
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 
     <meta name="text-scale" content="scale" />
     %sveltekit.head%

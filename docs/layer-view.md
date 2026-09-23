@@ -30,6 +30,17 @@ spacer（`200000×200000`、`pointer-events: none`、`data-gpen-canvas-space`）
 `scrollHeight` / `scrollWidth` 变大是这个功能的固有结果（要有更大的画布就有更大的
 滚动范围），小地图把它当「画布范围」是明确语义；**别把它当页面真实几何用**。
 
+### 移动端：spacer 会触发 shrink-to-fit
+
+200000px 的 spacer 把文档**内容宽度**从视口宽拉到 200000px，Android Chrome 会据此
+shrink-to-fit，把初始缩放钳到 1 以下 —— 表现为「进 workspace 网页整体被缩小」，并且
+`workspaceZoom = 1 / scale > 1`（菜单变小、sash 增量变大）。修法是 `src/app.html` 的
+viewport meta 加 `minimum-scale=1`：完全不改 spacer，把最小缩放钉在 1，pinch 放大仍可用。
+代价是禁用「缩小到 1 以下」（那是用户的网页缩放，属于可访问性面）；只对 **website 目标**
+有效，embed / userscript / 扩展注入的宿主页改不了它的 meta。
+另一个同源现象是「白屏 + Chrome 崩溃脸」，大概率是 200000² 这个几何量级的合成器压力，
+本修法只缓解一半；若要进一步压，可缩小 spacer 几何（会牺牲横向平移范围）。
+
 ### 限制：左上角一条边永远进不了洞
 
 spacer 从文档原点起算，且 scroll 不能为负（实测 `scrollTo(0, -500)` 后 `scrollY`
