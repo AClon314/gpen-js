@@ -15,9 +15,7 @@
  * 只剩「拖动位置」；`zoom = 1` 时完全不介入。
  */
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
-}
+import { clamp, floatingLocalBox } from "./workspaceFloatingGeometry.js";
 
 interface ActiveDrag {
   pointerId: number;
@@ -30,21 +28,13 @@ interface ActiveDrag {
   moved: boolean;
 }
 
-/** 浮窗当前的**局部**坐标：优先读 style，`bottom/right` 对齐时从视觉 rect 反推。 */
+/** 浮窗当前的**局部**坐标：统一由 `floatingLocalBox` 给出（`bottom/right` 对齐也认）。 */
 function localPosition(
   overlay: HTMLElement,
   container: HTMLElement,
-  zoom: number,
 ): { left: number; top: number } {
-  const left = Number.parseFloat(overlay.style.left);
-  const top = Number.parseFloat(overlay.style.top);
-  if (Number.isFinite(left) && Number.isFinite(top)) return { left, top };
-  const overlayRect = overlay.getBoundingClientRect();
-  const containerRect = container.getBoundingClientRect();
-  return {
-    left: (overlayRect.left - containerRect.left) / zoom,
-    top: (overlayRect.top - containerRect.top) / zoom,
-  };
+  const box = floatingLocalBox(overlay, container);
+  return { left: box.left, top: box.top };
 }
 
 export interface FloatingDragZoomCorrection {
@@ -81,7 +71,7 @@ export function installFloatingDragZoomCorrection(options: {
       console.debug("[gpen] ignored rejection: floating drag setPointerCapture", error);
       return;
     }
-    const base = localPosition(overlay, options.container, zoom);
+    const base = localPosition(overlay, options.container);
     drag = {
       pointerId: event.pointerId,
       startX: event.clientX,

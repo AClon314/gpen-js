@@ -99,3 +99,73 @@ test("floating window drag tracks the pointer at uiScale 2", async ({ page }) =>
   expect(after.x + after.width).toBeLessThanOrEqual(viewport.width + 1);
   expect(after.y + after.height).toBeLessThanOrEqual(viewport.height + 1);
 });
+
+/** 浮窗的视觉矩形（`.dv-resize-container` 在 zoom 下是视觉 px）。 */
+function floatingBox(page: Page) {
+  return page.locator(".dv-resize-container").first().boundingBox();
+}
+
+/** 按住某个方向的手柄拖一段**视觉** px。 */
+async function dragResizeHandle(page: Page, direction: string, dx: number, dy: number) {
+  const handle = page.locator(`.dv-resize-handle-${direction}`).first();
+  const box = (await handle.boundingBox())!;
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + dx, y + dy, { steps: 8 });
+  await page.mouse.up();
+  await page.waitForTimeout(250);
+}
+
+/**
+ * 浮窗 resize：与拖动同一套混单位数学（`Overlay.setupResize` 把视觉 rect 当容器 px，
+ * 实测 uiScale=2 时拖 10px 尺寸变化 856px）。`zoom ≠ 1` 时由
+ * `workspaceFloatingResize.ts` 接管八个方向的手柄；`zoom = 1` 时完全不介入。
+ */
+test("floating window resize tracks the pointer at uiScale 2", async ({ page }) => {
+  await page.goto("/");
+  await openWorkspace(page);
+  await setUiScale(page, 2);
+  await page.keyboard.press("Control+Alt+u");
+  await expect(page.locator(".dv-groupview-floating")).toBeVisible();
+  await page.waitForTimeout(300);
+
+  const before = (await floatingBox(page))!;
+  // uiScale=2 下浮窗被 dockview 的视觉 px 夹取顶到容器右下角，所以往**左上**拖
+  // `topleft` 手柄（右下两条边是固定边）。
+  await dragResizeHandle(page, "topleft", -10, -10);
+  const after = (await floatingBox(page))!;
+
+  // 视觉 10px → 局部 5px → 写回 style 后再乘回 2 → 视觉 10px。
+  expect(Math.round(after.width - before.width)).toBe(10);
+  expect(Math.round(after.height - before.height)).toBe(10);
+  // 右下两条边不动（固定边）。
+  expect(Math.round(after.x + after.width)).toBe(Math.round(before.x + before.width));
+  expect(Math.round(after.y + after.height)).toBe(Math.round(before.y + before.height));
+});
+
+/** 拖过头时必须停在 `FLOATING_MINIMUM_SIZE`（240×200），不能把浮窗拖成负尺寸。 */
+test("floating window resize stops at the minimum size", async ({ page }) => {
+  await page.goto("/");
+  await openWorkspace(page);
+  await setUiScale(page, 2);
+  await page.keyboard.press("Control+Alt+u");
+  await expect(page.locator(".dv-groupview-floating")).toBeVisible();
+  await page.waitForTimeout(300);
+
+  const before = (await floatingBox(page))!;
+  // 从右缘一直往左拖，远超最小宽度。
+  await dragResizeHandle(page, "right", -(before.width + 400), 0);
+
+  // 局部 px 才是夹取的量纲（`FLOATING_MINIMUM_SIZE` 也是局部 px）。
+  const local = await page
+    .locator(".dv-resize-container")
+    .first()
+    .evaluate((element) => {
+      const box = element as HTMLElement;
+      return { width: box.offsetWidth, height: box.offsetHeight };
+    });
+  expect(local.width).toBeGreaterThanOrEqual(240);
+  expect(local.width).toBeLessThanOrEqual(241);
+});

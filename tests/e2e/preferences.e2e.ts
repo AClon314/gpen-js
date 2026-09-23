@@ -255,6 +255,108 @@ test.describe("preferences panel", () => {
 });
 
 /**
+ * 浮窗在**页面滚动**时不能重落位（923 handoff §0 的回归）。
+ *
+ * 机制：`reclampFloatingGroups()` 挂在每帧布局末尾，而 `observeViewport` 监听 scroll →
+ * 页面每滚一帧就跑一次；它原来用 `parseFloat(style.left/top)` 读位置，`bottom/right`
+ * 对齐时拿到 `'auto'` → `NaN` → 误判越界 → 重落位到左上。修法：只在容器尺寸真的变了
+ * 才检查，并且用 `floatingLocalBox` 把 `auto` 对齐还原成局部盒。
+ */
+test("keeps its position while the page scrolls (bottom-aligned float)", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/");
+  await openWorkspace(page);
+  await openPreferences(page);
+
+  const float = page.locator(".dv-groupview-floating");
+  const overlay = page.locator(".dv-resize-container").first();
+  await expect(float).toBeVisible();
+
+  // 把浮窗拖到下半部分 → dockview 改用 bottom 对齐（`style.top = auto`）。
+  const grip = (await page
+    .locator(".dv-resize-container .dv-floating-titlebar")
+    .first()
+    .boundingBox())!;
+  await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2 + 120, { steps: 8 });
+  await page.mouse.up();
+  await page.waitForTimeout(250);
+
+  const alignment = await overlay.evaluate((element) => ({
+    top: element.style.top,
+    bottom: element.style.bottom,
+  }));
+  expect(alignment.top).toBe("auto");
+  expect(alignment.bottom).not.toBe("auto");
+  const before = (await float.boundingBox())!;
+
+  // 在视口那一格（洞）上滚轮让页面滚动：容器尺寸不变。
+  const canvas = (await page.locator("canvas.stroke-surface").boundingBox())!;
+  await page.mouse.move(canvas.x + 30, canvas.y + 30);
+  await page.mouse.wheel(0, 500);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  await page.waitForTimeout(300);
+
+  // 回归时浮窗会跳到左上（视觉 y 从 280 → 140），这里必须纹丝不动。
+  const after = (await float.boundingBox())!;
+  expect(Math.round(after.x)).toBe(Math.round(before.x));
+  expect(Math.round(after.y)).toBe(Math.round(before.y));
+});
+
+/**
+ * 偏好设置面板的滚动只发生在**面板这一层**（923 handoff §1）。
+ *
+ * 根因是 flex：面板是 `display:flex; flex-direction:column; overflow:auto`，而卡片默认
+ * `flex-shrink: 1`，内容变高时 flex 先把每张卡片压扁（`overflow: hidden` 把裁切变成
+ * 静默丢失），于是面板自己的 `scrollHeight` 永远不溢出、也没有滚动条。
+ * 修法是 `.blender-panel-preferences > .property-card { flex: 0 0 auto }`。
+ */
+test("scrolls in the panel, not inside a card", async ({ page }) => {
+  await page.setViewportSize({ width: 420, height: 360 });
+  await page.goto("/");
+  await openWorkspace(page);
+  await openPreferences(page);
+
+  const panel = page.locator(".blender-panel-preferences");
+  const panelBox = await panel.evaluate((element) => ({
+    scrollHeight: element.scrollHeight,
+    clientHeight: element.clientHeight,
+  }));
+  // 内容比容器高：面板自己必须能滚（回归时两者相等 → 面板永远不滚）。
+  expect(panelBox.scrollHeight).toBeGreaterThan(panelBox.clientHeight + 1);
+
+  // 每张卡片按内容撑开，没有被裁（回归时卡片 clientHeight 77 / scrollHeight 201）。
+  const clipped = await panel
+    .locator(".property-card")
+    .evaluateAll((cards) =>
+      cards
+        .filter((card) => card.scrollHeight > card.clientHeight + 1)
+        .map((card) => card.querySelector("h2")?.textContent ?? "?"),
+    );
+  expect(clipped).toEqual([]);
+
+  // 面板子树里不允许出现第二个显式的滚动容器（`auto` / `scroll` / `overlay`）。
+  const nested = await panel.evaluate((root) => {
+    const found: string[] = [];
+    const walk = (element: Element) => {
+      if (element !== root) {
+        const overflowY = getComputedStyle(element).overflowY;
+        const scrollContainer =
+          overflowY === "auto" || overflowY === "scroll" || overflowY === "overlay";
+        if (scrollContainer && element.scrollHeight > element.clientHeight + 1) {
+          found.push(element.className || element.tagName);
+        }
+      }
+      for (const child of element.children) walk(child);
+    };
+    walk(root);
+    return found;
+  });
+  expect(nested).toEqual([]);
+});
+
+/**
  * 浮窗夹回（回归 `docs/panel.md` 的已知缺口）：`floatingGroupBounds` 只约束**用户拖动**，
  * 容器变小（横竖屏切换 / 拖窗口）与还原布局时浮窗会按老尺寸留在原地、甚至有一半在屏外。
  * 修法见 `workspacePanelLayout.ts` 的 `reclampFloatingGroups()`：每趟布局末尾只把

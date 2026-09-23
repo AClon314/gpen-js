@@ -137,6 +137,13 @@ dockview.addPanel({
    在 `$effect` 里回发 → 把默认 `toolbarState` 写进文档（实测 352 → 720 字节，还多一条 undo）。
    修法是回退值**必须等于协议默认值**（`DEFAULT_BRUSH_SIZE` 等），配合 `changedFields` 守卫；
    `preferences.e2e.ts` 有一条「打开面板前后文档字节数不变 + Ctrl+Z 能退回笔画」的回归。
+8. **卡片被 flex 压扁 → 面板永远不滚**（923 handoff §1）：面板是
+   `display:flex; flex-direction:column; overflow:auto`，卡片默认 `flex-shrink: 1`，内容变高时
+   flex 先把每张卡片压扁（`overflow: hidden` 把裁切变成静默丢失），于是面板自己的
+   `scrollHeight` 不溢出、也没有滚动条。修法是
+   `.blender-panel-preferences > .property-card { flex: 0 0 auto }`（作用域限定，
+   `Properties.svelte` 那边是普通块布局，不能一起改）。回归见 `preferences.e2e.ts` 的
+   「scrolls in the panel, not inside a card」。
 
 ## 自动保存间隔：真的接了
 

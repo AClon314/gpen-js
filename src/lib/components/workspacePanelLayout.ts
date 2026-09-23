@@ -29,6 +29,7 @@ import {
   COLUMN_MINIMUM_WIDTHS,
   minimumColumnWidths,
 } from "./workspaceLayout.js";
+import { floatingLocalBox } from "./workspaceFloatingGeometry.js";
 
 export const STATUS_BAR_PANEL_ID = "statusbar";
 
@@ -85,6 +86,12 @@ export function createPanelLayoutController(deps: PanelLayoutDeps): PanelLayoutC
   let applyDefaultSizes = false;
   /** 有「尺寸已定」的快照还没记（见 `handleLayoutEvent` 与 `schedule`）。 */
   let layoutDirty = false;
+  /**
+   * 上一次夹回检查时的容器尺寸。滚动 / pinch 平移不改容器尺寸，却会让 `observeViewport`
+   * 每帧触发一次 `schedule()` —— 若每帧都检查浮窗，`bottom/right` 对齐的浮窗会被
+   * 误判成越界而反复重落位（见 `reclampFloatingGroups`）。所以只在尺寸真的变了时检查。
+   */
+  let lastReclampSize: { width: number; height: number } | undefined;
 
   function instance(): DockviewApi | undefined {
     return deps.getDockview();
@@ -287,6 +294,13 @@ export function createPanelLayoutController(deps: PanelLayoutDeps): PanelLayoutC
    *
    * `addFloatingGroup(panel, …)` 对已在浮动的组是「删组 + 重建浮窗」（面板实例不销毁），
    * 所以只在真的越界时才调，别每帧都调。
+   *
+   * 两个容易踩的点：
+   *
+   * 1. **只在容器尺寸变了才检查**（滚动 / pinch 平移不改容器尺寸，但会每帧触发
+   *    `schedule()`；不设这道闸，`bottom/right` 对齐的浮窗每帧都会被重落位）；
+   * 2. 位置用 `floatingLocalBox` 读 —— dockview 拖到容器下半部分会把 `top` 写成 `auto`、
+   *    改用 `bottom` 对齐，`parseFloat('auto')` 是 `NaN`，会被误判成「装不下」。
    */
   function reclampFloatingGroups(): void {
     const dockview = instance();
@@ -294,24 +308,25 @@ export function createPanelLayoutController(deps: PanelLayoutDeps): PanelLayoutC
     if (!dockview || !container) return;
     const box = { width: container.clientWidth, height: container.clientHeight };
     if (box.width <= 0 || box.height <= 0) return;
+    const previous = lastReclampSize;
+    if (previous && previous.width === box.width && previous.height === box.height) return;
+    lastReclampSize = { width: box.width, height: box.height };
     for (const group of dockview.groups) {
       if (group.api.location.type !== "floating") continue;
       const element = group.element.closest<HTMLElement>(".dv-resize-container");
       if (!element) continue;
-      const left = Number.parseFloat(element.style.left);
-      const top = Number.parseFloat(element.style.top);
-      const width = element.offsetWidth;
-      const height = element.offsetHeight;
+      const local = floatingLocalBox(element, container);
       const inside =
-        Number.isFinite(left) &&
-        Number.isFinite(top) &&
-        left >= 0 &&
-        top >= 0 &&
-        left + width <= box.width + 1 &&
-        top + height <= box.height + 1;
+        local.left >= 0 &&
+        local.top >= 0 &&
+        local.left + local.width <= box.width + 1 &&
+        local.top + local.height <= box.height + 1;
       if (inside) continue;
       const panelId = group.activePanel?.id ?? group.id;
-      const preferred = deps.getFloatingPreferred(panelId) ?? { width, height };
+      const preferred = deps.getFloatingPreferred(panelId) ?? {
+        width: local.width,
+        height: local.height,
+      };
       const bounds = centeredFloatingBounds(box, preferred, deps.getFloatingMargin());
       dockview.addFloatingGroup(group, bounds);
     }

@@ -52,9 +52,11 @@
   - **浮窗拖动**（实测 2× 时 10px → 1328px）：dockview 的实现连 `offset` 与夹取边界都是
     `getBoundingClientRect()` 派生的，改坐标救不回来，所以 `components/workspaceFloatingDrag.ts`
     在 `zoom ≠ 1` 时直接接管拖动（自己算局部增量、夹在容器局部盒内、写 `left/top`）。
-  `zoom = 1` 时三者都不介入。
-  **已知缺口**：浮窗的 **resize 手柄**走的是同一套混单位数学（实测 10px → 856px），
-  `zoom ≠ 1` 时按 `.gpen-zoomed` 直接禁用（宁可没有这个交互，也不要乱跳）。
+  - **浮窗 resize**（实测 2× 时 10px → 尺寸变化 856px）：同一套混单位数学，
+    `components/workspaceFloatingResize.ts` 在 `zoom ≠ 1` 时接管八个方向的手柄
+    （`Δ/zoom` 得到局部增量，夹在 `FLOATING_MINIMUM_SIZE` 与容器局部盒之间）。
+  三者共用 `components/workspaceFloatingGeometry.ts` 的 `floatingLocalBox()`
+  （认 `bottom/right` 对齐）与 `clamp()`；`zoom = 1` 时都不介入。
 - **CodeArea 是 viewport 组里的「文件 tab」**（`areas/CodeArea.svelte`，一个组件服务所有
   数据源，面板 id 是 `codearea:<sourceId>`）：默认当 `viewport` 组的新 tab 打开，切过去时那一组
   不再是「洞」；**不跨会话保留**，还原因此会在 `fromJSON` 之后把它们摘掉。它的数据同步、
@@ -89,6 +91,10 @@
   (1,27)、下边缘到 519（重载后一样）。
   只动**装不下**的浮窗（`centeredFloatingBounds`：缩到装得下 + 居中），
   装得下的不碰——用户自己摆好的位置不会被窗口 resize 重置。
+  两个坑（923 handoff §0 的回归）：**只在容器尺寸真的变了才检查**（滚动 / pinch 平移不改
+  容器尺寸，却会每帧触发一次 `schedule()`）；位置用 `floatingLocalBox()` 读
+  ——dockview 拖到容器下半部分会把 `top` 写成 `auto`、改用 `bottom` 对齐，
+  `parseFloat('auto')` 是 `NaN`，会被误判成越界而每帧重落位到左上。
 - **默认尺寸**在首次 layout 之后用 `group.api.setSize()` 显式设置：`addPanel` 的
   `initialWidth` / `initialHeight` 只对“新建组”的面板生效，split 出来的组会退回组最小值。
 - **持久化**：`panelLayout` 存 dockview 的 `toJSON()`，`uiScale` / `activeTool` / 浮球位置

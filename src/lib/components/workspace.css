@@ -92,13 +92,8 @@
 		pointer-events: auto;
 	}
 
-	/* 缩放 ≠ 1 时禁用浮窗的 resize 手柄：它走的是与浮窗拖动同一套混单位数学
-	 * （把 `getBoundingClientRect()` 的视觉 px 当容器 px），实测 uiScale=2 时拖 10px
-	 * 尺寸变化 856px。**宁可没有这个交互，也不要让它乱跳**；拖动本身已由
-	 * `workspaceFloatingDrag.ts` 接管。class 由 GpenWorkspace 的 zoom effect 维护。 */
-	.dockview-container.gpen-zoomed [class^='dv-resize-handle'] {
-		pointer-events: none;
-	}
+	/* 浮窗的 resize 手柄在 `zoom ≠ 1` 下由 `workspaceFloatingResize.ts` 接管
+	 * （dockview 的实现把视觉 px 当容器 px 用）；`zoom = 1` 时完全不介入。 */
 
 	/* Chrome panels are not dockable work areas: their title bar would only
 	 * repeat what the panel already shows, and the tool rail is too narrow for a

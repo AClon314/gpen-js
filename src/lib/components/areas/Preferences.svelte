@@ -373,6 +373,14 @@
 		padding: 0.6lh 1.25ch;
 	}
 
+	/* 卡片不参与 flex 收缩：面板是唯一的滚动容器。默认的 `flex-shrink: 1` 会在内容
+	   变高时先压缩每张卡片（`overflow: hidden` 把裁切变成静默丢失 + 子滚动条），
+	   于是面板自己的 `scrollHeight` 看起来永远不溢出。见 923 handoff §1。
+	   选择器限定在设置面板下：`Properties.svelte` 也用 `.property-card`，那边是普通块布局。 */
+	.blender-panel-preferences > .property-card {
+		flex: 0 0 auto;
+	}
+
 	.scale-control {
 		display: flex;
 		align-items: center;
