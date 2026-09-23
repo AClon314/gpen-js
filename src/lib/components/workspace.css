@@ -50,22 +50,6 @@
 		visibility: hidden;
 	}
 
-	/* 沉浸模式：隐藏四周面板，视口洞 = 整个可视区。与 minimized 一样必须写到整棵子树
-	 * （dockview 的 `.visible` 会顶掉继承的 hidden）。区别是语义与入口：沉浸模式保留
-	 * 绘制面（T4 起由画布接管），只由 GpenOverlay 的退出按钮 / Esc 退出。 */
-	.dockview-container.immersive,
-	.dockview-container.immersive * {
-		visibility: hidden;
-	}
-
-	/* 沉浸模式保留视口那一组（含画布）：chrome 全隐，但绘制面不能跟着消失。
-	 * 注意洞仍只占它原来的 dockview 格位，不会铺满整个可视区（网格没变，
-	 * 见 docs/stroke.md 的已知缺口）。 */
-	.dockview-container.immersive .dv-groupview.gpen-hole,
-	.dockview-container.immersive .dv-groupview.gpen-hole * {
-		visibility: visible;
-	}
-
 	/* dockview 的 shell 和 content 层不上色，由面板组件自己画表面。
 	 * group 层保留 `--dv-group-view-background-color`（= chrome 底色）。 */
 	.dockview-container .dv-dockview,

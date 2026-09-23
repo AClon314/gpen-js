@@ -1,6 +1,7 @@
 <script lang="ts">
 	import '@spectrum-web-components/icons-workflow/icons/sp-icon-brush.js';
 	import '@spectrum-web-components/icons-workflow/icons/sp-icon-color-fill.js';
+	import '@spectrum-web-components/icons-workflow/icons/sp-icon-cursor-click.js';
 	import '@spectrum-web-components/icons-workflow/icons/sp-icon-erase.js';
 	import '@spectrum-web-components/icons-workflow/icons/sp-icon-eyedropper.js';
 	import '@spectrum-web-components/icons-workflow/icons/sp-icon-lasso-select.js';
@@ -34,7 +35,8 @@
 		{ id: 'select', tag: 'sp-icon-selection', label: '选择' },
 		{ id: 'picker', tag: 'sp-icon-eyedropper', label: '吸管' },
 		{ id: 'transform', tag: 'sp-icon-move', label: '变换' },
-		{ id: 'more', tag: 'sp-icon-more', label: '更多工具' }
+		{ id: 'more', tag: 'sp-icon-more', label: '更多工具' },
+		{ id: 'page', tag: 'sp-icon-cursor-click', label: '网页交互' }
 	];
 </script>
 

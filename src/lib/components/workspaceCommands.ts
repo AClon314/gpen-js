@@ -24,8 +24,6 @@ export interface WorkspaceCommandDeps {
   /** Start inline renaming of the active outliner row; false when there is none. */
   renameActive(): boolean;
   resetPanelLayout(): void;
-  toggleImmersive(): void;
-  immersive(): boolean;
   toggleStatusBar(): void;
   statusBarVisible(): boolean;
   /** Flush the document to gpenBinary immediately (no debounce). */
@@ -60,7 +58,6 @@ export const GPEN_COMMAND_IDS = {
   redo: "gpen.redo",
   renameActive: "gpen.rename_active",
   resetPanelLayout: "gpen.reset_panel_layout",
-  toggleImmersive: "gpen.toggle_immersive",
   toggleStatusBar: "gpen.toggle_statusbar",
   toggleFullscreen: "gpen.toggle_fullscreen",
   save: "gpen.save",
@@ -127,11 +124,6 @@ export function registerWorkspaceCommands(deps: WorkspaceCommandDeps): () => voi
       id: GPEN_COMMAND_IDS.resetPanelLayout,
       label: "重置面板布局",
       run: () => deps.resetPanelLayout(),
-    }),
-    registerCommand({
-      id: GPEN_COMMAND_IDS.toggleImmersive,
-      label: () => (deps.immersive() ? "退出沉浸模式" : "沉浸模式"),
-      run: () => deps.toggleImmersive(),
     }),
     registerCommand({
       id: GPEN_COMMAND_IDS.toggleStatusBar,

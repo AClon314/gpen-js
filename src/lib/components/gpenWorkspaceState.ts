@@ -14,9 +14,9 @@ export const UI_SCALE_STEP = 0.25;
 export const UI_SCALE_DEFAULT = 1;
 
 /**
- * Drawing tools only. "Give the page back to the user" is not a tool any more —
- * it is the workspace's minimize action (see `collapsed`), so it lives in the
- * title bar instead of the tool rail.
+ * Tools shown in the rail: drawing tools plus `page`, which gives the pointer
+ * back to the host page (the drawing surface leaves hit testing). Hiding the
+ * whole workspace is the title bar's minimize action (see `collapsed`).
  */
 export const TOOL_IDS = [
   "brush",
@@ -27,6 +27,7 @@ export const TOOL_IDS = [
   "picker",
   "transform",
   "more",
+  "page",
 ] as const;
 
 export type GpenToolId = (typeof TOOL_IDS)[number];
@@ -54,14 +55,8 @@ export interface GpenWorkspaceState {
   version: 1;
   uiScale: number;
   open: boolean;
+  /** 最小化：整个工作区收走，只剩「显示面板 / 关闭」两个浮起按钮。 */
   collapsed: boolean;
-  /**
-   * 沉浸模式：隐藏全部 dockview chrome，视口洞扩到整个可视区（Blender 的"最大化区域"）。
-   * 与 `collapsed`（最小化）的区别：最小化是把工作区
-   * 整体收走、只剩还原/关闭两个按钮；沉浸模式保留绘制面（T4 起由画布接管），
-   * 只是不显示面板，所以页面原点 (0,0) 也可见可交互。
-   */
-  immersive: boolean;
   activeTool: GpenToolId;
   panelLayout: GpenPanelLayout | null;
   ballPosition: GpenBallPosition | null;
@@ -93,7 +88,6 @@ export function createDefaultGpenWorkspaceState(): GpenWorkspaceState {
     uiScale: UI_SCALE_DEFAULT,
     open: false,
     collapsed: false,
-    immersive: false,
     activeTool: "brush",
     panelLayout: null,
     ballPosition: null,
@@ -153,7 +147,6 @@ export function normalizeGpenWorkspaceState(
         : fallback.uiScale,
     open: typeof source.open === "boolean" ? source.open : fallback.open,
     collapsed: typeof source.collapsed === "boolean" ? source.collapsed : fallback.collapsed,
-    immersive: typeof source.immersive === "boolean" ? source.immersive : fallback.immersive,
     activeTool: isToolId(source.activeTool) ? source.activeTool : fallback.activeTool,
     panelLayout,
     ballPosition,
@@ -166,7 +159,6 @@ export function serializeGpenWorkspaceState(state: GpenWorkspaceState): GpenWork
     uiScale: normalizeUiScale(state.uiScale),
     open: state.open,
     collapsed: state.collapsed,
-    immersive: state.immersive,
     activeTool: state.activeTool,
     panelLayout: normalizePanelLayout(state.panelLayout),
     ballPosition: normalizeBallPosition(state.ballPosition),

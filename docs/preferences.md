@@ -8,7 +8,7 @@
 | --- | --- | --- | --- |
 | 用户偏好（跨文档 / 跨工作区） | `GpenPreferences` | `gpen.preferences` KV（**新根**） | 主题、语言、默认工具、显示状态栏、自动保存间隔 |
 | 工具栏 / 会话 | 协议 `ToolbarState` | `Gpen.toolbarState`（文档 field 10） | 画笔尺寸 / 颜色 / 强度、橡皮模式 / 尺寸 |
-| 工作区布局 | `GpenWorkspaceState` | `gpen.workspaceState` KV | panelLayout、immersive、ballPosition、uiScale、activeTool |
+| 工作区布局 | `GpenWorkspaceState` | `gpen.workspaceState` KV | panelLayout、ballPosition、uiScale、activeTool |
 
 **必须是三个 KV 根**：`createKvStorage` 每个实例持有一份内存根、`submit()` 整根写回同一个
 IndexedDB key，共用根会互相覆盖命名空间（`tests/gpenPreferences.test.ts` 有一条用例

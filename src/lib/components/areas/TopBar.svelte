@@ -2,8 +2,6 @@
 	import '@spectrum-web-components/icons-workflow/icons/sp-icon-brush.js';
 	import '@spectrum-web-components/icons-workflow/icons/sp-icon-chevron-down.js';
 	import '@spectrum-web-components/icons-workflow/icons/sp-icon-close.js';
-	import '@spectrum-web-components/icons-workflow/icons/sp-icon-full-screen-exit.js';
-	import '@spectrum-web-components/icons-workflow/icons/sp-icon-full-screen.js';
 	import '@spectrum-web-components/icons-workflow/icons/sp-icon-minimize.js';
 	import '@spectrum-web-components/icons-workflow/icons/sp-icon-settings.js';
 
@@ -31,7 +29,6 @@
 		state,
 		onChangeUiScale,
 		onResetUiScale,
-		onToggleImmersive,
 		onMinimize,
 		onClose,
 		onOpenPreferences
@@ -39,7 +36,6 @@
 		state?: GpenWorkspaceState;
 		onChangeUiScale?: (delta: number) => void;
 		onResetUiScale?: () => void;
-		onToggleImmersive?: () => void;
 		onMinimize?: () => void;
 		onClose?: () => void;
 		onOpenPreferences?: () => void;
@@ -158,29 +154,12 @@
 				>+</button>
 			</div>
 
-			{#if onToggleImmersive}
-				<button
-					class="gpen-panel-button title-bar-button"
-					type="button"
-					aria-label={state?.immersive ? '退出沉浸模式' : '进入沉浸模式'}
-					title={state?.immersive ? '退出沉浸模式（只留绘制面）' : '沉浸模式（隐藏面板，最大化绘制面）'}
-					aria-pressed={state?.immersive ?? false}
-					onclick={onToggleImmersive}
-				>
-					{#if state?.immersive}
-						<sp-icon-full-screen-exit></sp-icon-full-screen-exit>
-					{:else}
-						<sp-icon-full-screen></sp-icon-full-screen>
-					{/if}
-				</button>
-			{/if}
-
 			{#if onMinimize}
 				<button
 					class="gpen-panel-button title-bar-button"
 					type="button"
-					aria-label="最小化 gpen（把网页交还给页面）"
-					title="最小化（把指针交还给网页）"
+					aria-label="隐藏面板"
+					title="隐藏面板（把整个工作区收起来）"
 					onclick={onMinimize}
 				>
 					<sp-icon-minimize></sp-icon-minimize>
@@ -322,7 +301,7 @@
 
 	/* 窄容器：依次让出「装饰性 / 别处也有」的动作，把宽度还给菜单。
 	   工作区名只是个标签（没有 onclick）；界面缩放在偏好设置里有同一项。
-	   沉浸 / 最小化 / 关闭是外壳控件，任何宽度都留在原位。
+	   最小化 / 关闭是外壳控件，任何宽度都留在原位。
 	   阈值按实测档位定（本行 1ch ≈ 7.4px）：一行菜单的自然宽度 = 8 个菜单 367px
 	   + 完整动作组 ≈ 620px（84ch），去掉工作区名后 ≈ 460px（62ch）。 */
 	@container (max-width: 84ch) {

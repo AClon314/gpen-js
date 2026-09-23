@@ -157,7 +157,6 @@ describe("menu bar model", () => {
     expect(settings.map((item) => item.command)).toContain(GPEN_COMMAND_IDS.openPreferences);
     const windowItems = windowMenuItems().map((item) => item.command);
     expect(windowItems).toContain(GPEN_COMMAND_IDS.resetPanelLayout);
-    expect(windowItems).toContain(GPEN_COMMAND_IDS.toggleImmersive);
     expect(windowItems).toContain(GPEN_COMMAND_IDS.toggleFullscreen);
     expect(getCommand(GPEN_COMMAND_IDS.resetPanelLayout)).toBeDefined();
   });

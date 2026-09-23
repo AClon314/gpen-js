@@ -120,7 +120,6 @@ export function renderMenuItems(): MenuItem[] {
 export function windowMenuItems(): MenuItem[] {
   return [
     { command: GPEN_COMMAND_IDS.resetPanelLayout, order: 10 },
-    { command: GPEN_COMMAND_IDS.toggleImmersive, order: 20 },
     { command: GPEN_COMMAND_IDS.toggleFullscreen, order: 30 },
     { separator: true, order: 40 },
     todo("新建窗口", 50),

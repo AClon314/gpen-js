@@ -25,11 +25,11 @@ type ActiveCanvas = {
  * The spacer touches none of that: content coordinates stay 0-based,
  * `scrollY = 0` still means the top of the page and the scrollbar stays.
  *
- * Limitation (accepted, paired with immersive mode): the spacer starts at the
+ * Limitation (accepted, no immersive fallback): the spacer starts at the
  * document origin and scroll cannot be negative, so page pixels with `x <
  * rail width` or `y < menu height` can never scroll into the viewport hole.
- * Immersive mode hides the chrome so those pixels are visible/interactive
- * anyway.
+ * The immersive mode that used to reveal them is gone; only the `page` tool
+ * gives the pointer back, and only inside the hole.
  */
 export function applyInfiniteCanvas(options: { surface?: number } = {}): InfiniteCanvas {
   if (activeCanvas) return activeCanvas.handle;

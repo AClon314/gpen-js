@@ -130,11 +130,8 @@ test.describe("gpen embed", () => {
     }));
     expect(center.hitOverlay).toBe(true);
 
-    // 交还网页 = 最小化（工作区整体隐藏，画布也不再命中）。
-    await page
-      .locator("#gpen-host")
-      .locator("button[aria-label='最小化 gpen（把网页交还给页面）']")
-      .click();
+    // 隐藏面板（工作区整体隐藏，画布也不再命中）。
+    await page.locator("#gpen-host").locator("button[aria-label='隐藏面板']").click();
     await expect(page.locator("#gpen-host").locator(".dockview-container")).toBeHidden();
     expect(
       await page.evaluate(() =>

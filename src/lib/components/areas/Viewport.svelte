@@ -12,6 +12,7 @@
 	// 视口本身是 overlay 上的一个洞：宿主网页从它中间透出来，所以这里**不画背景**。
 	// T4 起洞里多了一层画布（`.stroke-surface`）：它是绘制面，Pointer 事件归它，
 	// 但**不拦滚轮**——相机仍是原生滚动（滚轮冒泡去滚页面就是平移）。
+	// 例外：选中 `page`（网页交互）工具时画布退出命中测试，指针直接落到宿主网页。
 	//
 	// 小地图映射的是宿主网页的滚动范围：拖动 / 方向键平移就是在 `window.scrollTo`
 	// 平移网页（overlay 跟着 visualViewport 走，所以工作区不动，洞里的内容在动）。
@@ -112,7 +113,11 @@
 	});
 </script>
 
-<div class="blender-panel blender-panel-viewport" aria-label="视口">
+<div
+	class="blender-panel blender-panel-viewport"
+	class:page-mode={activeTool === 'page'}
+	aria-label="视口"
+>
 	<canvas class="stroke-surface" bind:this={canvas} aria-label="绘制画布"></canvas>
 
 	<div class="viewport-overlays">
@@ -170,6 +175,12 @@
 		touch-action: none;
 		cursor: crosshair;
 		user-select: none;
+	}
+
+	/* 网页交互工具：绘制面退出命中测试，宿主网页从洞里直接拿指针。 */
+	.blender-panel-viewport.page-mode .stroke-surface {
+		pointer-events: none;
+		cursor: default;
 	}
 
 	.viewport-overlays {

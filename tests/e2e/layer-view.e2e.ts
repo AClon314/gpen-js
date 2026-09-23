@@ -3,7 +3,7 @@ import { expect, test, type Page } from "playwright/test";
 import { openWorkspace } from "./helpers/workspace";
 
 /**
- * T3 回归：相机（spacer）、Web 图层旋转、沉浸模式。
+ * T3 回归：相机（spacer）、Web 图层旋转；以及 `page`（网页交互）工具。
  *
  * 用首页 `/`：它的 `main` 足够高（`'测试'.repeat(9999)`），能同时测到「绕视口中心
  * 旋转不会把正在看的内容甩出视口」和「相机 spacer 扩大滚动范围」。
@@ -135,23 +135,34 @@ test.describe("web layer rotation", () => {
   });
 });
 
-test.describe("immersive mode", () => {
-  test("makes the page origin interactive and exits with Escape", async ({ page }) => {
+test.describe("page tool", () => {
+  test("gives the pointer back to the page and restores drawing", async ({ page }) => {
     await page.goto("/");
-    await openWorkspace(page);
+    await openWorkspace(page, { canvas: true });
 
-    await page.getByLabel("进入沉浸模式").click();
-    await expect(page.locator(".immersive-exit")).toBeVisible();
+    // 绘制模式：画布吃指针。
+    await expect(page.locator("canvas.stroke-surface")).toHaveCSS("pointer-events", "auto");
 
-    // 页面 (0,0) 必须回到页面手里：没有 chrome 覆盖它。
+    const tools = page.locator(".blender-panel-tools");
+    await tools.getByLabel("网页交互").click();
+    await expect
+      .poll(() =>
+        page.locator("canvas.stroke-surface").evaluate((el) => getComputedStyle(el).pointerEvents),
+      )
+      .toBe("none");
+
+    // 洞中心归宿主网页：命中的元素不在 gpen overlay 里。
     const hit = await page.evaluate(() => {
-      const element = document.elementFromPoint(2, 2);
+      const element = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2);
       return { inOverlay: Boolean(element?.closest(".gpen-overlay")) };
     });
     expect(hit.inOverlay).toBe(false);
 
-    await page.keyboard.press("Escape");
-    await expect(page.getByLabel("进入沉浸模式")).toBeVisible();
-    await expect(page.locator(".blender-panel-menu")).toBeVisible();
+    await tools.getByLabel("画笔").click();
+    await expect
+      .poll(() =>
+        page.locator("canvas.stroke-surface").evaluate((el) => getComputedStyle(el).pointerEvents),
+      )
+      .toBe("auto");
   });
 });

@@ -190,10 +190,6 @@
 		layerView?.setRotation(next);
 	}
 
-	function toggleImmersive() {
-		workspaceState.immersive = !workspaceState.immersive;
-	}
-
 	function selectTool(tool: GpenToolId) {
 		workspaceState.activeTool = tool;
 		// 同步一份到协议 `ToolbarState.activeToolId`（handoff §6.1）：UI 真值仍是
@@ -425,8 +421,6 @@
 			canRedo: () => session.canRedo(),
 			renameActive: requestRenameActive,
 			resetPanelLayout: () => panelLayout.reset(),
-			toggleImmersive,
-			immersive: () => workspaceState.immersive,
 			toggleStatusBar,
 			statusBarVisible: () => dockview?.getPanel(STATUS_BAR_PANEL_ID) !== undefined,
 			save: () => void session.saveNow(),
@@ -762,7 +756,6 @@
 				state: workspaceState,
 				onChangeUiScale: changeUiScale,
 				onResetUiScale: resetUiScale,
-				onToggleImmersive: toggleImmersive,
 				onOpenPreferences: openPreferences,
 				onMinimize,
 				onClose
@@ -956,7 +949,6 @@
 	bind:this={container}
 	class="dockview-container"
 	class:minimized
-	class:immersive={workspaceState.immersive}
 	style:width={containerWidth}
 	style:height={containerHeight}
 	style:zoom={workspaceZoom}

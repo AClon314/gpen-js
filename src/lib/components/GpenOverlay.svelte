@@ -1,7 +1,6 @@
 <script lang="ts">
 	import '@spectrum-web-components/icons-workflow/icons/sp-icon-brush.js';
 	import '@spectrum-web-components/icons-workflow/icons/sp-icon-close.js';
-	import '@spectrum-web-components/icons-workflow/icons/sp-icon-full-screen-exit.js';
 	import '@spectrum-web-components/icons-workflow/icons/sp-icon-maximize.js';
 	import { onDestroy, onMount } from 'svelte';
 	import { draggable, type DragPosition } from '#lib/gestures/index';
@@ -33,12 +32,11 @@
 	}
 
 	/**
-	 * 最小化 = 把指针/触摸/键盘交还给网页：工作区整体隐藏（连带退出命中测试），
-	 * 只留两个图标按钮。`blur` 是为了不把软键盘/焦点留在工具栏按钮上。
+	 * 隐藏面板：工作区整体隐藏（连带退出命中测试），只留两个图标按钮。
+	 * `blur` 是为了不把软键盘/焦点留在工具栏按钮上。
 	 */
 	function minimizeWorkspace() {
 		workspaceState.collapsed = true;
-		workspaceState.immersive = false;
 		const active = document.activeElement;
 		if (active instanceof HTMLElement) active.blur();
 	}
@@ -50,11 +48,6 @@
 	function closeWorkspace() {
 		workspaceState.open = false;
 		workspaceState.collapsed = false;
-		workspaceState.immersive = false;
-	}
-
-	function exitImmersive() {
-		workspaceState.immersive = false;
 	}
 
 	function restoreWorkspace() {
@@ -63,9 +56,7 @@
 
 	function handleKeydown(event: KeyboardEvent) {
 		if (!workspaceState.open || event.key !== 'Escape') return;
-		// 沉浸模式里 Esc 先退沉浸（否则用户会被锁在无 chrome 状态里）。
-		if (workspaceState.immersive) exitImmersive();
-		else closeWorkspace();
+		closeWorkspace();
 	}
 
 	// Persist one serializable state object. The adapter currently bridges to
@@ -150,8 +141,8 @@
 		role="dialog"
 		aria-label="gpen 工作区"
 	>
-		<!-- 工作区始终挂载，最小化时只是 `visibility: hidden`：dockview 实例和面板
-		     尺寸都留着，还原不需要从存储里重建布局。 -->
+		<!-- 工作区始终挂载，隐藏面板时只是 `visibility: hidden`：dockview 实例和面板
+		     尺寸都留着，重新显示不需要从存储里重建布局。 -->
 		<GpenWorkspace
 			state={workspaceState}
 			minimized={workspaceState.collapsed}
@@ -160,13 +151,13 @@
 		/>
 
 		{#if workspaceState.collapsed}
-			<!-- 最小化后只留两个图标按钮：还原 / 关闭。 -->
+			<!-- 隐藏面板后只留两个图标按钮：显示面板 / 关闭。 -->
 			<div class="minimized-bar">
 				<button
 					class="restore-button"
 					type="button"
-					aria-label="还原 gpen 工作区"
-					title="还原工作区"
+					aria-label="显示面板"
+					title="显示面板"
 					onclick={restoreWorkspace}
 				>
 					<sp-icon-maximize></sp-icon-maximize>
@@ -179,20 +170,6 @@
 					onclick={closeWorkspace}
 				>
 					<sp-icon-close></sp-icon-close>
-				</button>
-			</div>
-		{:else if workspaceState.immersive}
-			<!-- 沉浸模式：chrome 全部隐藏，只留一个退出入口（Esc 同效）。 -->
-			<div class="immersive-bar">
-				<button
-					class="immersive-exit"
-					type="button"
-					aria-label="退出沉浸模式"
-					title="退出沉浸模式（Esc）"
-					onclick={exitImmersive}
-				>
-					<sp-icon-full-screen-exit></sp-icon-full-screen-exit>
-					<span>退出沉浸</span>
 				</button>
 			</div>
 		{/if}
@@ -234,14 +211,14 @@
 		pointer-events: none;
 	}
 
-	:where(.floating-button, .close-button, .restore-button, .immersive-exit) {
+	:where(.floating-button, .close-button, .restore-button) {
 		border: 1px solid var(--gpen-panel-border);
 		color: var(--gpen-panel-foreground);
 		font: 600 1rem/var(--gpen-line-height) var(--gpen-font-sans);
 		cursor: pointer;
 	}
 
-	:where(.floating-button, .close-button, .restore-button, .immersive-exit):focus-visible {
+	:where(.floating-button, .close-button, .restore-button):focus-visible {
 		outline: 2px solid var(--gpen-panel-accent);
 		outline-offset: 3px;
 	}
@@ -281,7 +258,7 @@
 		color: #fff;
 	}
 
-	/* 最小化后只剩这两个图标按钮，浮在网页右上角（展开态的同类按钮在标题栏里）。 */
+	/* 隐藏面板后只剩这两个图标按钮，浮在网页右上角（展开态的同类按钮在标题栏里）。 */
 	.minimized-bar {
 		position: absolute;
 		top: 0.5lh;
@@ -291,37 +268,6 @@
 		align-items: center;
 		gap: 0.75ch;
 		pointer-events: auto;
-	}
-
-	/* 沉浸模式下唯一的 chrome：浮在右下角，避免遮挡页面左上角（那是这个模式要救的像素）。 */
-	.immersive-bar {
-		position: absolute;
-		bottom: 1.5lh;
-		right: 2ch;
-		z-index: 30;
-		pointer-events: auto;
-	}
-
-	.immersive-exit {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.75ch;
-		box-sizing: border-box;
-		height: 2.4lh;
-		padding: 0 1.25ch;
-		border-radius: 99px;
-		background: var(--gpen-panel-background);
-		box-shadow: var(--gpen-panel-shadow);
-	}
-
-	.immersive-exit:hover {
-		border-color: var(--gpen-panel-accent);
-		color: var(--gpen-panel-accent);
-	}
-
-	.immersive-exit :global(sp-icon-full-screen-exit) {
-		--mod-icon-size: 1.2rem;
-		color: inherit;
 	}
 
 	:where(.restore-button, .close-button) {

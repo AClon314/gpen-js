@@ -147,9 +147,9 @@ test.describe("menu bar on a phone-width viewport", () => {
     // 溢出时每列右侧（顶栏动作按钮、属性面板）都会落到屏幕外。
     await expectInsideViewport(page, page.locator(".dv-groupview").first(), "网格");
 
-    // 顶栏右侧的外壳按钮（沉浸 / 最小化）必须真的在屏内，
+    // 顶栏右侧的外壳按钮（最小化 / 关闭）必须真的在屏内，
     // 否则「看得见半截、点不到」——网格溢出的直接后果。
-    for (const name of [/沉浸模式/, "最小化 gpen（把网页交还给页面）"]) {
+    for (const name of ["隐藏面板"]) {
       await expectInsideViewport(page, page.getByRole("button", { name }), String(name));
     }
   });
