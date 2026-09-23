@@ -176,8 +176,12 @@ cache: true, debounceMs: 250 })`：
 - **不可变 + 引用共享**：全部返回新文档；未命中的笔画原样返回引用
   （`eraseHard(doc, ...) === doc` 在不命中时成立）。`mapLayerStrokes` 按 `drawingIndex`
   去重，所以一个 drawing 被多帧引用时只擦一次。
-- **一次拖动 = 一条 undo**：橡皮是连续手势，`commitErase` 用
-  `history.commit(previous, { coalesceWith })` 把整次拖动合成一条，Ctrl+Z 一次退回拖动之前。
+- **一次拖动 = 一条 undo**：橡皮是连续手势，`commitErase` 在**手势第一步**
+  `pushUndo(previous)`（推入拖动之前的文档），之后每一步才 `{ coalesceWith }` 合并到它，
+  Ctrl+Z 一次退回拖动之前。**手势边界（pointerup / cancel）必须清掉合并目标**
+  （`endEraseGesture`）：第一步也走 coalesce 的话，`coalesceWith`（它是「替换最新一条」）
+  会把上一步动作的条目吃掉；不清合并目标的话，两次独立拖动会共用同一条。
+  回归：`tests/e2e/eraser.e2e.ts` 的「two separate eraser drags are two undo steps」。
 - **画布只上报采样点**：`strokeCanvas` 的 `onStroke(points)` / `onErase(point)` 给的是
   **图层局部坐标**；`GpenWorkspace.commitStroke` / `commitErase` 才把它们变成协议数据
   （画笔半径 / 颜色来自 `ToolbarState`，画布不拥有文档）。

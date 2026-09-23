@@ -167,6 +167,42 @@ test.describe("brush and eraser", () => {
     await expect.poll(() => countInk(page)).toBe(both);
   });
 
+  /**
+   * 两次**独立**橡皮拖动 = 两条 undo（`eraseGestureStart` 回归）。
+   *
+   * 预存在问题：`eraseGestureStart` 只赋不清，第二次拖动继续用第一次的 coalesce 目标，
+   * 于是 Ctrl+Z 一次把两次拖动都退回。修法是在手势边界（pointerup / cancel）清掉它，
+   * 见 `gpenDocumentSession.svelte.ts` 的 `endEraseGesture()`。
+   */
+  test("two separate eraser drags are two undo steps", async ({ page }) => {
+    await page.goto("/");
+    await openWorkspace(page, { canvas: true });
+    await openPreferences(page);
+    await setEraserMode(page, "笔画（整笔删除）");
+    await page.keyboard.press("Escape");
+
+    await drawLine(page, [0.3, 0.3], [0.6, 0.3]);
+    await drawLine(page, [0.3, 0.6], [0.6, 0.6]);
+    const both = await countInk(page);
+    expect(both).toBeGreaterThan(0);
+
+    await selectTool(page, "橡皮");
+    await eraseAlong(page, [0.3, 0.3], [0.6, 0.3]);
+    const afterFirst = await countInk(page);
+    expect(afterFirst).toBeLessThan(both);
+
+    await eraseAlong(page, [0.3, 0.6], [0.6, 0.6]);
+    const afterSecond = await countInk(page);
+    expect(afterSecond).toBeLessThan(afterFirst);
+
+    // 第一次 Ctrl+Z 只退回第二次拖动（回归时一次就退回两条）。
+    await page.keyboard.press("Control+z");
+    await expect.poll(() => countInk(page)).toBe(afterFirst);
+    // 第二次 Ctrl+Z 退回第一次拖动。
+    await page.keyboard.press("Control+z");
+    await expect.poll(() => countInk(page)).toBe(both);
+  });
+
   test("SOFT mode dims the stroke instead of deleting it", async ({ page }) => {
     await page.goto("/");
     await openWorkspace(page, { canvas: true });

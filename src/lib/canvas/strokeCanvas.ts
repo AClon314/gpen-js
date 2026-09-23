@@ -44,6 +44,12 @@ export interface StrokeCanvasDeps {
    * document and the erase algorithm (see `GpenWorkspace.commitErase`).
    */
   onErase?: (point: LayerPoint) => void;
+  /**
+   * Called once when an eraser gesture ends (pointerup / pointercancel).
+   * The caller uses it to close the coalesce group so the next drag is a new
+   * undo entry.
+   */
+  onEraseEnd?: () => void;
   /** Active tool; `eraser` turns the pointer stream into erase samples. */
   activeTool?: () => string;
   /** Brush radius in layer-local units (diameter → radius already applied). */
@@ -94,6 +100,8 @@ export function createStrokeCanvas(deps: StrokeCanvasDeps): StrokeCanvasHandle {
   let destroyed = false;
   /** Eraser: last reported position, so a drag does not spam identical samples. */
   let lastErase: LayerPoint | undefined;
+  /** Whether the current gesture is an eraser drag (reported on pointer end). */
+  let gestureWasErase = false;
 
   const isEraser = (): boolean => deps.activeTool?.() === "eraser";
 
@@ -207,6 +215,7 @@ export function createStrokeCanvas(deps: StrokeCanvasDeps): StrokeCanvasHandle {
     if (event.pointerType === "mouse" && event.button !== 0) return;
     event.preventDefault();
     activePointerId = event.pointerId;
+    gestureWasErase = isEraser();
     if (isEraser()) {
       const point = toLayer({ x: event.clientX, y: event.clientY });
       lastErase = point;
@@ -252,6 +261,10 @@ export function createStrokeCanvas(deps: StrokeCanvasDeps): StrokeCanvasHandle {
     inProgress = [];
     activePointerId = undefined;
     lastErase = undefined;
+    if (gestureWasErase) {
+      gestureWasErase = false;
+      deps.onEraseEnd?.();
+    }
     if (
       typeof canvas.hasPointerCapture === "function" &&
       canvas.hasPointerCapture(event.pointerId)
@@ -290,6 +303,7 @@ export function createStrokeCanvas(deps: StrokeCanvasDeps): StrokeCanvasHandle {
       inProgress = [];
       activePointerId = undefined;
       lastErase = undefined;
+      gestureWasErase = false;
     },
   };
 }

@@ -246,6 +246,7 @@
 		layerView: LayerView | undefined;
 		onStroke: (points: StrokePointInput[]) => void;
 		onErase: (point: { x: number; y: number }) => void;
+		onEraseEnd: () => void;
 		activeTool: GpenToolId;
 		brush: BrushSettingsT | undefined;
 		eraser: EraserSettingsT | undefined;
@@ -256,6 +257,7 @@
 		layerView: undefined,
 		onStroke: (points: StrokePointInput[]) => session.commitStroke(points),
 		onErase: (point: { x: number; y: number }) => session.commitErase(point),
+		onEraseEnd: () => session.endEraseGesture(),
 		activeTool: 'brush',
 		brush: undefined,
 		eraser: undefined

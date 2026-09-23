@@ -107,6 +107,13 @@ export interface GpenDocumentSession {
 
   commitStroke(points: StrokePointInput[]): void;
   commitErase(point: { x: number; y: number }): void;
+  /**
+   * 橡皮拖动结束（pointerup / pointercancel）：清掉 coalesce 目标。
+   *
+   * `eraseGestureStart` 只赋不清的话，两次独立拖动会共用同一个目标，
+   * Ctrl+Z 一次把两次都退回（见 `tests/e2e/eraser.e2e.ts` 的回归用例）。
+   */
+  endEraseGesture(): void;
 
   /** 立即刷盘（不等 debounce）。 */
   saveNow(): Promise<void>;
@@ -253,12 +260,28 @@ export function createGpenDocumentSession(): GpenDocumentSession {
         break;
     }
     if (next === current) return;
-    // 拖动中的连续擦除合成一条 undo：`coalesceWith` 用「本次拖动开始时的文档」
-    // 替换刚推入的那条，所以 Ctrl+Z 一次退回拖动之前。
-    const gestureStart = eraseGestureStart ?? current;
-    eraseGestureStart = gestureStart;
-    pushUndo(current, { coalesceWith: () => gestureStart });
+    // 拖动中的连续擦除合成一条 undo。**手势第一步要 push，之后才 coalesce**：
+    // `coalesceWith` 是「替换最新一条」，如果第一步也走 coalesce，它会把上一步
+    // （比如刚画的那一笔）的 undo 条目吃掉；第一步 push 的是「手势之前的文档」，
+    // 之后每一步只是把这条替换成同一个值（no-op）。
+    if (eraseGestureStart === undefined) {
+      eraseGestureStart = current;
+      pushUndo(current);
+    } else {
+      pushUndo(current, { coalesceWith: () => eraseGestureStart });
+    }
     assign(next);
+  }
+
+  /**
+   * 橡皮拖动结束（pointerup / pointercancel）。
+   *
+   * 必须在手势边界清掉 `eraseGestureStart`：它只赋不清的话，第二次独立拖动会继续用
+   * 第一次拖动开始时的文档当 coalesce 目标，Ctrl+Z 一次把两次拖动都退回（预存在问题，
+   * 2026-09-21 补回归用例后修）。
+   */
+  function endEraseGesture(): void {
+    eraseGestureStart = undefined;
   }
 
   /** 保存 = 立即刷盘（不等 debounce），失败只记日志。 */
@@ -527,6 +550,7 @@ export function createGpenDocumentSession(): GpenDocumentSession {
     canRedo: () => history.canRedo(),
     commitStroke,
     commitErase,
+    endEraseGesture,
     saveNow,
     clear,
     createNew,

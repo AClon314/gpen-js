@@ -23,6 +23,7 @@
 		layerView,
 		onStroke,
 		onErase,
+		onEraseEnd,
 		activeTool = 'brush',
 		brush,
 		eraser
@@ -39,6 +40,8 @@
 		onStroke?: (points: StrokePointInput[]) => void;
 		/** 橡皮拖动中每个采样点回调（图层局部坐标）。 */
 		onErase?: (point: { x: number; y: number }) => void;
+		/** 橡皮拖动结束（pointerup / cancel）：关掉 undo 的合并组。 */
+		onEraseEnd?: () => void;
 		/** 当前工具 id（`brush` / `eraser` …）。 */
 		activeTool?: GpenToolId;
 		/** 协议 `ToolbarState.brush`（画笔半径 / 颜色来源）。 */
@@ -97,6 +100,7 @@
 				view: () => layerView,
 				onStroke: (points) => onStroke?.(points),
 				onErase: (point) => onErase?.(point),
+				onEraseEnd: () => onEraseEnd?.(),
 				activeTool: () => activeTool,
 				brushRadius: () =>
 					activeTool === 'eraser' ? eraserRadiusOf(eraser) : brushRadiusOf(brush),
