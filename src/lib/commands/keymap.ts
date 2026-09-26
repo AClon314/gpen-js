@@ -66,25 +66,40 @@ export function isTextEntryTarget(target: EventTarget | null): boolean {
   return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
 }
 
-/** Register a key binding. Returns a disposer for *this* registration. */
-export function registerKeyBinding(binding: KeyBinding): () => void {
-  if (!binding || typeof binding.command !== "string" || binding.command.length === 0) {
+/** Validate the command id of a binding; throws `TypeError` when missing. */
+function assertBindingCommand(binding: KeyBinding): void {
+  if (typeof binding?.command !== "string" || binding.command.length === 0) {
     throw new TypeError("registerKeyBinding requires a command id");
   }
-  const chords = typeof binding.key === "string" ? [binding.key] : binding.key;
-  const tokens = chords.map((chord) => {
+}
+
+/**
+ * Normalize every chord of a binding to its canonical form.
+ *
+ * Throws before anything is registered when one chord is unusable, so a
+ * multi-chord binding either registers all of its chords or none of them.
+ */
+function normalizeBindingChords(key: string | readonly string[]): string[] {
+  const chords = typeof key === "string" ? [key] : key;
+  return chords.map((chord) => {
     const normalized = normalizeChord(chord);
     if (normalized === "") {
       throw new TypeError(`key binding ${JSON.stringify(chord)} is not a usable chord`);
     }
     return normalized;
   });
+}
+
+/** Register a key binding. Returns a disposer for *this* registration. */
+export function registerKeyBinding(binding: KeyBinding): () => void {
+  assertBindingCommand(binding);
+  const chords = normalizeBindingChords(binding.key);
   const token = Symbol(binding.command);
-  for (const chord of tokens) {
+  for (const chord of chords) {
     bindings.set(chord, { command: binding.command, when: binding.when, token });
   }
   return () => {
-    for (const chord of tokens) {
+    for (const chord of chords) {
       if (bindings.get(chord)?.token !== token) continue;
       bindings.delete(chord);
     }

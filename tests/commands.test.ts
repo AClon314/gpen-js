@@ -20,7 +20,7 @@ import {
   registerKeyBinding,
   unregisterKeyBindings,
 } from "../src/lib/commands/keymap";
-import { eventToChord, normalizeChord } from "../src/lib/commands/chord";
+import { eventToChord, formatChord, normalizeChord, parseChord } from "../src/lib/commands/chord";
 
 let ran: string[] = [];
 
@@ -176,6 +176,39 @@ describe("chord normalization", () => {
     // A bare modifier is not a chord.
     expect(eventToChord({ key: "Shift", shiftKey: true })).toBeUndefined();
   });
+
+  test("normalizes every authored spelling to the same table entry", () => {
+    // Table-driven: parse → format must agree with normalizeChord for each row,
+    // so a new alias only needs one line here and one line in the alias table.
+    const cases: Array<[input: string, expected: string]> = [
+      ["Ctrl+Z", "Mod+z"],
+      ["cmd+z", "Mod+z"],
+      ["Cmd+Shift+S", "Mod+Shift+s"],
+      ["Alt+ArrowUp", "Alt+ArrowUp"],
+      ["Option+Enter", "Alt+Enter"],
+      ["Mod+Space", "Mod+Space"],
+      ["Ctrl+Plus", "Mod+plus"],
+      ["Ctrl+minus", "Mod+minus"],
+      ["Esc", "Escape"],
+      ["F12", "F12"],
+      ["  Ctrl + a  ", "Mod+a"],
+      ["Shift+Ctrl+Alt+K", "Mod+Alt+Shift+k"],
+    ];
+    for (const [input, expected] of cases) {
+      expect(normalizeChord(input)).toBe(expected);
+      const parts = parseChord(input);
+      expect(parts).toBeDefined();
+      expect(formatChord(parts!)).toBe(expected);
+    }
+  });
+
+  test("leaves no key behind for unusable chord strings", () => {
+    const unusable = ["", "Ctrl", "Shift+", "Option", "+", "   "];
+    for (const input of unusable) {
+      expect(parseChord(input)).toBeUndefined();
+      expect(normalizeChord(input)).toBe("");
+    }
+  });
 });
 
 describe("keymap dispatcher", () => {
@@ -248,5 +281,14 @@ describe("keymap dispatcher", () => {
   test("rejects an unusable chord instead of silently registering nothing", () => {
     expect(() => registerKeyBinding({ key: "Ctrl", command: "gpen.undo" })).toThrow(TypeError);
     expect(() => registerKeyBinding({ key: "", command: "gpen.undo" })).toThrow(TypeError);
+  });
+
+  test("rejects a missing command id and keeps a mixed chord list atomic", () => {
+    expect(() => registerKeyBinding({ key: "Ctrl+Z", command: "" })).toThrow(TypeError);
+    // The second chord is unusable: nothing from this binding may be registered.
+    expect(() => registerKeyBinding({ key: ["Ctrl+Z", "Ctrl"], command: "gpen.undo" })).toThrow(
+      TypeError,
+    );
+    expect(listKeyBindings()).toEqual([]);
   });
 });
