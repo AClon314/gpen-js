@@ -25,6 +25,29 @@ export type DropValidator = (target: DropTarget) => boolean;
 const BEFORE_BAND = 0.25;
 const AFTER_BAND = 0.75;
 
+/** Vertical band → position, before the gutter / root corrections. */
+function bandPosition(row: TreeRow, fraction: number): DropPosition {
+  if (fraction < BEFORE_BAND) return "before";
+  if (fraction > AFTER_BAND) return "after";
+  // A row without children cannot nest, so its middle band is a sibling insert.
+  return row.hasChildren ? "on" : "after";
+}
+
+/**
+ * Gutter and root corrections: a group's indent gutter reorders instead of
+ * nesting, and a row without a parent cannot take a sibling "before".
+ */
+function adjustPosition(
+  row: TreeRow,
+  position: DropPosition,
+  x: number,
+  indent: number,
+): DropPosition {
+  if (position === "on" && x < (row.level - 1) * indent) return "after";
+  if (position === "before" && row.parentKey === null) return "on";
+  return position;
+}
+
 /** 把指针位置解析成放置目标（before / after / on / root）。 */
 export function dropTargetFromPoint(
   rows: readonly TreeRow[],
@@ -42,14 +65,7 @@ export function dropTargetFromPoint(
 
   const row = rows[index];
   const fraction = (contentY - index * rowHeight) / rowHeight;
-  let position: DropPosition;
-  if (fraction < BEFORE_BAND) position = "before";
-  else if (fraction > AFTER_BAND) position = "after";
-  else position = row.hasChildren ? "on" : "after";
-
-  if (position === "on" && point.x < (row.level - 1) * indent) position = "after";
-  if (position === "before" && row.parentKey === null) position = "on";
-
+  const position = adjustPosition(row, bandPosition(row, fraction), point.x, indent);
   return accept({ type: "item", key: row.key, position }, isValid);
 }
 

@@ -166,6 +166,12 @@ describe("nextFocusKey", () => {
     expect(nextFocusKey(rows, 99, "down")).toBe(0);
     expect(nextFocusKey([], 0, "down")).toBeUndefined();
   });
+
+  test("an unfocused tree enters at the first row for left/right/home", () => {
+    expect(nextFocusKey(rows, undefined, "left")).toBe(0);
+    expect(nextFocusKey(rows, undefined, "right")).toBe(0);
+    expect(nextFocusKey(rows, undefined, "home")).toBe(0);
+  });
 });
 
 /* ----------------------------------------------------------------- selection */
@@ -329,6 +335,30 @@ describe("dropTargetFromPoint", () => {
         (target) => !(target.type === "item" && target.key === 1),
       ),
     ).toBeNull();
+  });
+
+  test("a non-positive row height has no rows to hit", () => {
+    for (const rowHeight of [0, -5]) {
+      expect(
+        dropTargetFromPoint(rows, { x: 100, y: 10 }, { ...layout, rowHeight }, all),
+      ).toBeNull();
+    }
+  });
+
+  test("an exact band edge stays in the middle band", () => {
+    // Row 0 (Root, group) spans y 0..20: y = 5 is exactly 25% -> not "before".
+    expect(dropTargetFromPoint(rows, { x: 100, y: 5 }, layout, all)).toEqual({
+      type: "item",
+      key: 0,
+      position: "on",
+    });
+    // Row 2 (Alpha, leaf) spans y 40..60: y = 55 is exactly 75% -> not "after"
+    // as a band, but a leaf's middle band is "after".
+    expect(dropTargetFromPoint(rows, { x: 100, y: 55 }, layout, all)).toEqual({
+      type: "item",
+      key: 2,
+      position: "after",
+    });
   });
 });
 

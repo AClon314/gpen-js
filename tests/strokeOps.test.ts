@@ -521,6 +521,59 @@ describe("erase immutability", () => {
   });
 });
 
+describe("erase boundary characterization", () => {
+  test("an empty stroke carries no ink: stroke/hard erasers keep it, soft drops it", () => {
+    const empty = createStroke([], { id: "empty" });
+    const document = documentWithStrokes(empty);
+
+    // distanceToStroke is Infinity, so the whole-stroke eraser never hits it
+    // and the hard eraser shares it by reference.
+    expect(eraseStrokes(document, { x: 0, y: 0 }, 10)).toBe(document);
+    expect(eraseHard(document, { x: 0, y: 0 }, 10)).toBe(document);
+
+    // SOFT rebuilds the point list, and an empty list is an empty stroke.
+    const softened = eraseSoft(document, { x: 0, y: 0 }, 10, 1);
+    expect(strokesOfLayer(softened, layerAtActiveNode(softened))).toHaveLength(0);
+  });
+
+  test("a circle that fully contains a multi-point polyline removes the stroke", () => {
+    const document = documentWithStrokes(
+      createStroke([
+        { x: -1, y: 0 },
+        { x: 0, y: 0 },
+        { x: 1, y: 0 },
+      ]),
+    );
+    expect(
+      strokesOfLayer(eraseHard(document, { x: 0, y: 0 }, 10), layerAtActiveNode(document)),
+    ).toHaveLength(0);
+  });
+
+  test("a circle fully disjoint from every stroke leaves the document identical", () => {
+    const document = documentWithStrokes(
+      createStroke([
+        { x: 100, y: 100 },
+        { x: 200, y: 100 },
+      ]),
+    );
+    expect(eraseHard(document, { x: 0, y: 0 }, 5)).toBe(document);
+    expect(eraseSoft(document, { x: 0, y: 0 }, 5, 1)).toBe(document);
+  });
+
+  test("a single point is removed when its distance is at most the radius", () => {
+    // The whole-stroke hit test is `distance <= radius`, so a single point at
+    // exactly the radius passes the gate and is dropped (a multi-point stroke
+    // at the same tangency stays by reference — see the boundary describe).
+    const onBoundary = documentWithStrokes(createStroke([{ x: 5, y: 0 }]));
+    expect(
+      strokesOfLayer(eraseHard(onBoundary, { x: 0, y: 0 }, 5), layerAtActiveNode(onBoundary)),
+    ).toHaveLength(0);
+
+    const justOutside = documentWithStrokes(createStroke([{ x: 6, y: 0 }]));
+    expect(eraseHard(justOutside, { x: 0, y: 0 }, 5)).toBe(justOutside);
+  });
+});
+
 describe("eraseHard boundary and shared drawings", () => {
   test("a tangent circle (d == radius) leaves the stroke by reference", () => {
     const stroke = createStroke([

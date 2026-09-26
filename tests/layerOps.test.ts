@@ -96,4 +96,16 @@ describe("layer operations", () => {
     expect(result.childIndices.slice(0, 2)).toEqual([1, newNodeIndex]);
     expectLayerTreeStructure(result);
   });
+
+  test("ensureDrawableActiveLayer is a no-op on an already drawable active layer", () => {
+    const document = ensureDrawableActiveLayer(createDefaultGpen(URL));
+    expect(ensureDrawableActiveLayer(document)).toBe(document);
+  });
+
+  test("createDrawingLayer rejects an unknown or non-layer anchor", () => {
+    const document = createDefaultGpen(URL);
+    expect(() => createDrawingLayer(document, { afterNodeIndex: 99 })).toThrow(RangeError);
+    // Node 0 is the root group, not a layer payload.
+    expect(() => createDrawingLayer(document, { afterNodeIndex: 0 })).toThrow(RangeError);
+  });
 });

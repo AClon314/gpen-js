@@ -258,3 +258,54 @@ describe("buildLayerTree with structurally parsed input", () => {
     expect(tree.flattenedDrawOrder()).toEqual([]);
   });
 });
+
+describe("buildLayerTree defensive mapping", () => {
+  test("an out-of-bounds child range drops the children of that group", () => {
+    const document = nestedGroupDocument();
+    document.groups[0].childRange = make(IndexRangeT, { start: 0, len: 99 });
+
+    const tree = buildLayerTree(document);
+    expect(tree.root?.name).toBe("Root");
+    expect(tree.root?.children).toEqual([]);
+    expect(tree.flattenedDrawOrder()).toEqual([]);
+  });
+
+  test("a node whose payload index is out of range is skipped", () => {
+    const document = nestedGroupDocument();
+    // B (node 4) points past the end of `layers`.
+    document.nodes[4].itemIndex = 99;
+
+    const tree = buildLayerTree(document);
+    const g2 = tree.root?.children[0] as UiLayerGroupNode;
+    expect(g2.name).toBe("G2");
+    expect(g2.children).toEqual([]);
+  });
+
+  test("a cyclic child vector is cut instead of looping forever", () => {
+    const document = nestedGroupDocument();
+    // G1 (node 1) lists itself as its own second child.
+    document.groups[1].childRange = make(IndexRangeT, { start: 2, len: 2 });
+    document.childIndices = [3, 1, 2, 1];
+
+    const tree = buildLayerTree(document);
+    const g1 = tree.root?.children[1] as UiLayerGroupNode;
+    expect(g1.name).toBe("G1");
+    expect(g1.children.map((child) => child.name)).toEqual(["A"]);
+  });
+
+  test("a document without a root node yields an empty tree", () => {
+    const document = nestedGroupDocument();
+    for (const node of document.nodes) node.parentIndex = 0;
+
+    const tree = buildLayerTree(document);
+    expect(tree.root).toBeNull();
+    expect(tree.active_node).toBeNull();
+    expect(tree.flattenedDrawOrder()).toEqual([]);
+  });
+
+  test("a Uint8Array node name is decoded to a string", () => {
+    const document = nestedGroupDocument();
+    document.nodes[0].name = new TextEncoder().encode("Root");
+    expect(buildLayerTree(document).root?.name).toBe("Root");
+  });
+});

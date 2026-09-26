@@ -50,28 +50,10 @@ const GROUP_NODE_KIND = LayerTreeNodeKind.LAYER_TREE_NODE_KIND_GROUP;
  */
 export function createDrawingLayer(document: GpenT, opts: CreateDrawingLayerOptions = {}): GpenT {
   const afterNodeIndex = opts.afterNodeIndex ?? document.activeNodeIndex;
-  const anchor = document.nodes[afterNodeIndex];
-
-  if (!anchor || anchor.type !== LAYER_NODE_KIND) {
-    throw new RangeError(`cannot create a drawing layer after node ${afterNodeIndex}`);
-  }
-
-  const parentNodeIndex = anchor.parentIndex;
-  const parentNode = document.nodes[parentNodeIndex];
-  if (!parentNode || parentNode.type !== GROUP_NODE_KIND) {
-    throw new RangeError(`layer node ${afterNodeIndex} has no parent group`);
-  }
-
-  const parentGroup = document.groups[parentNode.itemIndex];
-  const childRange = parentGroup?.childRange;
-  if (!parentGroup || !childRange || !validRange(childRange, document.childIndices.length)) {
-    throw new RangeError(`parent group for node ${afterNodeIndex} has no valid child range`);
-  }
-
-  const anchorPosition = document.childIndices.indexOf(afterNodeIndex, childRange.start);
-  if (anchorPosition < childRange.start || anchorPosition >= childRange.start + childRange.len) {
-    throw new RangeError(`node ${afterNodeIndex} is not an immediate child of its parent group`);
-  }
+  const { parentNodeIndex, parentNode, anchorPosition } = resolveInsertionAnchor(
+    document,
+    afterNodeIndex,
+  );
 
   const nodeIndex = document.nodes.length;
   const layerIndex = document.layers.length;
@@ -97,30 +79,80 @@ export function createDrawingLayer(document: GpenT, opts: CreateDrawingLayerOpti
     renderBy: RenderBy.RENDER_BY_JS_UNSPECIFIED,
   });
 
-  const childIndices = [
-    ...document.childIndices.slice(0, insertionPosition),
-    nodeIndex,
-    ...document.childIndices.slice(insertionPosition),
-  ];
-
-  const groups = document.groups.map((group, groupIndex) => {
-    const range = group.childRange;
-    if (!range) return group;
-
-    if (groupIndex === parentNode.itemIndex) {
-      return cloneGroupWithRange(group, range.start, range.len + 1);
-    }
-    if (range.start >= insertionPosition) {
-      return cloneGroupWithRange(group, range.start + 1, range.len);
-    }
-    return group;
-  });
+  const childIndices = insertAt(document.childIndices, insertionPosition, nodeIndex);
+  const groups = expandGroupRanges(document.groups, parentNode.itemIndex, insertionPosition);
 
   return Object.assign(new GpenT(), document, {
     nodes: [...document.nodes, newNode],
     layers: [...document.layers, newLayer],
     groups,
     childIndices,
+  });
+}
+
+/**
+ * Validate the anchor node and return its parent group plus the anchor's
+ * position in the shared child vector.
+ */
+function resolveInsertionAnchor(
+  document: GpenT,
+  afterNodeIndex: number,
+): { parentNodeIndex: number; parentNode: LayerTreeNodeT; anchorPosition: number } {
+  const anchor = document.nodes[afterNodeIndex];
+  if (!anchor || anchor.type !== LAYER_NODE_KIND) {
+    throw new RangeError(`cannot create a drawing layer after node ${afterNodeIndex}`);
+  }
+  const parentNodeIndex = anchor.parentIndex;
+  const parentNode = document.nodes[parentNodeIndex];
+  if (!parentNode || parentNode.type !== GROUP_NODE_KIND) {
+    throw new RangeError(`layer node ${afterNodeIndex} has no parent group`);
+  }
+  const anchorPosition = anchorPositionInGroup(document, afterNodeIndex, parentNode);
+  return { parentNodeIndex, parentNode, anchorPosition };
+}
+
+/** Validate the parent group range and locate the anchor inside it. */
+function anchorPositionInGroup(
+  document: GpenT,
+  afterNodeIndex: number,
+  parentNode: LayerTreeNodeT,
+): number {
+  const parentGroup = document.groups[parentNode.itemIndex];
+  const childRange = parentGroup?.childRange;
+  if (!parentGroup || !childRange || !validRange(childRange, document.childIndices.length)) {
+    throw new RangeError(`parent group for node ${afterNodeIndex} has no valid child range`);
+  }
+  const anchorPosition = document.childIndices.indexOf(afterNodeIndex, childRange.start);
+  if (anchorPosition < childRange.start || anchorPosition >= childRange.start + childRange.len) {
+    throw new RangeError(`node ${afterNodeIndex} is not an immediate child of its parent group`);
+  }
+  return anchorPosition;
+}
+
+/** Insert `value` at `position`, returning a new adjacency vector. */
+function insertAt(values: readonly number[], position: number, value: number): number[] {
+  return [...values.slice(0, position), value, ...values.slice(position)];
+}
+
+/**
+ * Grow the destination group's range and shift every later range for one
+ * insertion into the shared child vector.
+ */
+function expandGroupRanges(
+  groups: readonly LayerGroupT[],
+  destinationGroupIndex: number,
+  insertionPosition: number,
+): LayerGroupT[] {
+  return groups.map((group, groupIndex) => {
+    const range = group.childRange;
+    if (!range) return group;
+    if (groupIndex === destinationGroupIndex) {
+      return cloneGroupWithRange(group, range.start, range.len + 1);
+    }
+    if (range.start >= insertionPosition) {
+      return cloneGroupWithRange(group, range.start + 1, range.len);
+    }
+    return group;
   });
 }
 
@@ -236,6 +268,55 @@ function detachChild(document: GpenT, childNodeIndex: number): GpenT {
   return Object.assign(new GpenT(), document, { childIndices, groups });
 }
 
+/** Resolve the insertion position for a detached node inside a group range. */
+function insertPositionInGroup(
+  document: GpenT,
+  parentNodeIndex: number,
+  start: number,
+  len: number,
+  beforeNodeIndex: number | undefined,
+): number {
+  if (beforeNodeIndex === undefined) return start + len;
+  const position = document.childIndices.indexOf(beforeNodeIndex, start);
+  if (position < start || position >= start + len) {
+    throw new RangeError(
+      `node ${beforeNodeIndex} is not an immediate child of group ${parentNodeIndex}`,
+    );
+  }
+  return position;
+}
+
+/** Payload indexes touched by one insertion into a group's range. */
+interface InsertionContext {
+  destinationGroupIndex: number;
+  start: number;
+  len: number;
+  position: number;
+  parentNodeIndex: number;
+  movedGroupIndex: number;
+}
+
+/**
+ * Re-range groups for one insertion and reparent the moved group payload (if
+ * the moved node is a group). `movedGroupIndex` is -1 for non-group nodes.
+ */
+function expandRangesForInsert(
+  groups: readonly LayerGroupT[],
+  context: InsertionContext,
+): LayerGroupT[] {
+  const { destinationGroupIndex, start, len, position, parentNodeIndex, movedGroupIndex } = context;
+  return groups.map((group, index) => {
+    let next = group;
+    const range = group.childRange;
+    if (index === destinationGroupIndex) next = cloneGroupWithRange(next, start, len + 1);
+    else if (range && range.start >= position)
+      next = cloneGroupWithRange(next, range.start + 1, range.len);
+    if (index === movedGroupIndex)
+      next = Object.assign(new LayerGroupT(), next, { parentIndex: parentNodeIndex });
+    return next;
+  });
+}
+
 /** Insert an already detached node into a destination group. */
 function attachChild(
   document: GpenT,
@@ -247,31 +328,15 @@ function attachChild(
   if (!node) throw new RangeError(`cannot move unknown node ${childNodeIndex}`);
 
   const { groupIndex, start, len } = groupRange(document, parentNodeIndex);
-  let position: number;
-  if (beforeNodeIndex === undefined) {
-    position = start + len;
-  } else {
-    position = document.childIndices.indexOf(beforeNodeIndex, start);
-    if (position < start || position >= start + len)
-      throw new RangeError(
-        `node ${beforeNodeIndex} is not an immediate child of group ${parentNodeIndex}`,
-      );
-  }
-
-  const childIndices = [
-    ...document.childIndices.slice(0, position),
-    childNodeIndex,
-    ...document.childIndices.slice(position),
-  ];
-  const groups = document.groups.map((group, index) => {
-    const range = group.childRange;
-    let next = group;
-    if (index === groupIndex) next = cloneGroupWithRange(next, start, len + 1);
-    else if (range && range.start >= position)
-      next = cloneGroupWithRange(next, range.start + 1, range.len);
-    if (node.type === GROUP_NODE_KIND && index === node.itemIndex)
-      next = Object.assign(new LayerGroupT(), next, { parentIndex: parentNodeIndex });
-    return next;
+  const position = insertPositionInGroup(document, parentNodeIndex, start, len, beforeNodeIndex);
+  const childIndices = insertAt(document.childIndices, position, childNodeIndex);
+  const groups = expandRangesForInsert(document.groups, {
+    destinationGroupIndex: groupIndex,
+    start,
+    len,
+    position,
+    parentNodeIndex,
+    movedGroupIndex: node.type === GROUP_NODE_KIND ? node.itemIndex : -1,
   });
   const nodes = document.nodes.map((candidate, index) =>
     index === childNodeIndex
