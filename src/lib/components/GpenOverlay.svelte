@@ -6,7 +6,7 @@
 	import { draggable, type DragPosition } from '#lib/gestures/index';
 	import { createInstanceId } from '#lib/instanceId';
 	import { observeViewport, viewportRect } from '#lib/visualViewport';
-	import GpenWorkspace from './GpenWorkspace.svelte';
+	import GpenWorkspace from './workspace/GpenWorkspace.svelte';
 	import {
 		createDefaultGpenWorkspaceState,
 		createRuntimeGpenWorkspaceStateStorage,

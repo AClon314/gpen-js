@@ -10,7 +10,7 @@
  * 所以这里不是「为行数搬家」，而是把成对的登记 / 注销收进一个可控的生命周期。
  */
 import { observeViewport } from "#lib/visualViewport";
-import { registerMenuItems } from "./contextMenu/contextMenu.svelte";
+import { registerMenuItems } from "../contextMenu/contextMenu.svelte";
 import { installFloatingDragZoomCorrection } from "./workspaceFloatingDrag";
 import { installFloatingResizeZoomCorrection } from "./workspaceFloatingResize";
 import { installSashZoomCorrection } from "./workspaceSashZoom";

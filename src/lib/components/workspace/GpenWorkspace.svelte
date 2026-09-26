@@ -4,7 +4,7 @@
 	// 必须在 dockview 自带样式之后引入：本文件把 `--dv-*` 映射到 `--gpen-*`。
 	import '#lib/themes/dockview.css';
 	// 所有 area 共用的外壳样式（容器盒 / 字体 / 图标尺寸 / 小控件状态）。
-	import './areas/panel.css';
+	import '../areas/panel.css';
 	// 工作区外壳的全局样式（容器盒 / 洞 / 面板底 / 占位面板）。
 	import './workspace.css';
 	import {
@@ -15,54 +15,54 @@
 	import {
 		preferences as preferencesState,
 		resetPreferences
-	} from './gpenPreferencesState.svelte';
-	import { buildLayerTree } from '../layers/layerAdapter';
-	import { moveNodes, renameNode, setActiveNode, type MoveNodeOp } from '../layers/layerOps';
+	} from '../gpenPreferencesState.svelte';
+	import { buildLayerTree } from '../../layers/layerAdapter';
+	import { moveNodes, renameNode, setActiveNode, type MoveNodeOp } from '../../layers/layerOps';
 	import {
 		createGpenDocumentSession,
 		GPEN_DOCUMENT_ID,
 		type GpenDocumentSession
-	} from './gpenDocumentSession.svelte';
-	import type { TreeKey, TreeOp } from '../layers/tree/index.js';
-	import { applyInfiniteCanvas, type InfiniteCanvas } from '../scenel/index';
-	import { guessWebLayer } from '../layers/web';
-	import { createLayerView, type LayerView } from '../layers/layerView';
+	} from '../gpenDocumentSession.svelte';
+	import type { TreeKey, TreeOp } from '../../layers/tree/index.js';
+	import { applyInfiniteCanvas, type InfiniteCanvas } from '../../scenel/index';
+	import { guessWebLayer } from '../../layers/web';
+	import { createLayerView, type LayerView } from '../../layers/layerView';
 	import { installKeymapDispatcher } from '#lib/commands/keymap';
 	import {
 		registerWorkspaceCommands,
 		registerWorkspaceKeyBindings
-	} from './workspaceCommands';
+	} from '../workspaceCommands';
 	import {
 		createDefaultGpenWorkspaceState,
 		normalizeUiScale,
 		UI_SCALE_DEFAULT,
 		type GpenToolId,
 		type GpenWorkspaceState
-	} from './gpenWorkspaceState';
-	import { readGpenViewportZoomFactor } from './gpenViewport';
-	import { setWorkspaceZoomVariable } from './workspaceZoom';
+	} from '../gpenWorkspaceState';
+	import { readGpenViewportZoomFactor } from '../gpenViewport';
+	import { setWorkspaceZoomVariable } from '../workspaceZoom';
 	import { centeredFloatingBounds } from './workspaceLayout.js';
 	import {
 		createPanelLayoutController,
 		STATUS_BAR_PANEL_ID
 	} from './workspacePanelLayout.js';
-	import { registerCodeAreaSource } from './codeArea/source';
+	import { registerCodeAreaSource } from '../codeArea/source';
 	import { createWorkspaceTabMenu } from './workspaceTabMenu.js';
-	import { openCodeAreaPanel } from './codeArea/panels';
-	import { INTERNAL_STATE_SOURCE_ID } from './codeArea/internalState';
-	import { menuState } from './contextMenu/contextMenu.svelte';
+	import { openCodeAreaPanel } from '../codeArea/panels';
+	import { INTERNAL_STATE_SOURCE_ID } from '../codeArea/internalState';
+	import { menuState } from '../contextMenu/contextMenu.svelte';
 	import { createWorkspaceProps, CODE_AREA_COMPONENT } from './workspaceProps.svelte';
 	import { createWorkspaceDebugSource } from './workspaceDebug';
 	import { createWorkspaceEffects, type WorkspaceEffects } from './workspaceEffects';
-	import BlenderCodeArea from './areas/CodeArea.svelte';
-	import BlenderOutliner from './areas/Outliner.svelte';
-	import BlenderPreferences from './areas/Preferences.svelte';
-	import BlenderProperties from './areas/Properties.svelte';
-	import BlenderStatusBar from './areas/StatusBar.svelte';
-	import BlenderTimeline from './areas/Timeline.svelte';
-	import BlenderToolStrip from './areas/ToolStrip.svelte';
-	import BlenderTopBar from './areas/TopBar.svelte';
-	import BlenderViewport from './areas/Viewport.svelte';
+	import BlenderCodeArea from '../areas/CodeArea.svelte';
+	import BlenderOutliner from '../areas/Outliner.svelte';
+	import BlenderPreferences from '../areas/Preferences.svelte';
+	import BlenderProperties from '../areas/Properties.svelte';
+	import BlenderStatusBar from '../areas/StatusBar.svelte';
+	import BlenderTimeline from '../areas/Timeline.svelte';
+	import BlenderToolStrip from '../areas/ToolStrip.svelte';
+	import BlenderTopBar from '../areas/TopBar.svelte';
+	import BlenderViewport from '../areas/Viewport.svelte';
 
 	let {
 		state: providedState,

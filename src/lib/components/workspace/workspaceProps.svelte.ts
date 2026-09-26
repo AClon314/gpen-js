@@ -14,16 +14,16 @@
  * 「props 初值」与「它的同步 `$effect`」，改一个面板只看一处。
  */
 import type { BrushSettingsT, EraserSettingsT } from "gpen-protocol/flatbuffers";
-import type { GpenToolId, GpenWorkspaceState } from "./gpenWorkspaceState";
-import { UI_SCALE_DEFAULT } from "./gpenWorkspaceState";
-import type { GpenDocumentSession } from "./gpenDocumentSession.svelte";
-import { GPEN_DOCUMENT_ID } from "./gpenDocumentSession.svelte";
-import { preferences as preferencesState, updatePreferences } from "./gpenPreferencesState.svelte";
-import { codeAreaSourceIdOf, getCodeAreaSource } from "./codeArea/source";
-import type { LayerView } from "../layers/layerView";
-import type { StrokePointInput } from "../layers/strokeOps";
-import type { UiLayerTree, UiLayerTreeNode } from "../layers/types";
-import type { TreeKey, TreeOp } from "../layers/tree/index.js";
+import type { GpenToolId, GpenWorkspaceState } from "../gpenWorkspaceState";
+import { UI_SCALE_DEFAULT } from "../gpenWorkspaceState";
+import type { GpenDocumentSession } from "../gpenDocumentSession.svelte";
+import { GPEN_DOCUMENT_ID } from "../gpenDocumentSession.svelte";
+import { preferences as preferencesState, updatePreferences } from "../gpenPreferencesState.svelte";
+import { codeAreaSourceIdOf, getCodeAreaSource } from "../codeArea/source";
+import type { LayerView } from "../../layers/layerView";
+import type { StrokePointInput } from "../../layers/strokeOps";
+import type { UiLayerTree, UiLayerTreeNode } from "../../layers/types";
+import type { TreeKey, TreeOp } from "../../layers/tree/index.js";
 
 /** CodeArea 的组件名（`panelComponents` 的键，也是 `addPanel` 的 `component`）。
  * 一个组件服务所有数据源，区别在面板 id：`codearea:<sourceId>`。 */

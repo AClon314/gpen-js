@@ -8,18 +8,18 @@
  * 高频值（scroll / pinch 平移）会推动这棵树，限频靠 CodeArea 的去抖（250ms），
  * 不在数据层藏字段。
  */
-import { preferences as preferencesState } from "./gpenPreferencesState.svelte";
-import { serializeGpenPreferences } from "./gpenPreferences";
-import { normalizeUiScale, serializeGpenWorkspaceState } from "./gpenWorkspaceState";
-import type { GpenWorkspaceState } from "./gpenWorkspaceState";
-import type { GpenDocumentSession } from "./gpenDocumentSession.svelte";
+import { preferences as preferencesState } from "../gpenPreferencesState.svelte";
+import { serializeGpenPreferences } from "../gpenPreferences";
+import { normalizeUiScale, serializeGpenWorkspaceState } from "../gpenWorkspaceState";
+import type { GpenWorkspaceState } from "../gpenWorkspaceState";
+import type { GpenDocumentSession } from "../gpenDocumentSession.svelte";
 import type { GpenT } from "gpen-protocol/flatbuffers";
-import { menuState } from "./contextMenu/contextMenu.svelte";
-import { createInternalStateSource } from "./codeArea/internalState";
-import type { CodeAreaSource } from "./codeArea/source";
+import { menuState } from "../contextMenu/contextMenu.svelte";
+import { createInternalStateSource } from "../codeArea/internalState";
+import type { CodeAreaSource } from "../codeArea/source";
 import { pageOffset, viewportOffset, viewportSize, viewportZoom } from "#lib/visualViewport";
-import { strokesOfDocument } from "../layers/strokeOps";
-import { GPEN_DOCUMENT_ID } from "./gpenDocumentSession.svelte";
+import { strokesOfDocument } from "../../layers/strokeOps";
+import { GPEN_DOCUMENT_ID } from "../gpenDocumentSession.svelte";
 
 /** `createWorkspaceDebugSource` 需要的组件读数（全部按 getter 注入）。 */
 export interface WorkspaceDebugDeps {

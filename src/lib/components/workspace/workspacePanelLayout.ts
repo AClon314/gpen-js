@@ -18,12 +18,12 @@
  */
 import type { DockviewApi, SerializedDockview } from "dockview";
 
-import { dropRestoredCodeAreaPanels } from "./codeArea/panels.js";
+import { dropRestoredCodeAreaPanels } from "../codeArea/panels.js";
 import {
   cloneGpenPanelLayout,
   type GpenPanelLayout,
   type GpenWorkspaceState,
-} from "./gpenWorkspaceState";
+} from "../gpenWorkspaceState";
 import {
   centeredFloatingBounds,
   COLUMN_MINIMUM_WIDTHS,

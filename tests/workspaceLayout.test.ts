@@ -5,7 +5,7 @@ import {
   FLOATING_MINIMUM_SIZE,
   MINIMUM_GRID_WIDTH,
   minimumColumnWidths,
-} from "../src/lib/components/workspaceLayout";
+} from "../src/lib/components/workspace/workspaceLayout";
 import {
   clamp,
   draggedLocalPosition,
@@ -15,7 +15,7 @@ import {
   resizedLocalBox,
   writeLocalOrigin,
   writeLocalSize,
-} from "../src/lib/components/workspaceFloatingGeometry";
+} from "../src/lib/components/workspace/workspaceFloatingGeometry";
 
 describe("workspace column minimums", () => {
   test("the desktop minimums are the values buildDefaultLayout asks dockview for", () => {

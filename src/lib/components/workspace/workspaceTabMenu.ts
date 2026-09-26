@@ -8,9 +8,9 @@
 import type { DockviewApi } from "dockview";
 import { MimeType } from "gpen-protocol/flatbuffers";
 
-import type { UiLayerTree } from "../layers/types";
-import { open as openMenu } from "./contextMenu/contextMenu.svelte";
-import type { MenuItem } from "./contextMenu/menuModel";
+import type { UiLayerTree } from "../../layers/types";
+import { open as openMenu } from "../contextMenu/contextMenu.svelte";
+import type { MenuItem } from "../contextMenu/menuModel";
 
 /** 工作区 tab 右键菜单的注册 id。 */
 export const WORKSPACE_TAB_MENU_ID = "gpen-workspace-tab";
