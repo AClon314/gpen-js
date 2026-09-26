@@ -21,8 +21,8 @@
 | `bindings/upDownloader/` | 上传/下载目标的文件选择器与传输桥（browser / VS Code webview） | `src/lib/bindings/upDownloader/vscode.ts`、`docs/build-targets.md` |
 | `bindings/shell/` | 宿主 shell 能力（目前只有建符号链接 `symlink.ts`） | `src/lib/bindings/shell/symlink.ts` |
 | `protocol/` | gpen-protocol 编解码边界：FlatBuffers `GpenT` / `ToolbarStateT` 的 encode/decode、常量与默认值 | `src/lib/protocol/codec.ts`、`constants.ts`、`defaults.ts`、`docs/flatbuffers.md` |
-| `layers/` | 图层领域模型与纯行为：协议文档 ↔ UI 图层树适配、图层增删、描边写入、视图投影；`tree/` 是纯图层树行为（扁平化 / 键盘 / 选择 / 拖放 / 搜索） | `src/lib/layers/layerAdapter.ts`（FBS-007）、`strokeOps.ts`、`layerView.ts`、`layers/tree/index.ts`、`docs/tree.md` |
-| `canvas/` | 画布渲染与光标采样：无限画布 spacer（`infiniteCanvas.ts`）、描边画布（`strokeCanvas.ts`）、网页图层度量（`webLayer.ts`） | `src/lib/canvas/index.ts`、`docs/stroke.md` |
+| `layers/` | 图层领域模型与纯行为：协议文档 ↔ UI 图层树适配、图层增删、描边写入、视图投影、`text/html` 网页图层识别（`web.ts`）；`tree/` 是纯图层树行为（扁平化 / 键盘 / 选择 / 拖放 / 搜索） | `src/lib/layers/layerAdapter.ts`（FBS-007）、`strokeOps.ts`、`layerView.ts`、`web.ts`、`layers/tree/index.ts`、`docs/tree.md` |
+| `scenel/` | 场景级渲染面（原 `canvas/`，命名决策见下）：无限画布相机 spacer（`infiniteCanvas.ts`）、描边绘制面（`strokeCanvas.ts`）。视口 ↔ 层局部坐标换算在 `layers/layerView.ts`，不在这里 | `src/lib/scenel/index.ts`、`docs/stroke.md` |
 | `components/` | 全部 Svelte 组件与 UI 状态（见 §2 细分）；`areas/` 是 Blender 语义的面板，`widgets/` 是表单控件，`contextMenu/` 右键菜单，`codeArea/` 文本区外壳 | `src/lib/components/GpenWorkspace.svelte` |
 | `crossTabBus/` | 跨标签页消息层：`base.ts` 定义协议，`sameOriginBus`（BroadcastChannel）/ `crossOriginBus`（Penpal），`createTabBus` 按场景选实现 | `src/lib/crossTabBus/index.ts`、`docs/storage.md` |
 | `gestures/` | DOM 交互手势 action（目前 `draggable.ts`：指针拖拽 + 视口边界夹取 + 点击检测） | `src/lib/gestures/draggable.ts` |
@@ -30,6 +30,24 @@
 | `commands/` | 键盘命令层：`commands.ts` 是 menu/keymap 共用的 id 空间，`keymap.ts` 分发，`chord.ts` 解析按键组合 | `src/lib/commands.ts`、`docs/commands.md` |
 | `themes/` | 设计 token 与主题：`day-night.css` 静态 token，`theme.ts` 读取/写入，`theme.svelte.ts` 响应式包装 | `src/lib/themes/theme.ts`、`docs/theme.md` |
 | `lib/*.ts`（目录根） | 跨领域小工具：`visualViewport.ts`（视觉视口坐标系，DOM 只碰一次）、`error.ts`、`instanceId.ts`、`predicates.ts`、`viewportMap.ts`（小地图投影数学）、`history.ts`（状态预算式 undo）、`commands.ts` | 文件头注释 |
+
+> **命名决策（Step 4-3）：`canvas/` → `scenel/`。** 判据是「`canvas/` 能否与
+> gpen-protocol（Blender）图层模型一一对应」，结论是**不能**：
+>
+> - 协议侧（`gpen-protocol/protocol/v1/gpen/*.tsp`）没有 canvas / scene /
+>   viewport / surface 实体；图层容器是 `Gpen` 数据块（`Gpen.layers` /
+>   `Gpen.groups` / `Gpen.nodes` + `child_indices`，由 `LayerTreeNode.item_index`
+>   / `parent_index` 索引），不是画布。
+> - 图层种类在图层负载上表达：`Layer.mime_type`（`text/html` |
+>   `application/gpen`）与 `Layer.render_by`（`js` | `wgpu`），不在渲染面上。
+> - 「一个 canvas 装多层 layers」的前提不成立：`strokeCanvas.ts` 渲染的是**一个**
+>   `LayerView` 的笔画（不是图层容器）；`infiniteCanvas.ts` 是页面级滚动 spacer
+>   （相机），协议里没有对应物。
+> - 真正的「视口 ↔ 层局部」换算在 `layers/layerView.ts`（`mapLayerPoint` /
+>   `unmapClientPoint` / `pivotAtViewportCenter`）。
+>
+> 因此这里只保留「图层显示在哪里」的场景级渲染面（相机 spacer + 笔画绘制面），
+> 取 `scenel`（scene-level）以避开 HTML `<canvas>` 的歧义；域名模型归 `layers/`。
 
 `src/lib/index.ts`（24 行）是**公共 barrel**，用 `package.json#imports` 暴露为 `#lib`：
 
@@ -53,7 +71,7 @@ repowise 自动分层的结果（`knowledge-graph.json#layers`，8 层）：
 | **Application** (`layer:application`) | 27 | 仓库根配置（`package.json`、`vite*.config.ts`、`tsconfig*.json`、`.oxlintrc.json`、`.mcp.json`）、`AGENTS.md` / `README.md` / `TODO.md`、`rules/**`、`messages/*.json`、`project.inlang/settings.json`、`src/app.d.ts`、`src/hooks*.ts`、`src/embed/**` |
 | **Config** (`layer:config`) | 3 | `.husky/{commit-msg,pre-commit,pre-push}` |
 | **CLI** (`layer:cli`) | 2 | `src/lib/commands/chord.ts`、`keymap.ts` |
-| **Service** (`layer:service`) | 61 | `src/lib/**` 其余全部（bindings / canvas / crossTabBus / gestures / inputs / layers / protocol / themes / lib 根工具 / barrel） |
+| **Service** (`layer:service`) | 61 | `src/lib/**` 其余全部（bindings / scenel / crossTabBus / gestures / inputs / layers / protocol / themes / lib 根工具 / barrel） |
 | **Docs & Tooling** (`layer:docs-tooling`) | 32 | `docs/*.md`、`scripts/*.ts`、`src/routes/demo/**` |
 | **Test** (`layer:test`) | 52 | `tests/**` + `tsconfig.test.json` |
 
@@ -64,7 +82,7 @@ repowise 自动分层的结果（`knowledge-graph.json#layers`，8 层）：
 3. **`src/routes/` 被标成 `API`**。SvelteKit 路由不是后端 API，而是应用 shell + 入口页面；`+layout.ts` 只有 `ssr = false / prerender = true`。
 4. **`src/embed/index.ts` 未被认作入口**。`project.entry_points` 只有 3 个 routes（`knowledge-graph.json#project`），但 embed 是**独立构建目标**（`vite.embed.config.ts` + `package.json#exports["./embed"]`），入口是 `src/embed/index.ts`，只是没有被 SvelteKit 路由图连上。
 5. **demo 路由被标成 `Docs & Tooling`**（`src/routes/demo/**`）。语义上它们是“可运行的文档”，但物理上仍是应用路由，和 `routes` 目录同源。
-6. **`Service` 层过粗**：`src/lib/` 下 12 个语义完全不同的领域目录（protocol / layers / canvas / storage / inputs / themes…）全被压成一层。要拿真实边界，看 §3 的直连边 + `graph_metrics.community_id`（社区检测），不要看 layer 名。
+6. **`Service` 层过粗**：`src/lib/` 下 12 个语义完全不同的领域目录（protocol / layers / scenel / storage / inputs / themes…）全被压成一层。要拿真实边界，看 §3 的直连边 + `graph_metrics.community_id`（社区检测），不要看 layer 名。
 
 入口点识别也偏噪：`graph_nodes.is_entry_point=1` 把 `tests/*.test.ts`、`scripts/*.ts`、`src/routes/demo/*/+page.svelte` 都算了进去（它们确实是各自子图的根），`project.entry_points` 才是人工口径。
 
@@ -85,7 +103,7 @@ flowchart LR
   end
   subgraph L1["L1 领域 / 渲染"]
     layers["layers"]
-    canvas["canvas"]
+    scenel["scenel"]
     commands["commands"]
     gestures["gestures"]
   end
@@ -106,12 +124,12 @@ flowchart LR
   components -->|12| utils
   components -->|5| inputs
   components -->|3| storage
-  components -->|2| canvas
+  components -->|2| scenel
   components -->|2| commands
   components -->|1| gestures
   components -->|1| protocol
   components -->|1| themes
-  canvas -->|1| utils
+  scenel -->|1| utils
   layers -->|5| protocol
   layers -->|1| utils
   commands -->|2| utils
@@ -126,7 +144,7 @@ flowchart LR
   embed -->|1| themes
 
   storage -.->|"3 ⚠ 横向"| bus
-  canvas -.->|"2 ⚠ 横向"| layers
+  scenel -.->|"2 ⚠ 横向"| layers
   updown -.->|"1 ⚠ 横向"| shell
 
   barrel["lib/index.ts 公共 barrel"] -.->|"反向：入口依赖 UI"| components
@@ -140,11 +158,11 @@ flowchart LR
 
 | 方向 | 边数 | 判定 |
 |---|---|---|
-| components → layers / utils / inputs / storage / canvas / commands / gestures / protocol / themes | 13/12/5/3/2/2/1/1/1 | ✅ 正向（UI 依赖领域与适配器） |
+| components → layers / utils / inputs / storage / scenel / commands / gestures / protocol / themes | 13/12/5/3/2/2/1/1/1 | ✅ 正向（UI 依赖领域与适配器） |
 | routes → components / inputs / themes | 8/3/2 | ✅ 正向（应用入口依赖 UI） |
 | embed → components / themes | 2/1 | ✅ 正向（embed 也是应用入口） |
-| canvas → layers | 2 | ⚠ **横向**（同属 L1，渲染依赖领域模型，当前单向） |
-| canvas → utils | 1 | ✅ 正向 |
+| scenel → layers | 2 | ⚠ **横向**（同属 L1，渲染依赖领域模型，当前单向） |
+| scenel → utils | 1 | ✅ 正向 |
 | layers → protocol / utils | 5/1 | ✅ 正向（领域依赖叶子） |
 | commands → utils | 2 | ✅ 正向 |
 | gestures → utils | 1 | ✅ 正向 |
@@ -170,7 +188,7 @@ $ rg -n 'components|inputs/codemirror' src/lib/index.ts
 **横向依赖（非反向、非环，但耦合点值得知道）：**
 
 - `bindings/storage → crossTabBus`（3 条）：`gpenBinary.ts`、`opfs.ts`、`tabBusBlob.ts` 都 import `crossTabBus/index.ts`，用广播做跨标签页的 blob 同步。消息层本可视为 storage 的协作层，但结果是**存储适配器无法脱离 crossTabBus 单独测试/移植**。
-- `canvas → layers`（2 条）：`canvas/strokeCanvas.ts` import `layers/layerView.ts`（坐标映射）与 `layers/strokeOps.ts`（`StrokePointInput`）。当前单向；若 layers 反手需要 canvas 类型就会成环。
+- `scenel → layers`（2 条）：`scenel/strokeCanvas.ts` import `layers/layerView.ts`（坐标映射）与 `layers/strokeOps.ts`（`StrokePointInput`）。当前单向；若 layers 反手需要 scenel 类型就会成环。
 - `bindings/upDownloader → bindings/shell`（1 条）：`upDownloader/vscode.ts` import `shell/symlink.ts`，两个 target 适配器绑在一起。Step 4-2 拆 `upDownloader` 时要一并决定 `shell` 的归属。
 
 **没有反向依赖的“下钻”**：`protocol`、`crossTabBus/base.ts`、`themes`、`inputs` 的入边都只来自上层，出边只有外部包，是干净的叶子（证据：`repowise context <path> --include callees` 的 callees 列表）。

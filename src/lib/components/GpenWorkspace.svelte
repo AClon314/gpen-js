@@ -24,7 +24,7 @@
 		type GpenDocumentSession
 	} from './gpenDocumentSession.svelte';
 	import type { TreeKey, TreeOp } from '../layers/tree/index.js';
-	import { applyInfiniteCanvas, type InfiniteCanvas } from '../canvas/index';
+	import { applyInfiniteCanvas, type InfiniteCanvas } from '../scenel/index';
 	import { guessWebLayer } from '../layers/web';
 	import { createLayerView, type LayerView } from '../layers/layerView';
 	import { installKeymapDispatcher } from '#lib/commands/keymap';

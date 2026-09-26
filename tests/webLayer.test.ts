@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { drawDot, drawPolyline } from "../src/lib/canvas/strokeCanvas.ts";
+import { drawDot, drawPolyline } from "../src/lib/scenel/strokeCanvas.ts";
 import {
   isHardExcluded,
   isTransparentWrapper,

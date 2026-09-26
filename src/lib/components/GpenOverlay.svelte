@@ -97,7 +97,7 @@
 	// Keep the host page in a large document coordinate space while the gpen
 	// workspace is open. The camera itself lives in GpenWorkspace (it is mounted
 	// only while open) and is a document-level spacer, not a reparenting wrapper
-	// (see canvas/infiniteCanvas.ts).
+	// (see scenel/infiniteCanvas.ts).
 
 	onDestroy(() => {
 		// Release the runtime KV connection (IndexedDB) so repeated embed mounts

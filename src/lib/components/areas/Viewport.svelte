@@ -6,7 +6,7 @@
 	import { strokesOfDocument, type StrokePointInput } from '#lib/layers/strokeOps';
 	import { brushRadiusOf, color4ToCss, eraserRadiusOf } from '../toolbarOps';
 	import type { GpenToolId } from '../gpenWorkspaceState';
-	import { createStrokeCanvas, type StrokeCanvasHandle } from '#lib/canvas/strokeCanvas';
+	import { createStrokeCanvas, type StrokeCanvasHandle } from '#lib/scenel/strokeCanvas';
 	import MiniMap from '../MiniMap.svelte';
 
 	// 视口本身是 overlay 上的一个洞：宿主网页从它中间透出来，所以这里**不画背景**。

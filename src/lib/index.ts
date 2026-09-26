@@ -5,7 +5,7 @@ export * from "./bindings/upDownloader/index.js";
 export * from "./bindings/shell/symlink.js";
 export * from "./crossTabBus/index.js";
 export * from "./gestures/index.js";
-export * from "./canvas/index.js";
+export * from "./scenel/index.js";
 export * from "./inputs/numericCaret.js";
 export * from "./inputs/numericScrub.js";
 export * from "./inputs/units.js";
