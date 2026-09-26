@@ -421,3 +421,19 @@ bun run health:gate       # 退出码非 0 = 不合格；-- --module src/lib/lay
 - **健康度门禁**：`tmp/refactor.step1-1.md`、`scripts/health-gate.ts`、`tmp/health-baseline.md`、`tmp/health-final.json`、`tmp/gate-final.log`。
 - **项目约定**：`AGENTS.md`（组件 / 目录 / 导入 / 样式 / 文件体量规则）、`docs/glossary.md`（术语）。
 - **契约文档**（`src/` 引用 `docs/*.md` 共 49 处）：`docs/storage.md`、`docs/todo-safe.md`（存储信任模型）、`docs/flatbuffers.md`、`docs/layer-view.md`、`docs/tree.md`、`docs/input.md`、`docs/panel.md`、`docs/build-targets.md`。
+
+---
+
+## 9. 文件体量与拆分记录（案例）
+
+`AGENTS.md`「文件体量」规则的落地案例。做模块化重构前先读这一条：**先把功能加完、测试跑绿，
+再单独一轮重构；一次一轮、每轮跑绿再合**，并先做消融实验确认拆分确有收益。
+
+- **2026-09-21 `GpenWorkspace.svelte`：1824 → 915 行**。按职责拆出：布局策略（默认布局 / 还原 /
+  快照 / 约束 / 「洞」标记）→ `workspace/workspacePanelLayout.ts`、文档会话 →
+  `gpenDocumentSession.svelte.ts`、外壳样式 → `workspace/workspace.css`、tab 菜单 →
+  `workspace/workspaceTabMenu.ts`。
+- **2026-09-26** 进一步把 dockview 工作区外壳整体收进 `src/lib/components/workspace/`，
+  `GpenWorkspace.svelte` 降到 626 行；拆出的布局纯逻辑有单测
+  （如 `tests/workspaceLayout.test.ts`）。面板系统的实现快照见
+  `src/lib/components/README-panel.md`。
