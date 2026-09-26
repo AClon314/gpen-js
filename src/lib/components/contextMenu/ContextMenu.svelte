@@ -19,8 +19,8 @@
 		visibleMenuItems,
 		type MenuNavigationKey
 	} from './menuModel.ts';
-
-	const MENU_MARGIN_PX = 8;
+	import { menuItemKeyIntent, menuNavigationKey, type MenuKeyIntent } from './menuKeyboard.ts';
+	import { submenuFlip } from './menuPosition.ts';
 
 	let root = $state<HTMLDivElement | undefined>(undefined);
 	/** 当前"高亮路径"：祖先链上的下标。子菜单是否展开由它决定。 */
@@ -114,52 +114,46 @@
 		path: readonly number[],
 		hasChildren: boolean
 	): void {
-		if (event.key === 'Enter' || event.key === ' ') {
-			event.preventDefault();
-			if (hasChildren) focusFirstChild(path, renderChildren(item));
-			else run(item);
+		const intent = menuItemKeyIntent(event.key, hasChildren, path.length);
+		if (intent === undefined) return;
+		event.preventDefault();
+		runMenuKeyIntent(intent, item, path);
+	}
+
+	/** 执行键盘意图：组件只保留 DOM 焦点移动，索引计算都在纯函数里。 */
+	function runMenuKeyIntent(intent: MenuKeyIntent, item: MenuItem, path: readonly number[]): void {
+		if (intent.kind === 'move') {
+			moveToSibling(path, intent.key);
 			return;
 		}
-
-		if (
-			event.key === 'ArrowDown' ||
-			event.key === 'ArrowUp' ||
-			event.key === 'Home' ||
-			event.key === 'End'
-		) {
-			event.preventDefault();
-			const siblings = siblingsOf(path.slice(0, -1));
-			const current = path[path.length - 1] ?? -1;
-			const next = nextMenuIndex(siblings, current, event.key as MenuNavigationKey);
-			if (next >= 0) focusPath([...path.slice(0, -1), next]);
-			return;
-		}
-
-		if (event.key === 'ArrowRight' && hasChildren) {
-			event.preventDefault();
-			focusFirstChild(path, renderChildren(item));
-			return;
-		}
-
-		if (event.key === 'ArrowLeft' && path.length > 1) {
-			event.preventDefault();
+		if (intent.kind === 'leave') {
 			focusPath(path.slice(0, -1));
+			return;
 		}
+		// activate / enter 都先进入子菜单；activate 在没有子菜单时才执行命令。
+		const children = renderChildren(item);
+		if (intent.kind === 'enter' || children.length > 0) {
+			focusFirstChild(path, children);
+			return;
+		}
+		run(item);
+	}
+
+	/** 上下 / Home / End：在同一层兄弟里移动焦点。 */
+	function moveToSibling(path: readonly number[], key: MenuNavigationKey): void {
+		const parent = path.slice(0, -1);
+		const next = nextMenuIndex(siblingsOf(parent), path[path.length - 1] ?? -1, key);
+		if (next >= 0) focusPath([...parent, next]);
 	}
 
 	function handleRootKeydown(event: KeyboardEvent): void {
 		// Item keydown bubbles here; the root only owns the keys when it (not an
 		// item) is the focused element.
 		if (event.target !== root) return;
-		if (
-			event.key !== 'ArrowDown' &&
-			event.key !== 'ArrowUp' &&
-			event.key !== 'Home' &&
-			event.key !== 'End'
-		)
-			return;
+		const key = menuNavigationKey(event.key);
+		if (key === undefined) return;
 		event.preventDefault();
-		const next = nextMenuIndex(items, -1, event.key);
+		const next = nextMenuIndex(items, -1, key);
 		if (next >= 0) focusPath([next]);
 	}
 
@@ -214,17 +208,18 @@
 
 		void tick().then(() => {
 			if (root !== menu) return;
+			const viewport = { width: window.innerWidth, height: window.innerHeight };
 			for (const submenu of menu.querySelectorAll<HTMLElement>('[data-menu-submenu]')) {
 				submenu.style.removeProperty('left');
 				submenu.style.removeProperty('right');
 				submenu.style.removeProperty('top');
 				submenu.style.removeProperty('bottom');
-				const rect = submenu.getBoundingClientRect();
-				if (rect.right > window.innerWidth - MENU_MARGIN_PX) {
+				const flip = submenuFlip(submenu.getBoundingClientRect(), viewport);
+				if (flip.horizontal) {
 					submenu.style.left = 'auto';
 					submenu.style.right = '100%';
 				}
-				if (rect.bottom > window.innerHeight - MENU_MARGIN_PX) {
+				if (flip.vertical) {
 					submenu.style.top = 'auto';
 					submenu.style.bottom = '-0.35lh';
 				}

@@ -4,6 +4,7 @@
 // `menuModel.ts` 里，类型也从那里再导出，消费方继续从本模块 import 即可。
 import { observeViewport, viewportSize } from "../../visualViewport.js";
 import { readWorkspaceZoomVariable } from "../workspaceZoom.js";
+import { anchoredMenuTop, clampMenuPoint } from "./menuPosition.js";
 import type { MenuItem, MenuItemProviderInput } from "./menuModel.js";
 
 export type {
@@ -40,7 +41,6 @@ const LEGACY_CONTEXT_MENU_ID_ATTRIBUTE = "data-contextmenu-id";
  * finger and then have the scroll close it again.
  */
 export const TOUCH_OPT_OUT_ATTRIBUTE = "data-context-menu-touch-opt-out";
-const MENU_MARGIN_PX = 8;
 
 /** UI state consumed by the singleton ContextMenu component. */
 export const menuState = $state({
@@ -180,21 +180,16 @@ export function contextMenu(node: HTMLElement, options: ContextMenuOptions) {
   };
 }
 
-function clampCoordinate(value: number, size: number, viewport: number): number {
-  const coordinate = Number.isFinite(value) ? value : MENU_MARGIN_PX;
-  if (viewport <= 0) return Math.max(MENU_MARGIN_PX, coordinate);
-  const maximum = Math.max(MENU_MARGIN_PX, viewport - Math.max(0, size) - MENU_MARGIN_PX);
-  return Math.min(Math.max(MENU_MARGIN_PX, coordinate), maximum);
-}
-
 /** Re-clamp the rendered menu after its actual dimensions are known. */
 export function clampMenuPosition(width = 0, height = 0) {
   if (!menuState.visible) return;
-  const viewport = viewportSize();
-  const x = clampCoordinate(menuState.x, width, viewport.width);
-  const y = clampCoordinate(menuState.y, height, viewport.height);
-  if (menuState.x !== x) menuState.x = x;
-  if (menuState.y !== y) menuState.y = y;
+  const next = clampMenuPoint(
+    { x: menuState.x, y: menuState.y },
+    { width, height },
+    viewportSize(),
+  );
+  if (menuState.x !== next.x) menuState.x = next.x;
+  if (menuState.y !== next.y) menuState.y = next.y;
 }
 
 /** Open a registered menu at client coordinates. Returns false when empty. */
@@ -206,11 +201,12 @@ export function open(id: string, x: number, y: number, anchor: Element | null = 
   }
 
   const viewport = viewportSize();
+  const position = clampMenuPoint({ x, y }, { width: 0, height: 0 }, viewport);
   menuState.id = id;
   menuState.items = items;
   menuState.anchor = anchor;
-  menuState.x = clampCoordinate(x, 0, viewport.width);
-  menuState.y = clampCoordinate(y, 0, viewport.height);
+  menuState.x = position.x;
+  menuState.y = position.y;
   menuState.visible = true;
   menuState.openVersion += 1;
   return true;
@@ -244,11 +240,7 @@ export function openAt(id: string, anchor: Element, options: { gap?: number } = 
   // 工作区缩放，否则放大界面后「要不要翻到锚点上方」会判断错。
   const estimatedHeight =
     ((menuState.items.length || collect(id).length) * 2 * 16 + 16) * readWorkspaceZoomVariable();
-  const below = rect.bottom + gap;
-  const y =
-    below + estimatedHeight > viewport.height
-      ? Math.max(MENU_MARGIN_PX, rect.top - gap - estimatedHeight)
-      : below;
+  const y = anchoredMenuTop(rect.top, rect.bottom, estimatedHeight, gap, viewport.height);
   return open(id, rect.left, y, anchor);
 }
 

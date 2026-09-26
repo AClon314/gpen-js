@@ -17,6 +17,14 @@
 		type TreeOp,
 		type TreeRow
 	} from '#lib/layers/tree/index.js';
+	import {
+		appendTypeahead,
+		expandedAfterToggle,
+		isWithinSubtree,
+		outlinerKeyAction,
+		structuralToggle,
+		type OutlinerKeyAction
+	} from './outlinerRows.js';
 
 	// 受控三件套（见 docs/tree.md §3.4）：`*Keys` 存在时它就是唯一真相（default 只作初值），
 	// 回调**总是**触发 —— 非受控用法靠它把新值写回本地 state。
@@ -83,7 +91,6 @@
 
 	/** 每级缩进 = 2ch（行内 padding-left 用同一常量，见下方模板）。 */
 	const INDENT_CH = 2;
-	const TYPEAHEAD_TIMEOUT_MS = 700;
 
 	let listEl = $state<HTMLUListElement | undefined>(undefined);
 	let probeEl = $state<HTMLSpanElement | undefined>(undefined);
@@ -99,15 +106,6 @@
 
 	let typeaheadBuffer = '';
 	let typeaheadAt = 0;
-
-	const MOVE_BY_KEY: Record<string, TreeMove> = {
-		ArrowUp: 'up',
-		ArrowDown: 'down',
-		ArrowLeft: 'left',
-		ArrowRight: 'right',
-		Home: 'home',
-		End: 'end'
-	};
 
 	// `dropTargetFromPoint` 是纯函数，指针只在这里翻译成行高/缩进/滚动量。
 	$effect(() => {
@@ -158,10 +156,7 @@
 	}
 
 	function toggleExpanded(key: TreeKey) {
-		const next = new Set(expanded);
-		if (next.has(key)) next.delete(key);
-		else next.add(key);
-		changeExpanded(next);
+		changeExpanded(expandedAfterToggle(expanded, key));
 	}
 
 	function activate(key: TreeKey) {
@@ -191,28 +186,34 @@
 
 	function handleKeyDown(event: KeyboardEvent) {
 		if (renamingKey !== undefined) return;
-		const move = MOVE_BY_KEY[event.key];
-		if (move) {
-			event.preventDefault();
-			applyMove(move);
+		const action = outlinerKeyAction(event.key, event);
+		if (action === undefined) return;
+		if (action.kind === 'typeahead') {
+			runTypeahead(action.character);
 			return;
 		}
-		if (event.key === 'Enter') {
-			event.preventDefault();
-			const key = tabbableKey;
-			if (key === undefined) return;
-			changeSelection(new Set([key]));
-			activate(key);
+		event.preventDefault();
+		applyKeyAction(action);
+	}
+
+	/** 按键意图的收尾：不做 DOM 操作，只把意图分派到对应的 state 变更。 */
+	function applyKeyAction(action: Exclude<OutlinerKeyAction, { kind: 'typeahead' }>) {
+		if (action.kind === 'move') {
+			applyMove(action.move);
 			return;
 		}
-		if (event.key === 'F2') {
-			event.preventDefault();
-			if (tabbableKey !== undefined) startRename(tabbableKey);
+		if (action.kind === 'activate') {
+			activateFocusedRow();
 			return;
 		}
-		if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
-			runTypeahead(event.key);
-		}
+		if (tabbableKey !== undefined) startRename(tabbableKey);
+	}
+
+	function activateFocusedRow() {
+		const key = tabbableKey;
+		if (key === undefined) return;
+		changeSelection(new Set([key]));
+		activate(key);
 	}
 
 	function applyMove(move: TreeMove) {
@@ -220,21 +221,18 @@
 		if (current === undefined) return;
 		const next = nextFocusKey(rows, current, move);
 		if (next === undefined) return;
-		if (next === current) {
-			// `nextFocusKey` 用「返回当前 key」表示结构变化；只有展开状态允许时才真的折叠/展开。
-			const row = rowByKey(rows, current);
-			if (move === 'left' && row?.hasChildren && expanded.has(current)) toggleExpanded(current);
-			else if (move === 'right' && row?.hasChildren && !expanded.has(current))
-				toggleExpanded(current);
+		if (next !== current) {
+			focusRow(next);
 			return;
 		}
-		focusRow(next);
+		// `nextFocusKey` 用「返回当前 key」表示结构变化；只有展开状态允许时才真的折叠/展开。
+		if (structuralToggle(move, rowByKey(rows, current), expanded) !== undefined)
+			toggleExpanded(current);
 	}
 
 	function runTypeahead(character: string) {
 		const now = Date.now();
-		typeaheadBuffer =
-			now - typeaheadAt > TYPEAHEAD_TIMEOUT_MS ? character : typeaheadBuffer + character;
+		typeaheadBuffer = appendTypeahead(typeaheadBuffer, character, typeaheadAt, now);
 		typeaheadAt = now;
 		const key = typeaheadKey(rows, tabbableKey, typeaheadBuffer);
 		if (key !== undefined) focusRow(key);
@@ -337,18 +335,9 @@
 	function isValidDropTarget(target: DropTarget): boolean {
 		if (target.type === 'root') return true;
 		for (const key of draggingKeys) {
-			if (isWithin(key, target.key)) return false;
+			if (isWithinSubtree(rows, key, target.key)) return false;
 		}
 		return true;
-	}
-
-	function isWithin(ancestor: TreeKey, candidate: TreeKey): boolean {
-		let cursor: TreeKey | undefined = candidate;
-		while (cursor !== undefined) {
-			if (cursor === ancestor) return true;
-			cursor = rowByKey(rows, cursor)?.parentKey ?? undefined;
-		}
-		return false;
 	}
 </script>
 
