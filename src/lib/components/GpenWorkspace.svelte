@@ -12,23 +12,17 @@
 		type CreateComponentOptions,
 		type IContentRenderer
 	} from 'dockview';
-	import { type StrokeT } from 'gpen-protocol/flatbuffers';
-	import { type BrushSettingsT, type EraserSettingsT } from 'gpen-protocol/flatbuffers';
 	import {
-		loadPreferences,
 		preferences as preferencesState,
-		resetPreferences,
-		updatePreferences
+		resetPreferences
 	} from './gpenPreferencesState.svelte';
 	import { buildLayerTree } from '../layers/layerAdapter';
 	import { moveNodes, renameNode, setActiveNode, type MoveNodeOp } from '../layers/layerOps';
-	import { strokesOfDocument, type StrokePointInput } from '../layers/strokeOps';
 	import {
 		createGpenDocumentSession,
 		GPEN_DOCUMENT_ID,
 		type GpenDocumentSession
 	} from './gpenDocumentSession.svelte';
-	import type { UiLayerTree, UiLayerTreeNode } from '../layers/types';
 	import type { TreeKey, TreeOp } from '../layers/tree/index.js';
 	import { applyInfiniteCanvas, guessWebLayer, type InfiniteCanvas } from '../canvas/index';
 	import { createLayerView, type LayerView } from '../layers/layerView';
@@ -40,36 +34,25 @@
 	import {
 		createDefaultGpenWorkspaceState,
 		normalizeUiScale,
-		serializeGpenWorkspaceState,
 		UI_SCALE_DEFAULT,
 		type GpenToolId,
 		type GpenWorkspaceState
 	} from './gpenWorkspaceState';
-	import { serializeGpenPreferences } from './gpenPreferences';
 	import { readGpenViewportZoomFactor } from './gpenViewport';
 	import { setWorkspaceZoomVariable } from './workspaceZoom';
-	import { installSashZoomCorrection } from './workspaceSashZoom';
-	import { installFloatingDragZoomCorrection } from './workspaceFloatingDrag';
-	import { installFloatingResizeZoomCorrection } from './workspaceFloatingResize';
 	import { centeredFloatingBounds } from './workspaceLayout.js';
 	import {
 		createPanelLayoutController,
 		STATUS_BAR_PANEL_ID
 	} from './workspacePanelLayout.js';
-	import { observeViewport, pageOffset, viewportOffset, viewportSize, viewportZoom } from '#lib/visualViewport';
-	import { codeAreaSourceIdOf, getCodeAreaSource, registerCodeAreaSource } from './codeArea/source';
-	import { createWorkspaceTabMenu, WORKSPACE_TAB_MENU_ID } from './workspaceTabMenu.js';
+	import { registerCodeAreaSource } from './codeArea/source';
+	import { createWorkspaceTabMenu } from './workspaceTabMenu.js';
 	import { openCodeAreaPanel } from './codeArea/panels';
-	import {
-		createInternalStateSource,
-		INTERNAL_STATE_SOURCE_ID
-	} from './codeArea/internalState';
-	import {
-		menuState,
-		open as openMenu,
-		registerMenuItems,
-		type MenuItem
-	} from './contextMenu/contextMenu.svelte';
+	import { INTERNAL_STATE_SOURCE_ID } from './codeArea/internalState';
+	import { menuState } from './contextMenu/contextMenu.svelte';
+	import { createWorkspaceProps, CODE_AREA_COMPONENT } from './workspaceProps.svelte';
+	import { createWorkspaceDebugSource } from './workspaceDebug';
+	import { createWorkspaceEffects, type WorkspaceEffects } from './workspaceEffects';
 	import BlenderCodeArea from './areas/CodeArea.svelte';
 	import BlenderOutliner from './areas/Outliner.svelte';
 	import BlenderPreferences from './areas/Preferences.svelte';
@@ -116,25 +99,14 @@
 	/// 视图旋转（度）。真值以后归图层模型；这里只驱动 DOM 投影。
 	const hostViewState = $state({ rotation: 0 });
 
-	let disposeTabMenu: (() => void) | undefined;
-	/// 命令注册 + 快捷键绑定 + 全局派发器的总 disposer（见 registerCommands）。
-	let disposeCommands: (() => void) | undefined;
 	/// 内置 CodeArea 调试源的注销函数（见 registerInternalStateSource）。
 	let disposeCodeAreaSource: (() => void) | undefined;
 	let layoutSubscriptions: { dispose(): void }[] = [];
-	let viewportResizeObserver: ResizeObserver | undefined;
-	/// sash 拖动 / 浮窗拖动的缩放修正（zoom ≠ 1 时，见 `workspaceSashZoom.ts` / `workspaceFloatingDrag.ts`）。
-	let disposeSashZoom: (() => void) | undefined;
-	let disposeFloatingDrag: (() => void) | undefined;
-	/// 浮窗 resize 的缩放修正（zoom ≠ 1 时接管八个方向的手柄）。
-	let disposeFloatingResize: (() => void) | undefined;
-	let removeViewportListeners: (() => void) | undefined;
+	/// 挂载期订阅 / 监听的登记句柄（见 `workspaceEffects.ts`）。
+	let workspaceEffects: WorkspaceEffects | undefined;
 	let mounted = false;
 
 	const PREFERENCES_PANEL_ID = 'preferences';
-	/** CodeArea 的组件名（`panelComponents` 的键，也是 `addPanel` 的 `component`）。
-	 * 一个组件服务所有数据源，区别在面板 id：`codearea:<sourceId>`。 */
-	const CODE_AREA_COMPONENT = 'codearea';
 	const PREFERENCES_WIDTH = 420;
 	const PREFERENCES_HEIGHT = 520;
 	/** 浮动面板与工作区边缘的最小间距（px）。 */
@@ -202,176 +174,30 @@
 	}
 
 	/**
-	 * dockview 用 `mount()` 起面板，props 只在 init 时传一次。这个对象是 `$state`
-	 * 代理，所以之后对字段的赋值会推给子组件；Outliner 侧对应的是「受控三件套」
-	 * （受控值优先、回调总是触发，见 docs/tree.md §3.4）。
+	 * 面板 props 及其「状态 → props」同步在 `workspaceProps.svelte.ts`（那里是全套
+	 * `$state` 代理与 `$effect`）；组件只保留注册进 dockview 的 `componentProps`。
+	 * 依赖按 getter 注入：`$derived` 变量按值传进来会冻结成调用时的快照。
 	 */
-	const outlinerProps = $state<{
-		tree: UiLayerTree | undefined;
-		selectedKeys: ReadonlySet<TreeKey>;
-		activeKey: TreeKey | undefined;
-		expandedKeys: ReadonlySet<TreeKey>;
-		onSelectionChange: (keys: Set<TreeKey>) => void;
-		onActivate: (key: TreeKey) => void;
-		onExpandedChange: (keys: Set<TreeKey>) => void;
-		onRename: (key: TreeKey, name: string) => void;
-		onMove: (ops: TreeOp[]) => void;
-		/** 「重命名活动项」请求号（F2 / 菜单）；Outliner 只读它。 */
-		renameRequest: number;
-	}>({
-		tree: undefined,
-		selectedKeys: new Set<TreeKey>(),
-		activeKey: undefined,
-		expandedKeys: new Set<TreeKey>(),
-		onSelectionChange: (keys) => {
-			outlinerProps.selectedKeys = keys;
-		},
-		onActivate: (key) => activateLayerNode(key),
-		onExpandedChange: (keys) => {
-			outlinerProps.expandedKeys = keys;
-		},
-		onRename: (key, name) => renameLayerNode(key, name),
-		onMove: (ops) => moveLayerNodes(ops),
-		renameRequest: 0
+	const panelProps = createWorkspaceProps({
+		session,
+		hostViewState,
+		rotateHostView,
+		selectTool,
+		changeUiScale,
+		resetUiScale,
+		resetPreferencesAndTool,
+		resetPanelLayout: () => panelLayout.reset(),
+		openPreferences,
+		onMinimize: () => onMinimize?.(),
+		onClose: () => onClose?.(),
+		getWorkspaceState: () => workspaceState,
+		getLayerTree: () => layerTree,
+		getDocument: () => gpenDocument,
+		getLayerView: () => layerView,
+		activateLayerNode,
+		renameLayerNode,
+		moveLayerNodes
 	});
-
-	/**
-	 * 视口面板的 props：与 outlinerProps 同一套路（`$state` 代理跨 dockview
-	 * `mount()` 同步）。画布需要文档（重绘）+ layerView（坐标映射）+ onStroke，
-	 * 以及当前工具与画笔 / 橡皮参数（真值来自协议 `ToolbarState`）。
-	 */	const viewportProps = $state<{
-		viewState: { rotation: number };
-		onRotate: (degrees: number) => void;
-		document: GpenDocumentSession['document'];
-		layerView: LayerView | undefined;
-		onStroke: (points: StrokePointInput[]) => void;
-		onErase: (point: { x: number; y: number }) => void;
-		onEraseEnd: () => void;
-		activeTool: GpenToolId;
-		brush: BrushSettingsT | undefined;
-		eraser: EraserSettingsT | undefined;
-	}>({
-		viewState: hostViewState,
-		onRotate: rotateHostView,
-		document: undefined,
-		layerView: undefined,
-		onStroke: (points: StrokePointInput[]) => session.commitStroke(points),
-		onErase: (point: { x: number; y: number }) => session.commitErase(point),
-		onEraseEnd: () => session.endEraseGesture(),
-		activeTool: 'brush',
-		brush: undefined,
-		eraser: undefined
-	});
-
-	/**
-	 * 偏好面板的 props。同样是 `$state` 代理（跨 dockview `mount()` 同步），
-	 * 但里面**没有本地副本**：偏好层来自 `gpenPreferencesState`，工具层来自文档，
-	 * 布局层来自 `workspaceState`，面板只读它们并把改动回调出去。
-	 */
-	const preferencesProps = $state<{
-		preferences: ReturnType<typeof preferencesState>;
-		uiScale: number;
-		onChangeUiScale: (delta: number) => void;
-		onResetUiScale: () => void;
-		brush: BrushSettingsT | undefined;
-		eraser: EraserSettingsT | undefined;
-		onChangeBrush: (patch: Partial<BrushSettingsT>) => void;
-		onChangeEraser: (patch: Partial<EraserSettingsT>) => void;
-		onChangePreferences: typeof updatePreferences;
-		onResetPreferences: () => void;
-		onResetPanelLayout: () => void;
-		documentId: string;
-		storageStatus: string;
-		onClearDocument: () => void;
-	}>({
-		preferences: preferencesState(),
-		uiScale: UI_SCALE_DEFAULT,
-		onChangeUiScale: changeUiScale,
-		onResetUiScale: resetUiScale,
-		brush: undefined,
-		eraser: undefined,
-		onChangeBrush: (patch) => session.writeBrush(patch),
-		onChangeEraser: (patch) => session.writeEraser(patch),
-		onChangePreferences: updatePreferences,
-		onResetPreferences: resetPreferencesAndTool,
-		onResetPanelLayout: () => panelLayout.reset(),
-		documentId: GPEN_DOCUMENT_ID,
-		storageStatus: session.status,
-		onClearDocument: () => session.clear()
-	});
-
-	// 偏好 / 工具 / 布局三层 → 偏好面板 props。
-	$effect(() => {
-		preferencesProps.preferences = preferencesState();
-		preferencesProps.uiScale = workspaceState.uiScale;
-		const state = session.readToolbar();
-		preferencesProps.brush = state?.brush ?? undefined;
-		preferencesProps.eraser = state?.eraser ?? undefined;
-		preferencesProps.storageStatus = session.status;
-	});
-
-	/**
-	 * 属性面板的 props：和 `viewportProps` / `preferencesProps` 一样是 `$state` 代理
-	 * （`componentProps` 只在 `init()` 时求值一次，返回普通对象的话子组件永远看不到变化）。
-	 */
-	const propertiesProps = $state<{
-		brush: BrushSettingsT | undefined;
-		eraser: EraserSettingsT | undefined;
-		activeTool: GpenToolId;
-		onChangeBrush: (patch: Partial<BrushSettingsT>) => void;
-		onChangeEraser: (patch: Partial<EraserSettingsT>) => void;
-	}>({
-		brush: undefined,
-		eraser: undefined,
-		activeTool: 'brush',
-		onChangeBrush: (patch) => session.writeBrush(patch),
-		onChangeEraser: (patch) => session.writeEraser(patch)
-	});
-
-	// 工具 + 协议 `ToolbarState` → 属性面板 props。
-	$effect(() => {
-		const state = session.readToolbar();
-		propertiesProps.brush = state?.brush ?? undefined;
-		propertiesProps.eraser = state?.eraser ?? undefined;
-		propertiesProps.activeTool = workspaceState.activeTool;
-	});
-
-	let expandedInitialized = false;
-
-	// 文档 → 子组件 props 的单向同步（树、active、首次的展开集合）。
-	$effect(() => {
-		const tree = layerTree;
-		outlinerProps.tree = tree;
-		outlinerProps.activeKey = tree?.active_node?.node_index;
-		if (!expandedInitialized && tree) {
-			expandedInitialized = true;
-			outlinerProps.expandedKeys = groupKeys(tree.root);
-		}
-	});
-
-	// 文档 / 图层视图 → 视口 props（画布重绘与坐标映射都靠它）。
-	$effect(() => {
-		viewportProps.document = gpenDocument;
-		viewportProps.layerView = layerView;
-	});
-
-	// 当前工具与画笔 / 橡皮参数 → 视口 props（工具轨 / 设置面板改了要立即生效）。
-	$effect(() => {
-		const state = session.readToolbar();
-		viewportProps.activeTool = workspaceState.activeTool;
-		viewportProps.brush = state?.brush ?? undefined;
-		viewportProps.eraser = state?.eraser ?? undefined;
-	});
-
-	function groupKeys(root: UiLayerTreeNode | null): Set<TreeKey> {
-		const keys = new Set<TreeKey>();
-		const visit = (node: UiLayerTreeNode): void => {
-			if (node.children.length > 0) keys.add(node.node_index);
-			for (const child of node.children) visit(child);
-		};
-		if (root) visit(root);
-		return keys;
-	}
 
 	function activateLayerNode(key: TreeKey) {
 		if (!gpenDocument || gpenDocument.activeNodeIndex === key) return;
@@ -452,7 +278,7 @@
 	/** 「重命名活动项」（F2 / 编辑菜单）：Outliner 自己决定对哪一行进编辑态。 */
 	function requestRenameActive(): boolean {
 		if (!gpenDocument) return false;
-		outlinerProps.renameRequest += 1;
+		panelProps.outlinerProps.renameRequest += 1;
 		return true;
 	}
 
@@ -533,114 +359,23 @@
 		getContainer: () => container
 	});
 
-	/** 文档摘要：不是整篇文档（那可能几 MB），只给排查需要的计数与状态。 */
-	function documentSummary(): Record<string, unknown> {
-		const document = gpenDocument;
-		return {
-			id: GPEN_DOCUMENT_ID,
-			edited: session.edited,
-			ready: session.ready,
-			storageStatus: session.status,
-			nodes: document?.nodes?.length ?? 0,
-			layers: document?.layers?.length ?? 0,
-			groups: document?.groups?.length ?? 0,
-			strokes: document ? strokesOfDocument(document).length : 0,
-			undoDepth: session.historyState.undoDepth,
-			redoDepth: session.historyState.redoDepth
-		};
-	}
-
 	/**
-	 * 实时视口 / 缩放读数：排查「菜单不跟着缩放」「sash 增量不对」时最先要看的就是这几个数。
-	 *
-	 * 内容刻意**完整**（含 `scrollX/scrollY`、`visualViewport` 平移量、overlay / 菜单 / spacer
-	 * 的当前位置）：限频交给 CodeArea 的去抖，这里不藏数据。
-	 */
-	function viewportDebugSnapshot(): Record<string, unknown> {
-		const size = viewportSize();
-		const offset = viewportOffset();
-		const page = pageOffset();
-		const root = document.documentElement;
-		return {
-			// 订阅用：`observeViewport` 每次回调 +1，scroll / pinch / resize 都能推到这棵树。
-			revision: viewportRevision,
-			uiScale: normalizeUiScale(workspaceState.uiScale),
-			externalZoom: externalZoomFactor,
-			workspaceZoom,
-			dpr: typeof window === 'undefined' ? 1 : window.devicePixelRatio,
-			container: { width: layoutWidth ?? null, height: layoutHeight ?? null },
-			measured: { width: viewportWidth, height: viewportHeight },
-			visualViewport: {
-				width: size.width,
-				height: size.height,
-				scale: viewportZoom(),
-				offsetLeft: offset.x,
-				offsetTop: offset.y,
-				pageLeft: page.x,
-				pageTop: page.y
-			},
-			window: {
-				innerWidth: window.innerWidth,
-				innerHeight: window.innerHeight,
-				scrollX: window.scrollX,
-				scrollY: window.scrollY
-			},
-			// spacer 相机的画布范围（`scrollHeight` 被撑到 20 万就是它，不是页面真实几何）。
-			document: {
-				scrollWidth: root.scrollWidth,
-				scrollHeight: root.scrollHeight,
-				clientWidth: root.clientWidth,
-				clientHeight: root.clientHeight
-			},
-			// 一手几何：overlay（可见视口盒）、右键菜单、相机 spacer。
-			elements: {
-				overlay: elementDebugRect('.gpen-overlay'),
-				menu: elementDebugRect('[data-context-menu-root]'),
-				canvasSpace: elementDebugRect('[data-gpen-canvas-space]')
-			}
-		};
-	}
-
-	/** 元素的 inline 定位 + 视觉矩形（`zoom` 下 inline px 与 rect 会不一，正是要看的点）。 */
-	function elementDebugRect(selector: string): Record<string, unknown> | null {
-		const element = document.querySelector<HTMLElement>(selector);
-		if (!element) return null;
-		const rect = element.getBoundingClientRect();
-		return {
-			style: {
-				top: element.style.top,
-				left: element.style.left,
-				width: element.style.width,
-				height: element.style.height,
-				zoom: element.style.zoom
-			},
-			rect: {
-				x: Math.round(rect.x),
-				y: Math.round(rect.y),
-				width: Math.round(rect.width),
-				height: Math.round(rect.height)
-			},
-			offsetWidth: element.offsetWidth,
-			offsetHeight: element.offsetHeight
-		};
-	}
-
-	/**
-	 * 内部 JSON 状态树（文件菜单「调试：内部 JSON 状态树」）的数据源。
-	 *
-	 * 同步部分只读内存（`$state` / 序列化函数）→ 在面板里是实时的；异步部分（gpenBinary
-	 * 的 KV）走 `load()`，只在打开面板与点「刷新」时跑一次。高频值（scroll / pinch 平移）
-	 * 会推动这棵树，限频靠 CodeArea 的去抖（250ms），不在数据层藏字段。
+	 * 内部 JSON 状态树（文件菜单「调试：内部 JSON 状态树」）的数据源；读取器在
+	 * `workspaceDebug.ts`。注册表是命令式的，卸载时要注销（见 onDestroy）。
 	 */
 	function registerInternalStateSource(): () => void {
 		return registerCodeAreaSource(
-			createInternalStateSource({
-				workspaceState: () => serializeGpenWorkspaceState(workspaceState),
-				preferences: () => serializeGpenPreferences(preferencesState()),
-				document: documentSummary,
-				viewport: viewportDebugSnapshot,
-				menu: () => ({ menuState }),
-				gpenKv: () => session.kv
+			createWorkspaceDebugSource({
+				session,
+				getDocument: () => gpenDocument,
+				getWorkspaceState: () => workspaceState,
+				getLayout: () => ({ width: layoutWidth, height: layoutHeight }),
+				getZoom: () => ({ external: externalZoomFactor, workspace: workspaceZoom }),
+				getViewport: () => ({
+					width: viewportWidth,
+					height: viewportHeight,
+					revision: viewportRevision
+				})
 			})
 		);
 	}
@@ -690,6 +425,16 @@
 		viewportHeight = Math.max(0, parent?.clientHeight ?? window.innerHeight);
 	}
 
+	/** 视口（scroll / pinch / resize）变化：刷新缩放读数与布局（见 `workspaceEffects.ts`）。 */
+	function onViewportChange(): void {
+		updateExternalZoom();
+		measureViewport();
+		// 调试树（viewport 一节）靠它订阅 scroll / pinch / resize：`$state` 一变，
+		// 面板里的 JSON 就重算；限频在 CodeArea 的去抖里。
+		viewportRevision += 1;
+		panelLayout.schedule();
+	}
+
 	// CSS `zoom` has to counteract the external browser/pinch factor before the
 	// user's uiScale is applied. The resulting formula is:
 	//   effective workspace zoom = uiScale / (browser zoom × pinch zoom)
@@ -728,44 +473,6 @@
 		[CODE_AREA_COMPONENT]: BlenderCodeArea
 	};
 
-	/**
-	 * The menu panel hosts the whole title bar (menus, ui scale, close), and the
-	 * tool strip owns the active tool, so both need callbacks. The other panels
-	 * keep their own local state and are mounted without props.
-	 */
-	function componentProps(name: string, id: string): Record<string, unknown> | undefined {
-		if (name === 'tools') return { state: workspaceState, onSelectTool: selectTool };
-		if (name === 'viewport') return viewportProps;
-		if (name === 'outliner') return outlinerProps;
-		if (name === 'preferences') return preferencesProps;
-		// CodeArea 一个组件服务所有数据源：面板 id 里带着 sourceId，这里把它翻回数据源。
-		if (name === CODE_AREA_COMPONENT) {
-			const sourceId = codeAreaSourceIdOf(id);
-			return { source: sourceId ? getCodeAreaSource(sourceId) : undefined };
-		}
-		// 属性面板与设置面板共用同一套画笔 / 橡皮参数（真值在协议 `ToolbarState`），
-		// 只是属性面板跟随当前工具、设置面板两套都显示。
-		if (name === 'properties') return propertiesProps;
-		if (name === 'statusbar') {
-			return {
-				state: session.historyState,
-				onUndo: () => session.undo(),
-				onRedo: () => session.redo()
-			};
-		}
-		if (name === 'menu') {
-			return {
-				state: workspaceState,
-				onChangeUiScale: changeUiScale,
-				onResetUiScale: resetUiScale,
-				onOpenPreferences: openPreferences,
-				onMinimize,
-				onClose
-			};
-		}
-		return undefined;
-	}
-
 	function createComponent({ id, name }: CreateComponentOptions): IContentRenderer {
 		const Component = panelComponents[name];
 		const element = document.createElement('div');
@@ -780,7 +487,7 @@
 					if (!mountedComponent) {
 						mountedComponent = mount(Component, {
 							target: element,
-							props: componentProps(name, id)
+							props: panelProps.componentProps(name, id)
 						});
 					}
 				},
@@ -870,43 +577,17 @@
 		panelLayout.layoutNow();
 		panelLayout.restoreOrBuildDefault();
 
-		disposeTabMenu = registerMenuItems(WORKSPACE_TAB_MENU_ID, tabMenu.items);
-		container.addEventListener('contextmenu', tabMenu.handleContextMenu);
-		// 捕获阶段：Esc 先收浮动面板，别让它直接关掉整个工作区。
-		window.addEventListener('keydown', handleEscapePriority, { capture: true });
-		disposeCommands = registerCommands();
-
-		const onViewportChange = () => {
-			updateExternalZoom();
-			measureViewport();
-			// 调试树（viewport 一节）靠它订阅 scroll / pinch / resize：`$state` 一变，
-			// 面板里的 JSON 就重算；限频在 CodeArea 的去抖里。
-			viewportRevision += 1;
-			panelLayout.schedule();
-		};
-		removeViewportListeners = observeViewport(onViewportChange);
-		disposeSashZoom = installSashZoomCorrection({
+		// tab 菜单 / 命令 / 视口监听 / 缩放修正：登记与注销成对，见 workspaceEffects.ts。
+		workspaceEffects = createWorkspaceEffects({
 			container,
-			getZoom: () => workspaceZoom
-		}).dispose;
-		disposeFloatingDrag = installFloatingDragZoomCorrection({
-			container,
+			tabMenu,
+			handleEscapePriority,
+			registerCommands,
 			getZoom: () => workspaceZoom,
-			// 自己写的 left/top 也要进布局快照（`toJSON()` 读的就是它们）。
-			onDragEnd: () => panelLayout.handleLayoutEvent()
-		}).dispose;
-		disposeFloatingResize = installFloatingResizeZoomCorrection({
-			container,
-			getZoom: () => workspaceZoom,
-			// 同拖动：resize 后的 width/height 也要进布局快照。
-			onResizeEnd: () => panelLayout.handleLayoutEvent()
-		}).dispose;
-
-		const parent = container.parentElement;
-		if (typeof ResizeObserver !== 'undefined' && parent) {
-			viewportResizeObserver = new ResizeObserver(() => onViewportChange());
-			viewportResizeObserver.observe(parent);
-		}
+			onViewportChange,
+			onLayoutChange: () => panelLayout.handleLayoutEvent()
+		});
+		workspaceEffects.start();
 		panelLayout.schedule();
 	});
 
@@ -917,29 +598,16 @@
 		layerView = undefined;
 		infiniteCanvas?.destroy();
 		infiniteCanvas = undefined;
-		disposeSashZoom?.();
-		disposeSashZoom = undefined;
-		disposeFloatingDrag?.();
-		disposeFloatingDrag = undefined;
-		disposeFloatingResize?.();
-		disposeFloatingResize = undefined;
+		// 挂载期订阅 / 监听（tab 菜单、命令、缩放修正、视口监听）的对称注销。
+		workspaceEffects?.dispose();
+		workspaceEffects = undefined;
 		panelLayout.dispose();
 		// 工作区没了就把缩放变量收回 1：菜单在别的页面（`/demo/menu`）还得按 1× 渲染。
 		setWorkspaceZoomVariable(1);
-		removeViewportListeners?.();
-		removeViewportListeners = undefined;
-		viewportResizeObserver?.disconnect();
-		viewportResizeObserver = undefined;
 		for (const subscription of layoutSubscriptions) subscription.dispose();
 		layoutSubscriptions = [];
-		container.removeEventListener('contextmenu', tabMenu.handleContextMenu);
-		window.removeEventListener('keydown', handleEscapePriority, { capture: true });
-		disposeCommands?.();
-		disposeCommands = undefined;
 		disposeCodeAreaSource?.();
 		disposeCodeAreaSource = undefined;
-		disposeTabMenu?.();
-		disposeTabMenu = undefined;
 		dockview?.dispose();
 		dockview = undefined;
 
