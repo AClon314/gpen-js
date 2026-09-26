@@ -37,3 +37,6 @@ project.inlang/cache/
 /playwright-report
 /test-results
 dist/
+
+# Coverage
+/coverage

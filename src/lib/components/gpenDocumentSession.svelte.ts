@@ -268,7 +268,9 @@ export function createGpenDocumentSession(): GpenDocumentSession {
       eraseGestureStart = current;
       pushUndo(current);
     } else {
-      pushUndo(current, { coalesceWith: () => eraseGestureStart });
+      // 取到局部 const：闭包内 TS 不会保留 `eraseGestureStart` 的收窄（它在别处会被重新赋值）。
+      const gestureStart = eraseGestureStart;
+      pushUndo(current, { coalesceWith: () => gestureStart });
     }
     assign(next);
   }
