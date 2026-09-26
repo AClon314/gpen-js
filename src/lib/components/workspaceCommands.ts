@@ -97,9 +97,16 @@ function gpenVersion(): string {
   return typeof __GPEN_VERSION__ === "string" ? __GPEN_VERSION__ : "unknown";
 }
 
-/** Register every built-in command. Returns a disposer for all of them. */
-export function registerWorkspaceCommands(deps: WorkspaceCommandDeps): () => void {
-  const disposers = [
+/** 把所有注册返回的 disposer 合成一个。 */
+function disposeAll(disposers: readonly (() => void)[]): () => void {
+  return () => {
+    for (const dispose of disposers) dispose();
+  };
+}
+
+/** 历史 / 编辑命令（撤销、重做、重命名活动项）。 */
+function registerHistoryCommands(deps: WorkspaceCommandDeps): (() => void)[] {
+  return [
     registerCommand({
       id: GPEN_COMMAND_IDS.undo,
       label: "撤销",
@@ -123,22 +130,12 @@ export function registerWorkspaceCommands(deps: WorkspaceCommandDeps): () => voi
         deps.renameActive();
       },
     }),
-    registerCommand({
-      id: GPEN_COMMAND_IDS.resetPanelLayout,
-      label: "重置面板布局",
-      run: () => deps.resetPanelLayout(),
-    }),
-    registerCommand({
-      id: GPEN_COMMAND_IDS.toggleStatusBar,
-      label: "显示状态栏",
-      enabled: () => true,
-      run: () => deps.toggleStatusBar(),
-    }),
-    registerCommand({
-      id: GPEN_COMMAND_IDS.toggleFullscreen,
-      label: () => (deps.fullscreen() ? "退出全屏" : "切换全屏"),
-      run: () => deps.toggleFullscreen(),
-    }),
+  ];
+}
+
+/** 文件命令（保存、副本、新建、打开、最近文件）。 */
+function registerFileCommands(deps: WorkspaceCommandDeps): (() => void)[] {
+  return [
     registerCommand({
       id: GPEN_COMMAND_IDS.save,
       label: "保存",
@@ -169,6 +166,34 @@ export function registerWorkspaceCommands(deps: WorkspaceCommandDeps): () => voi
       keyBind: "Shift+Ctrl+S",
       run: () => deps.saveCopy(),
     }),
+  ];
+}
+
+/** 视图命令（重置面板布局、状态栏、全屏）。 */
+function registerViewCommands(deps: WorkspaceCommandDeps): (() => void)[] {
+  return [
+    registerCommand({
+      id: GPEN_COMMAND_IDS.resetPanelLayout,
+      label: "重置面板布局",
+      run: () => deps.resetPanelLayout(),
+    }),
+    registerCommand({
+      id: GPEN_COMMAND_IDS.toggleStatusBar,
+      label: "显示状态栏",
+      enabled: () => true,
+      run: () => deps.toggleStatusBar(),
+    }),
+    registerCommand({
+      id: GPEN_COMMAND_IDS.toggleFullscreen,
+      label: () => (deps.fullscreen() ? "退出全屏" : "切换全屏"),
+      run: () => deps.toggleFullscreen(),
+    }),
+  ];
+}
+
+/** 调试 / 会话命令（内部 JSON 状态树、退出工作区）。 */
+function registerDebugCommands(deps: WorkspaceCommandDeps): (() => void)[] {
+  return [
     registerCommand({
       id: GPEN_COMMAND_IDS.debugInternalJsonState,
       label: "调试：内部 JSON 状态树",
@@ -180,6 +205,12 @@ export function registerWorkspaceCommands(deps: WorkspaceCommandDeps): () => voi
       keyBind: "Ctrl+Q",
       run: () => deps.closeWorkspace(),
     }),
+  ];
+}
+
+/** 帮助命令（关于、偏好设置、报告问题、开发文档）。 */
+function registerHelpCommands(deps: WorkspaceCommandDeps): (() => void)[] {
+  return [
     registerCommand({
       id: GPEN_COMMAND_IDS.about,
       label: () => `关于 gpen（v${gpenVersion()}）`,
@@ -202,9 +233,17 @@ export function registerWorkspaceCommands(deps: WorkspaceCommandDeps): () => voi
       run: () => openExternal(GPEN_DOCS_URL),
     }),
   ];
-  return () => {
-    for (const dispose of disposers) dispose();
-  };
+}
+
+/** Register every built-in command. Returns a disposer for all of them. */
+export function registerWorkspaceCommands(deps: WorkspaceCommandDeps): () => void {
+  return disposeAll([
+    ...registerHistoryCommands(deps),
+    ...registerFileCommands(deps),
+    ...registerViewCommands(deps),
+    ...registerDebugCommands(deps),
+    ...registerHelpCommands(deps),
+  ]);
 }
 
 /**
@@ -217,7 +256,7 @@ export function registerWorkspaceCommands(deps: WorkspaceCommandDeps): () => voi
  * intent explicit).
  */
 export function registerWorkspaceKeyBindings(): () => void {
-  const disposers = [
+  return disposeAll([
     registerKeyBinding({ key: "Ctrl+Z", command: GPEN_COMMAND_IDS.undo }),
     registerKeyBinding({ key: ["Ctrl+Shift+Z", "Ctrl+Y"], command: GPEN_COMMAND_IDS.redo }),
     registerKeyBinding({ key: "F2", command: GPEN_COMMAND_IDS.renameActive }),
@@ -227,8 +266,5 @@ export function registerWorkspaceKeyBindings(): () => void {
     registerKeyBinding({ key: "Ctrl+Shift+O", command: GPEN_COMMAND_IDS.openRecent }),
     registerKeyBinding({ key: "Ctrl+Shift+S", command: GPEN_COMMAND_IDS.saveCopy }),
     registerKeyBinding({ key: "Ctrl+Alt+U", command: GPEN_COMMAND_IDS.openPreferences }),
-  ];
-  return () => {
-    for (const dispose of disposers) dispose();
-  };
+  ]);
 }

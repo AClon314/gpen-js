@@ -140,30 +140,50 @@ function normalizeBallPosition(value: unknown): GpenBallPosition | null {
   return { x: Math.round(x), y: Math.round(y) };
 }
 
+/** 有限数才接受，否则用 `fallback`（接受时归一化到位权 / 上下限）。 */
+function normalizeUiScaleField(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? normalizeUiScale(value) : fallback;
+}
+
+/** 布尔字段的容错读取。 */
+function normalizeBooleanField(value: unknown, fallback: boolean): boolean {
+  return typeof value === "boolean" ? value : fallback;
+}
+
+/** `panelLayout`：字段存在才解析（存在但非法 → `null`）；缺失用 `fallback`。 */
+function normalizePanelLayoutField(
+  source: Record<string, unknown>,
+  fallback: GpenPanelLayout | null,
+): GpenPanelLayout | null {
+  return Object.prototype.hasOwnProperty.call(source, "panelLayout")
+    ? normalizePanelLayout(source.panelLayout)
+    : fallback;
+}
+
+/** `ballPosition`：字段存在才解析（存在但非法 → `null`）；缺失用 `fallback`。 */
+function normalizeBallPositionField(
+  source: Record<string, unknown>,
+  fallback: GpenBallPosition | null,
+): GpenBallPosition | null {
+  return Object.prototype.hasOwnProperty.call(source, "ballPosition")
+    ? normalizeBallPosition(source.ballPosition)
+    : fallback;
+}
+
 /** 用容错规则把未知值归一化成一棵合法工作区状态。 */
 export function normalizeGpenWorkspaceState(
   value: unknown,
   fallback: GpenWorkspaceState = createDefaultGpenWorkspaceState(),
 ): GpenWorkspaceState {
   const source = isRecord(value) ? value : {};
-  const panelLayout = Object.prototype.hasOwnProperty.call(source, "panelLayout")
-    ? normalizePanelLayout(source.panelLayout)
-    : fallback.panelLayout;
-  const ballPosition = Object.prototype.hasOwnProperty.call(source, "ballPosition")
-    ? normalizeBallPosition(source.ballPosition)
-    : fallback.ballPosition;
-
   return {
     version: 1,
-    uiScale:
-      typeof source.uiScale === "number" && Number.isFinite(source.uiScale)
-        ? normalizeUiScale(source.uiScale)
-        : fallback.uiScale,
-    open: typeof source.open === "boolean" ? source.open : fallback.open,
-    collapsed: typeof source.collapsed === "boolean" ? source.collapsed : fallback.collapsed,
+    uiScale: normalizeUiScaleField(source.uiScale, fallback.uiScale),
+    open: normalizeBooleanField(source.open, fallback.open),
+    collapsed: normalizeBooleanField(source.collapsed, fallback.collapsed),
     activeTool: isToolId(source.activeTool) ? source.activeTool : fallback.activeTool,
-    panelLayout,
-    ballPosition,
+    panelLayout: normalizePanelLayoutField(source, fallback.panelLayout),
+    ballPosition: normalizeBallPositionField(source, fallback.ballPosition),
   };
 }
 
@@ -180,11 +200,27 @@ export function serializeGpenWorkspaceState(state: GpenWorkspaceState): GpenWork
   };
 }
 
+/** 旧版 `gpen.workspaceState` 的 JSON 解析：非对象（数组 / 标量）→ `undefined`。 */
+function parseLegacyWorkspaceState(encoded: string): GpenWorkspaceStatePatch | undefined {
+  // 解析抛错由调用方的 catch 处理（与旧实现同一个日志出口），这里不吞。
+  const value: unknown = JSON.parse(encoded);
+  return isRecord(value) ? (value as GpenWorkspaceStatePatch) : undefined;
+}
+
+/** 旧版 `gpen.uiScale` 字符串的数值解析：缺失 / 非有限数 → `undefined`。 */
+function readLegacyUiScale(local: { getItem(key: string): string | null }): number | undefined {
+  const raw = local.getItem(GPEN_UI_SCALE_KEY);
+  if (raw === null) return undefined;
+  const scale = Number(raw);
+  return Number.isFinite(scale) ? scale : undefined;
+}
+
 /**
  * 读取旧版 localStorage 里的工作区偏好。
  *
  * 旧实现把整个 state 写在 `gpen.workspaceState`（JSON），更早的版本只有一个
- * `gpen.uiScale` 字符串。两者都读，后者作为前者的缺省补充。
+ * `gpen.uiScale` 字符串。两者都读，后者作为前者的缺省补充；`gpen.workspaceState`
+ * 存在但 JSON 非法时整次读取放弃（与旧实现一致）。
  */
 export function readLegacyLocalStorageGpenWorkspaceStatePatch():
   | GpenWorkspaceStatePatch
@@ -193,24 +229,14 @@ export function readLegacyLocalStorageGpenWorkspaceStatePatch():
     const local = globalThis.localStorage;
     if (!local) return undefined;
     const encodedState = local.getItem(GPEN_WORKSPACE_STATE_KEY);
-    const legacyScale = local.getItem(GPEN_UI_SCALE_KEY);
-    let parsed: GpenWorkspaceStatePatch | undefined;
-
-    if (encodedState !== null) {
-      const value: unknown = JSON.parse(encodedState);
-      if (isRecord(value)) parsed = value as GpenWorkspaceStatePatch;
+    const scale = readLegacyUiScale(local);
+    const parsed = encodedState === null ? undefined : parseLegacyWorkspaceState(encodedState);
+    if (parsed) {
+      return parsed.uiScale === undefined && scale !== undefined
+        ? { ...parsed, uiScale: scale }
+        : parsed;
     }
-
-    if (parsed && parsed.uiScale === undefined && legacyScale !== null) {
-      const scale = Number(legacyScale);
-      if (Number.isFinite(scale)) parsed = { ...parsed, uiScale: scale };
-    }
-
-    if (parsed) return parsed;
-    if (legacyScale === null) return undefined;
-
-    const scale = Number(legacyScale);
-    return Number.isFinite(scale) ? { uiScale: scale } : undefined;
+    return scale === undefined ? undefined : { uiScale: scale };
   } catch (error) {
     console.debug("[gpen] ignored rejection: workspace state localStorage load", error);
     return undefined;

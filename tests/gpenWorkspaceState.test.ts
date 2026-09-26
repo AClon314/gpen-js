@@ -11,6 +11,8 @@ import {
   createRuntimeGpenWorkspaceStateStorage,
   GPEN_UI_SCALE_KEY,
   GPEN_WORKSPACE_STATE_KEY,
+  normalizeGpenWorkspaceState,
+  normalizeUiScale,
   readLegacyLocalStorageGpenWorkspaceStatePatch,
   type GpenWorkspaceStateStorage,
   type GpenWorkspaceStorageRecord,
@@ -69,6 +71,50 @@ describe("workspace state legacy localStorage", () => {
     expect(readLegacyLocalStorageGpenWorkspaceStatePatch()).toBeUndefined();
   });
 
+  test("gives up on the whole read when the state JSON is malformed", () => {
+    // 旧实现里 `JSON.parse` 的异常会直接跳出整个 try，连合法的 `gpen.uiScale`
+    // 也一并丢弃。这条测试把那个边界钉住，避免重构时“顺手修好”而改变行为。
+    installLocalStorage({
+      [GPEN_WORKSPACE_STATE_KEY]: "{not json",
+      [GPEN_UI_SCALE_KEY]: "1.25",
+    });
+    expect(readLegacyLocalStorageGpenWorkspaceStatePatch()).toBeUndefined();
+  });
+
+  test("ignores a non-object state payload and falls back to uiScale", () => {
+    installLocalStorage({
+      [GPEN_WORKSPACE_STATE_KEY]: "42",
+      [GPEN_UI_SCALE_KEY]: "1.5",
+    });
+    expect(readLegacyLocalStorageGpenWorkspaceStatePatch()).toEqual({ uiScale: 1.5 });
+  });
+
+  test("keeps the state object when its uiScale is already set", () => {
+    installLocalStorage({
+      [GPEN_WORKSPACE_STATE_KEY]: JSON.stringify({ version: 1, uiScale: 0.5 }),
+      [GPEN_UI_SCALE_KEY]: "1.5",
+    });
+    expect(readLegacyLocalStorageGpenWorkspaceStatePatch()).toEqual({
+      version: 1,
+      uiScale: 0.5,
+    });
+  });
+
+  test("returns the state object untouched when the legacy uiScale key is absent", () => {
+    installLocalStorage({
+      [GPEN_WORKSPACE_STATE_KEY]: JSON.stringify({ version: 1, activeTool: "lasso" }),
+    });
+    expect(readLegacyLocalStorageGpenWorkspaceStatePatch()).toEqual({
+      version: 1,
+      activeTool: "lasso",
+    });
+  });
+
+  test("rejects a non-numeric legacy uiScale", () => {
+    installLocalStorage({ [GPEN_UI_SCALE_KEY]: "not-a-number" });
+    expect(readLegacyLocalStorageGpenWorkspaceStatePatch()).toBeUndefined();
+  });
+
   test("save keeps both the state object and the legacy key in sync", async () => {
     const map = installLocalStorage();
     const storage = createLocalStorageGpenWorkspaceStateStorage();
@@ -84,6 +130,84 @@ describe("workspace state legacy localStorage", () => {
     const storage = createLocalStorageGpenWorkspaceStateStorage();
     expect(await storage.load()).toBeUndefined();
     await storage.save(createDefaultGpenWorkspaceState());
+  });
+});
+
+describe("workspace state normalization", () => {
+  test("treats non-objects as an empty source", () => {
+    const defaults = createDefaultGpenWorkspaceState();
+    for (const value of [undefined, null, 42, "state", [1, 2, 3]]) {
+      expect(normalizeGpenWorkspaceState(value)).toEqual(defaults);
+    }
+  });
+
+  test("fills only the fields that are missing", () => {
+    const fallback = {
+      ...createDefaultGpenWorkspaceState(),
+      uiScale: 1.5,
+      open: true,
+      activeTool: "picker" as const,
+    };
+    expect(normalizeGpenWorkspaceState({}, fallback)).toMatchObject({
+      uiScale: 1.5,
+      open: true,
+      activeTool: "picker",
+    });
+    expect(normalizeGpenWorkspaceState({ open: false }, fallback)).toMatchObject({
+      uiScale: 1.5,
+      open: false,
+      activeTool: "picker",
+    });
+  });
+
+  test("upgrades an old version number to the current one", () => {
+    // 存储里的 `version` 不被信任：它只用于日后迁移，输出永远是当前版本。
+    expect(normalizeGpenWorkspaceState({ version: 2, uiScale: 1.5 }).version).toBe(1);
+    expect(normalizeGpenWorkspaceState("nonsense").version).toBe(1);
+  });
+
+  test("rejects non-finite uiScale and re-clamps the valid ones", () => {
+    const fallback = { ...createDefaultGpenWorkspaceState(), uiScale: 1.5 };
+    expect(normalizeGpenWorkspaceState({ uiScale: Number.NaN }, fallback).uiScale).toBe(1.5);
+    expect(
+      normalizeGpenWorkspaceState({ uiScale: Number.POSITIVE_INFINITY }, fallback).uiScale,
+    ).toBe(1.5);
+    expect(normalizeGpenWorkspaceState({ uiScale: "2" }, fallback).uiScale).toBe(1.5);
+    expect(normalizeGpenWorkspaceState({ uiScale: 99 }).uiScale).toBe(normalizeUiScale(99));
+    expect(normalizeGpenWorkspaceState({ uiScale: 0 }).uiScale).toBe(normalizeUiScale(0));
+  });
+
+  test("rejects an unknown tool id", () => {
+    const fallback = { ...createDefaultGpenWorkspaceState(), activeTool: "eraser" as const };
+    expect(normalizeGpenWorkspaceState({ activeTool: "teleport" }, fallback).activeTool).toBe(
+      "eraser",
+    );
+    expect(normalizeGpenWorkspaceState({ activeTool: 7 }, fallback).activeTool).toBe("eraser");
+  });
+
+  test("a present but invalid panelLayout becomes null instead of the fallback", () => {
+    const fallback = {
+      ...createDefaultGpenWorkspaceState(),
+      panelLayout: { grid: { width: 800, height: 600 } },
+    };
+    // 字段存在 = 用户的那份布局（哪怕坏了），不能被默认布局盖掉。
+    expect(normalizeGpenWorkspaceState({ panelLayout: "nope" }, fallback).panelLayout).toBeNull();
+    // 字段缺失才用 fallback。
+    expect(normalizeGpenWorkspaceState({}, fallback).panelLayout).toEqual(fallback.panelLayout);
+  });
+
+  test("a present but invalid ballPosition becomes null and valid ones round", () => {
+    const fallback = {
+      ...createDefaultGpenWorkspaceState(),
+      ballPosition: { x: 10, y: 20 },
+    };
+    expect(
+      normalizeGpenWorkspaceState({ ballPosition: { x: 1, y: "2" } }, fallback).ballPosition,
+    ).toBeNull();
+    expect(
+      normalizeGpenWorkspaceState({ ballPosition: { x: 1.6, y: -2.4 } }, fallback).ballPosition,
+    ).toEqual({ x: 2, y: -2 });
+    expect(normalizeGpenWorkspaceState({}, fallback).ballPosition).toEqual({ x: 10, y: 20 });
   });
 });
 

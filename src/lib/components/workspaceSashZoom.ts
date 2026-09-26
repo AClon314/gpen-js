@@ -14,8 +14,13 @@
  * 的「缩放修复」一节（整体 CSS zoom 与 dockview 的 px 数学天然不兼容，只能逐个交互补）。
  */
 
+import {
+  installZoomGesture,
+  isPrimaryPointerPress,
+  isUsableZoom,
+} from "./workspaceFloatingGeometry.js";
+
 interface ActiveSashDrag {
-  pointerId: number;
   startX: number;
   startY: number;
   /** 按下时的缩放；拖动过程中不变。 */
@@ -66,66 +71,33 @@ export function installSashZoomCorrection(options: {
   container: HTMLElement;
   getZoom(): number;
 }): SashZoomCorrection {
-  let active: ActiveSashDrag | undefined;
-
-  function onPointerDown(event: PointerEvent): void {
-    // 只接管主键（触屏 / 笔没有 button 语义，按下即有效）。
-    if (event.pointerType === "mouse" && event.button !== 0) return;
-    const target = event.target;
-    if (!(target instanceof Element)) return;
-    const sash = target.closest(".dv-sash");
-    if (!sash) return;
-    const zoom = options.getZoom();
-    if (!Number.isFinite(zoom) || zoom <= 0 || Math.abs(zoom - 1) < 1e-3) return;
-    active = {
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-      zoom,
-      target: sash,
-    };
-  }
-
-  function onPointerMove(event: PointerEvent): void {
-    // `isTrusted === false` = 我们自己刚派发的修正事件，不能再拦一次（否则递归到爆栈）。
-    if (!event.isTrusted) return;
-    const drag = active;
-    if (!drag || drag.pointerId !== event.pointerId) return;
-    // 原事件到此为止：换成换算后的坐标再放行，否则 dockview 会按视觉 px 改布局。
-    event.stopImmediatePropagation();
-    const clientX = drag.startX + (event.clientX - drag.startX) / drag.zoom;
-    const clientY = drag.startY + (event.clientY - drag.startY) / drag.zoom;
-    const corrected = correctedPointerEvent(event, clientX, clientY);
-    const target = drag.target.isConnected ? drag.target : document;
-    target.dispatchEvent(corrected);
-  }
-
-  function end(event: { pointerId?: number }): void {
-    if (active && event.pointerId !== undefined && event.pointerId !== active.pointerId) return;
-    active = undefined;
-  }
-
-  const onContextMenu = () => end({});
-  const onBlur = () => end({});
-
-  options.container.addEventListener("pointerdown", onPointerDown, true);
-  // 监听挂在 window 的 capture 阶段：dockview 的 pointermove 在 document 的 bubble 阶段，
-  // 这里必须比它先看到事件（否则它已经按错误坐标改过布局了）。
-  window.addEventListener("pointermove", onPointerMove, true);
-  window.addEventListener("pointerup", end, true);
-  window.addEventListener("pointercancel", end, true);
-  window.addEventListener("contextmenu", onContextMenu, true);
-  window.addEventListener("blur", onBlur);
-
-  return {
-    dispose() {
-      active = undefined;
-      options.container.removeEventListener("pointerdown", onPointerDown, true);
-      window.removeEventListener("pointermove", onPointerMove, true);
-      window.removeEventListener("pointerup", end, true);
-      window.removeEventListener("pointercancel", end, true);
-      window.removeEventListener("contextmenu", onContextMenu, true);
-      window.removeEventListener("blur", onBlur);
+  return installZoomGesture<ActiveSashDrag>({
+    container: options.container,
+    // 右键菜单会打断拖动（原实现如此），所以也当作结束。
+    endOnContextMenu: true,
+    handlers: {
+      start(event) {
+        // 只接管主键（触屏 / 笔没有 button 语义，按下即有效）。
+        if (!isPrimaryPointerPress(event)) return undefined;
+        const target = event.target;
+        if (!(target instanceof Element)) return undefined;
+        const sash = target.closest(".dv-sash");
+        if (!sash) return undefined;
+        const zoom = options.getZoom();
+        if (!isUsableZoom(zoom)) return undefined;
+        return { startX: event.clientX, startY: event.clientY, zoom, target: sash };
+      },
+      move(event, drag) {
+        // `isTrusted === false` = 我们自己刚派发的修正事件，不能再拦一次（否则递归到爆栈）。
+        if (!event.isTrusted) return;
+        // 原事件到此为止：换成换算后的坐标再放行，否则 dockview 会按视觉 px 改布局。
+        event.stopImmediatePropagation();
+        const clientX = drag.startX + (event.clientX - drag.startX) / drag.zoom;
+        const clientY = drag.startY + (event.clientY - drag.startY) / drag.zoom;
+        const corrected = correctedPointerEvent(event, clientX, clientY);
+        const target = drag.target.isConnected ? drag.target : document;
+        target.dispatchEvent(corrected);
+      },
     },
-  };
+  });
 }
