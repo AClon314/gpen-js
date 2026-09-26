@@ -193,6 +193,88 @@ type OpfsTabBusConnection = {
   backend: BlobBackend & { close(): void };
 };
 
+/** 校验宿主 document 可用，并拒绝 opaque origin（`"null"`）。 */
+function requireOwnerDocument(candidate: Document | undefined): Document {
+  const ownerWindow = candidate?.defaultView;
+  if (!candidate || !ownerWindow) {
+    throw new Error("OPFS Blob broker requires a browser document");
+  }
+  if (!ownerWindow.location.origin || ownerWindow.location.origin === "null") {
+    throw new Error("OPFS Blob broker requires a non-opaque page origin");
+  }
+  return candidate;
+}
+
+/** 建出指向 broker 页的隐藏 iframe（含 parentOrigin / channel / timeout 参数）。 */
+function buildBrokerIframe(
+  ownerDocument: Document,
+  options: OpfsTabBusBlobOptions,
+  preferredOrigin: string,
+  channelName: string,
+  loadTimeoutMs: number,
+): HTMLIFrameElement {
+  const iframe = ownerDocument.createElement("iframe");
+  iframe.hidden = true;
+  iframe.setAttribute("aria-hidden", "true");
+  const brokerUrl = new URL(options.brokerPath ?? DEFAULT_BROKER_PATH, preferredOrigin);
+  brokerUrl.searchParams.set("parentOrigin", ownerDocument.defaultView!.location.origin);
+  brokerUrl.searchParams.set("channel", channelName);
+  brokerUrl.searchParams.set("timeout", String(loadTimeoutMs));
+  iframe.src = brokerUrl.toString();
+  return iframe;
+}
+
+/** 装载 broker iframe、建好跨域 bus，并返回可用的远程 Blob 后端。 */
+async function openOpfsBrokerConnection(
+  options: OpfsTabBusBlobOptions,
+  preferredOrigin: string,
+  channelName: string,
+  loadTimeoutMs: number,
+  isClosed: () => boolean,
+): Promise<OpfsTabBusConnection> {
+  if (isClosed()) throw new Error("OPFS Blob backend is closed");
+
+  const ownerDocument = requireOwnerDocument(options.document ?? globalThis.document);
+  const iframe = buildBrokerIframe(
+    ownerDocument,
+    options,
+    preferredOrigin,
+    channelName,
+    loadTimeoutMs,
+  );
+
+  const container = ownerDocument.body ?? ownerDocument.documentElement;
+  if (!container) throw new Error("OPFS Blob broker requires a document container");
+
+  let bus: CrossOriginBus | undefined;
+  try {
+    await waitForIframe(iframe, container, loadTimeoutMs);
+    if (isClosed() || !iframe.contentWindow) throw new Error("OPFS Blob broker was closed");
+
+    bus = new CrossOriginBus({
+      remoteWindow: iframe.contentWindow,
+      targetOrigin: preferredOrigin,
+      channel: channelName,
+      timeout: loadTimeoutMs,
+    });
+    await bus.ready;
+    if (isClosed()) {
+      bus.destroy();
+      throw new Error("OPFS Blob broker was closed");
+    }
+
+    const backend = createTabBusBlobBackend(bus, {
+      name: `opfs+tabbus:${preferredOrigin}`,
+      timeoutMs: loadTimeoutMs,
+    });
+    return { iframe, bus, backend };
+  } catch (cause) {
+    bus?.destroy();
+    iframe.remove();
+    throw cause;
+  }
+}
+
 /** 建一个通过 tab bus 访问远程 OPFS broker 的 Blob 后端。 */
 export function createOpfsTabBusBlobBackend(
   options: OpfsTabBusBlobOptions = {},
@@ -204,64 +286,19 @@ export function createOpfsTabBusBlobBackend(
   let connection: OpfsTabBusConnection | undefined;
   let closed = false;
 
-  const connect = async (): Promise<OpfsTabBusConnection> => {
-    if (closed) throw new Error("OPFS Blob backend is closed");
-
-    const ownerDocument = options.document ?? globalThis.document;
-    const ownerWindow = ownerDocument?.defaultView;
-    if (!ownerDocument || !ownerWindow) {
-      throw new Error("OPFS Blob broker requires a browser document");
-    }
-    if (!ownerWindow.location.origin || ownerWindow.location.origin === "null") {
-      throw new Error("OPFS Blob broker requires a non-opaque page origin");
-    }
-
-    const iframe = ownerDocument.createElement("iframe");
-    iframe.hidden = true;
-    iframe.setAttribute("aria-hidden", "true");
-    iframe.src = new URL(options.brokerPath ?? DEFAULT_BROKER_PATH, preferredOrigin).toString();
-    const parentOrigin = ownerWindow.location.origin;
-    const brokerUrl = new URL(iframe.src);
-    brokerUrl.searchParams.set("parentOrigin", parentOrigin);
-    brokerUrl.searchParams.set("channel", channelName);
-    brokerUrl.searchParams.set("timeout", String(loadTimeoutMs));
-    iframe.src = brokerUrl.toString();
-
-    const container = ownerDocument.body ?? ownerDocument.documentElement;
-    if (!container) throw new Error("OPFS Blob broker requires a document container");
-
-    let bus: CrossOriginBus | undefined;
-    try {
-      await waitForIframe(iframe, container, loadTimeoutMs);
-      if (closed || !iframe.contentWindow) throw new Error("OPFS Blob broker was closed");
-
-      bus = new CrossOriginBus({
-        remoteWindow: iframe.contentWindow,
-        targetOrigin: preferredOrigin,
-        channel: channelName,
-        timeout: loadTimeoutMs,
-      });
-      await bus.ready;
-      if (closed) {
-        bus.destroy();
-        throw new Error("OPFS Blob broker was closed");
-      }
-
-      const backend = createTabBusBlobBackend(bus, {
-        name: `opfs+tabbus:${preferredOrigin}`,
-        timeoutMs: loadTimeoutMs,
-      });
-      const result = { iframe, bus, backend };
+  const getConnection = (): Promise<OpfsTabBusConnection> => {
+    connectionPromise ??= openOpfsBrokerConnection(
+      options,
+      preferredOrigin,
+      channelName,
+      loadTimeoutMs,
+      () => closed,
+    ).then((result) => {
       connection = result;
       return result;
-    } catch (cause) {
-      bus?.destroy();
-      iframe.remove();
-      throw cause;
-    }
+    });
+    return connectionPromise;
   };
-
-  const getConnection = () => (connectionPromise ??= connect());
   const getBackend = async () => (await getConnection()).backend;
 
   return {

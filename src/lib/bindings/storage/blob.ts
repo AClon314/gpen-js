@@ -150,6 +150,127 @@ function resolveBlobBackend(
   };
 }
 
+type BlobLoader = (id: string) => Promise<Blob | undefined>;
+type BlobStorer = (id: string, value: Blob, options?: BlobSetOptions) => Promise<void>;
+type BlobRemover = (id: string) => Promise<void>;
+
+function createReadPath(path: string[], load: BlobLoader): BlobReadPath {
+  const target = Object.create(null) as object;
+  return new Proxy(target, {
+    get(_target, property) {
+      if (property === "then") {
+        return (
+          onfulfilled?: (value: Blob | undefined) => unknown,
+          onrejected?: (reason: unknown) => unknown,
+        ) => load(path.join("/")).then(onfulfilled, onrejected);
+      }
+      if (property === "toJSON" || typeof property === "symbol") return undefined;
+      return createReadPath([...path, String(property)], load);
+    },
+  }) as BlobReadPath;
+}
+
+function createSetPath(path: string[], store: BlobStorer): BlobSetPath {
+  const callable = function () {
+    return undefined;
+  };
+  return new Proxy(callable, {
+    apply(_target, _thisArg, args: unknown[]) {
+      if (args.length < 1 || args.length > 2) {
+        return Promise.reject(new TypeError("A Blob set path accepts a Blob and optional options"));
+      }
+      return store(path.join("/"), args[0] as Blob, args[1] as BlobSetOptions | undefined);
+    },
+    get(_target, property) {
+      if (property === "then" || property === "toJSON" || typeof property === "symbol") {
+        return undefined;
+      }
+      return createSetPath([...path, String(property)], store);
+    },
+  }) as unknown as BlobSetPath;
+}
+
+function createDeletePath(path: string[], remove: BlobRemover): BlobDeletePath {
+  const target = Object.create(null) as object;
+  return new Proxy(target, {
+    get(_target, property) {
+      if (property === "then") {
+        return (
+          onfulfilled?: (value: undefined) => unknown,
+          onrejected?: (reason: unknown) => unknown,
+        ) => remove(path.join("/")).then(() => onfulfilled?.(undefined), onrejected);
+      }
+      if (property === "toJSON" || typeof property === "symbol") return undefined;
+      return createDeletePath([...path, String(property)], remove);
+    },
+  }) as BlobDeletePath;
+}
+
+function createGetAccessor(load: BlobLoader): BlobGetAccessor {
+  return new Proxy(
+    function () {
+      return undefined;
+    },
+    {
+      apply(_target, _thisArg, args: unknown[]) {
+        if (args.length !== 1 || typeof args[0] !== "string") {
+          return Promise.reject(new TypeError("Blob get accepts exactly one id"));
+        }
+        return load(args[0]);
+      },
+      get(_target, property) {
+        if (property === "then" || property === "toJSON" || typeof property === "symbol")
+          return undefined;
+        return createReadPath([String(property)], load);
+      },
+    },
+  ) as unknown as BlobGetAccessor;
+}
+
+function createSetAccessor(store: BlobStorer): BlobSetAccessor {
+  return new Proxy(
+    function () {
+      return undefined;
+    },
+    {
+      apply(_target, _thisArg, args: unknown[]) {
+        if (args.length < 2 || args.length > 3 || typeof args[0] !== "string") {
+          return Promise.reject(
+            new TypeError("Blob set accepts an id, Blob, and optional options"),
+          );
+        }
+        return store(args[0], args[1] as Blob, args[2] as BlobSetOptions | undefined);
+      },
+      get(_target, property) {
+        if (property === "then" || property === "toJSON" || typeof property === "symbol")
+          return undefined;
+        return createSetPath([String(property)], store);
+      },
+    },
+  ) as unknown as BlobSetAccessor;
+}
+
+function createDeleteAccessor(remove: BlobRemover): BlobDeleteAccessor {
+  return new Proxy(
+    function () {
+      return undefined;
+    },
+    {
+      apply(_target, _thisArg, args: unknown[]) {
+        if (args.length !== 1 || typeof args[0] !== "string") {
+          return Promise.reject(new TypeError("Blob delete accepts exactly one id"));
+        }
+        return remove(args[0]);
+      },
+      get(_target, property) {
+        if (property === "then" || property === "toJSON" || typeof property === "symbol")
+          return undefined;
+        return createDeletePath([String(property)], remove);
+      },
+    },
+  ) as unknown as BlobDeleteAccessor;
+}
+
 /**
  * Add an operation proxy and mutable hooks to any Blob backend. The direct
  * set/get/delete methods remain available, so existing backends can be
@@ -193,122 +314,12 @@ export function createBlobBackend(
     }
   };
 
-  const getPath = (path: string[]): BlobReadPath => {
-    const target = Object.create(null) as object;
-    return new Proxy(target, {
-      get(_target, property) {
-        if (property === "then") {
-          return (
-            onfulfilled?: (value: Blob | undefined) => unknown,
-            onrejected?: (reason: unknown) => unknown,
-          ) => getBlob(path.join("/")).then(onfulfilled, onrejected);
-        }
-        if (property === "toJSON" || typeof property === "symbol") return undefined;
-        return getPath([...path, String(property)]);
-      },
-    }) as BlobReadPath;
-  };
-
-  const setPath = (path: string[]): BlobSetPath => {
-    const callable = function () {
-      return undefined;
-    };
-    return new Proxy(callable, {
-      apply(_target, _thisArg, args: unknown[]) {
-        if (args.length < 1 || args.length > 2) {
-          return Promise.reject(
-            new TypeError("A Blob set path accepts a Blob and optional options"),
-          );
-        }
-        return setBlob(path.join("/"), args[0] as Blob, args[1] as BlobSetOptions | undefined);
-      },
-      get(_target, property) {
-        if (property === "then" || property === "toJSON" || typeof property === "symbol") {
-          return undefined;
-        }
-        return setPath([...path, String(property)]);
-      },
-    }) as unknown as BlobSetPath;
-  };
-
-  const deletePath = (path: string[]): BlobDeletePath => {
-    const target = Object.create(null) as object;
-    return new Proxy(target, {
-      get(_target, property) {
-        if (property === "then") {
-          return (
-            onfulfilled?: (value: undefined) => unknown,
-            onrejected?: (reason: unknown) => unknown,
-          ) => deleteBlob(path.join("/")).then(() => onfulfilled?.(undefined), onrejected);
-        }
-        if (property === "toJSON" || typeof property === "symbol") return undefined;
-        return deletePath([...path, String(property)]);
-      },
-    }) as BlobDeletePath;
-  };
-
-  const get = new Proxy(
-    function () {
-      return undefined;
-    },
-    {
-      apply(_target, _thisArg, args: unknown[]) {
-        if (args.length !== 1 || typeof args[0] !== "string") {
-          return Promise.reject(new TypeError("Blob get accepts exactly one id"));
-        }
-        return getBlob(args[0]);
-      },
-      get(_target, property) {
-        if (property === "then" || property === "toJSON" || typeof property === "symbol")
-          return undefined;
-        return getPath([String(property)]);
-      },
-    },
-  ) as unknown as BlobGetAccessor;
-  const set = new Proxy(
-    function () {
-      return undefined;
-    },
-    {
-      apply(_target, _thisArg, args: unknown[]) {
-        if (args.length < 2 || args.length > 3 || typeof args[0] !== "string") {
-          return Promise.reject(
-            new TypeError("Blob set accepts an id, Blob, and optional options"),
-          );
-        }
-        return setBlob(args[0], args[1] as Blob, args[2] as BlobSetOptions | undefined);
-      },
-      get(_target, property) {
-        if (property === "then" || property === "toJSON" || typeof property === "symbol")
-          return undefined;
-        return setPath([String(property)]);
-      },
-    },
-  ) as unknown as BlobSetAccessor;
-  const del = new Proxy(
-    function () {
-      return undefined;
-    },
-    {
-      apply(_target, _thisArg, args: unknown[]) {
-        if (args.length !== 1 || typeof args[0] !== "string") {
-          return Promise.reject(new TypeError("Blob delete accepts exactly one id"));
-        }
-        return deleteBlob(args[0]);
-      },
-      get(_target, property) {
-        if (property === "then" || property === "toJSON" || typeof property === "symbol")
-          return undefined;
-        return deletePath([String(property)]);
-      },
-    },
-  ) as unknown as BlobDeleteAccessor;
-
+  const del = createDeleteAccessor(deleteBlob);
   const result = {
     name: backend.name,
     proxy,
-    get,
-    set,
+    get: createGetAccessor(getBlob),
+    set: createSetAccessor(setBlob),
     delete: del,
     del,
     async close() {

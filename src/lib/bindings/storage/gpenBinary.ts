@@ -14,7 +14,7 @@
  */
 import type { GpenT } from "../../protocol/codec";
 import { decodeGpen, encodeGpen, GpenCodecError } from "../../protocol/codec";
-import type { KvStorage } from "./kv.js";
+import type { KvStorage } from "./types.js";
 import type { ITabBus, TabBusSendOptions } from "../../crossTabBus/index.js";
 import type { BlobBackend } from "./types.js";
 
@@ -209,38 +209,48 @@ function parseMetadata(value: unknown, id: string): GpenMetadata {
   };
 }
 
-/** 用依赖创建 Gpen 二进制文档存储。 */
-export function createGpenBinaryStore(deps: GpenBinaryStoreDeps): GpenBinaryStore {
-  const cache = deps.cache ?? false;
-  const debounceMs = deps.debounceMs ?? 150;
-  if (!Number.isFinite(debounceMs) || debounceMs < 0) {
-    throw new RangeError("Gpen binary debounceMs must be a non-negative finite number");
+/** Cached write state for one document id. */
+type PendingDocument = {
+  document: GpenT;
+  revision: number;
+  dirty: boolean;
+  timer?: ReturnType<typeof setTimeout>;
+};
+
+/**
+ * Serialized runtime behind `createGpenBinaryStore`. Kept as a class so the
+ * debounce/persist state machine is split into individually small methods
+ * instead of one long closure.
+ */
+class GpenBinaryRuntime {
+  _deps: GpenBinaryStoreDeps;
+  _cache: boolean;
+  _debounceMs: number;
+  _pending = new Map<string, PendingDocument>();
+  _latestMetadata = new Map<string, GpenMetadata>();
+  _disposed = false;
+  _operationTail: Promise<void> = Promise.resolve();
+
+  constructor(deps: GpenBinaryStoreDeps, cache: boolean, debounceMs: number) {
+    this._deps = deps;
+    this._cache = cache;
+    this._debounceMs = debounceMs;
   }
 
-  type Pending = {
-    document: GpenT;
-    revision: number;
-    dirty: boolean;
-    timer?: ReturnType<typeof setTimeout>;
-  };
-  const pending = new Map<string, Pending>();
-  const latestMetadata = new Map<string, GpenMetadata>();
-  let disposed = false;
-  let operationTail = Promise.resolve();
+  _assertOpen(): void {
+    if (this._disposed) throw new Error("Gpen binary store is disposed");
+  }
 
-  const assertOpen = () => {
-    if (disposed) throw new Error("Gpen binary store is disposed");
-  };
-  const enqueue = <T>(operation: () => Promise<T>): Promise<T> => {
-    const next = operationTail.then(operation);
-    operationTail = next.then(
+  _enqueue<R>(operation: () => Promise<R>): Promise<R> {
+    const next = this._operationTail.then(operation);
+    this._operationTail = next.then(
       () => undefined,
       () => undefined,
     );
     return next;
-  };
+  }
 
-  const persistDocument = async (id: string, document: GpenT): Promise<GpenMetadata> => {
+  async _persistDocument(id: string, document: GpenT): Promise<GpenMetadata> {
     let bytes: Uint8Array;
     try {
       bytes = encodeGpen(document);
@@ -261,13 +271,16 @@ export function createGpenBinaryStore(deps: GpenBinaryStoreDeps): GpenBinaryStor
     };
     try {
       // Keep the binary out of KV and copy the generated view before Blob use.
-      await deps.blob.set(blobId, new Blob([new Uint8Array(bytes)], { type: GPEN_BLOB_TYPE }));
+      await this._deps.blob.set(
+        blobId,
+        new Blob([new Uint8Array(bytes)], { type: GPEN_BLOB_TYPE }),
+      );
     } catch (error) {
       throw storageError("write_failed", id, `failed to write blob ${blobId}`, error);
     }
     try {
-      await deps.kv.set.gpen[id](metadata);
-      await deps.kv.submit();
+      await this._deps.kv.set.gpen[id](metadata);
+      await this._deps.kv.submit();
     } catch (error) {
       throw storageError(
         "write_failed",
@@ -276,12 +289,12 @@ export function createGpenBinaryStore(deps: GpenBinaryStoreDeps): GpenBinaryStor
         error,
       );
     }
-    latestMetadata.set(id, metadata);
+    this._latestMetadata.set(id, metadata);
     return metadata;
-  };
+  }
 
-  const flushId = (id: string): Promise<void> => {
-    const state = pending.get(id);
+  _flushId(id: string): Promise<void> {
+    const state = this._pending.get(id);
     if (!state || !state.dirty) return Promise.resolve();
     if (state.timer !== undefined) {
       clearTimeout(state.timer);
@@ -289,35 +302,35 @@ export function createGpenBinaryStore(deps: GpenBinaryStoreDeps): GpenBinaryStor
     }
     const revision = state.revision;
     const document = state.document;
-    return enqueue(async () => {
-      const metadata = await persistDocument(id, document);
-      const current = pending.get(id);
+    return this._enqueue(async () => {
+      const metadata = await this._persistDocument(id, document);
+      const current = this._pending.get(id);
       if (current && current.revision === revision) {
         current.dirty = false;
-        latestMetadata.set(id, metadata);
+        this._latestMetadata.set(id, metadata);
       }
     });
-  };
+  }
 
-  const flushAll = async (): Promise<void> => {
-    await Promise.all([...pending.keys()].map((id) => flushId(id)));
-  };
+  async _flushAll(): Promise<void> {
+    await Promise.all([...this._pending.keys()].map((id) => this._flushId(id)));
+  }
 
-  const schedule = (id: string): void => {
-    const state = pending.get(id);
-    if (!state || !state.dirty || disposed) return;
+  _schedule(id: string): void {
+    const state = this._pending.get(id);
+    if (!state || !state.dirty || this._disposed) return;
     if (state.timer !== undefined) clearTimeout(state.timer);
     state.timer = setTimeout(() => {
       state.timer = undefined;
-      void flushId(id).catch((e) => {
+      void this._flushId(id).catch((e) => {
         console.debug("[gpen] ignored rejection: gpenBinary flush", e);
         return;
       });
-    }, debounceMs);
-  };
+    }, this._debounceMs);
+  }
 
-  const loadPersisted = async (id: string): Promise<GpenT> => {
-    const raw = await deps.kv.get.gpen[id];
+  async _loadPersisted(id: string): Promise<GpenT> {
+    const raw = await this._deps.kv.get.gpen[id];
     if (raw === undefined)
       throw storageError(
         "metadata_missing",
@@ -325,7 +338,7 @@ export function createGpenBinaryStore(deps: GpenBinaryStoreDeps): GpenBinaryStor
         "no metadata entry; the document was never saved or its metadata was removed",
       );
     const metadata = parseMetadata(raw, id);
-    const value = await deps.blob.get(metadata.blob);
+    const value = await this._deps.blob.get(metadata.blob);
     if (value === undefined)
       throw storageError(
         "blob_missing",
@@ -356,26 +369,25 @@ export function createGpenBinaryStore(deps: GpenBinaryStoreDeps): GpenBinaryStor
         );
       throw error;
     }
-  };
+  }
 
-  const save = async (id: string, document: GpenT): Promise<GpenMetadata> => {
-    assertOpen();
+  async save(id: string, document: GpenT): Promise<GpenMetadata> {
+    this._assertOpen();
     assertDocumentId(id);
-    if (!cache) return enqueue(() => persistDocument(id, document));
+    if (!this._cache) return this._enqueue(() => this._persistDocument(id, document));
 
     // A save-as/new document boundary must not leave another document dirty.
-    for (const otherId of pending.keys()) if (otherId !== id) await flushId(otherId);
-    const previous = pending.get(id);
-    const state: Pending = {
+    for (const otherId of this._pending.keys()) if (otherId !== id) await this._flushId(otherId);
+    const previous = this._pending.get(id);
+    this._pending.set(id, {
       document,
       revision: (previous?.revision ?? 0) + 1,
       dirty: true,
-    };
-    pending.set(id, state);
-    schedule(id);
+    });
+    this._schedule(id);
     // The returned metadata is a snapshot; the actual pack/write happens on flush.
     return (
-      latestMetadata.get(id) ?? {
+      this._latestMetadata.get(id) ?? {
         document_id: id,
         schema_version: GPEN_SCHEMA_VERSION,
         codec_version: GPEN_CODEC_VERSION,
@@ -384,67 +396,85 @@ export function createGpenBinaryStore(deps: GpenBinaryStoreDeps): GpenBinaryStor
         blob: blobIdFor(id),
       }
     );
-  };
+  }
 
-  const commit = async (): Promise<void> => {
-    assertOpen();
-    await flushAll();
-    await operationTail;
-  };
+  async load(id: string): Promise<GpenT> {
+    this._assertOpen();
+    assertDocumentId(id);
+    if (this._cache) await this.commit();
+    return this._loadPersisted(id);
+  }
 
-  const store: GpenBinaryStore = {
-    save,
-    async load(id) {
-      assertOpen();
-      assertDocumentId(id);
-      if (cache) await commit();
-      return loadPersisted(id);
-    },
-    async getMetadata(id) {
-      assertOpen();
-      assertDocumentId(id);
-      if (cache) await flushId(id);
-      const raw = await deps.kv.get.gpen[id];
-      return raw === undefined ? undefined : parseMetadata(raw, id);
-    },
-    async del(id) {
-      assertOpen();
-      assertDocumentId(id);
-      if (cache) await flushId(id);
-      const raw = await deps.kv.get.gpen[id];
-      let blobId: string | undefined;
-      if (raw !== undefined) {
-        try {
-          blobId = parseMetadata(raw, id).blob;
-          // oxlint-disable-next-line catch/must-return-or-throw -- 畸形元数据交由下方删除处理
-        } catch {
-          /* remove malformed metadata below */
-        }
-      }
+  async getMetadata(id: string): Promise<GpenMetadata | undefined> {
+    this._assertOpen();
+    assertDocumentId(id);
+    if (this._cache) await this._flushId(id);
+    const raw = await this._deps.kv.get.gpen[id];
+    return raw === undefined ? undefined : parseMetadata(raw, id);
+  }
+
+  async del(id: string): Promise<void> {
+    this._assertOpen();
+    assertDocumentId(id);
+    if (this._cache) await this._flushId(id);
+    const raw = await this._deps.kv.get.gpen[id];
+    let blobId: string | undefined;
+    if (raw !== undefined) {
       try {
-        if (blobId !== undefined) await deps.blob.delete(blobId);
-        await deps.kv.del.gpen[id];
-        await deps.kv.submit();
-        pending.delete(id);
-        latestMetadata.delete(id);
-      } catch (error) {
-        throw storageError("delete_failed", id, "failed to delete the document", error);
+        blobId = parseMetadata(raw, id).blob;
+        // oxlint-disable-next-line catch/must-return-or-throw -- 畸形元数据交由下方删除处理
+      } catch {
+        /* remove malformed metadata below */
       }
-    },
-    commit,
-    dispose() {
-      if (disposed) return;
-      disposed = true;
-      for (const state of pending.values())
-        if (state.timer !== undefined) clearTimeout(state.timer);
-      pending.clear();
-    },
-    async sendCrossTab(type, payload, options) {
-      assertOpen();
-      if (!deps.crossTabBus) throw new Error("crossTabBus was not configured for this store");
-      await commit();
-      await deps.crossTabBus.send(type, payload, options);
-    },
+    }
+    try {
+      if (blobId !== undefined) await this._deps.blob.delete(blobId);
+      await this._deps.kv.del.gpen[id];
+      await this._deps.kv.submit();
+      this._pending.delete(id);
+      this._latestMetadata.delete(id);
+    } catch (error) {
+      throw storageError("delete_failed", id, "failed to delete the document", error);
+    }
+  }
+
+  async commit(): Promise<void> {
+    this._assertOpen();
+    await this._flushAll();
+    await this._operationTail;
+  }
+
+  dispose(): void {
+    if (this._disposed) return;
+    this._disposed = true;
+    for (const state of this._pending.values())
+      if (state.timer !== undefined) clearTimeout(state.timer);
+    this._pending.clear();
+  }
+
+  async sendCrossTab(type: string, payload: unknown, options?: TabBusSendOptions): Promise<void> {
+    this._assertOpen();
+    if (!this._deps.crossTabBus) throw new Error("crossTabBus was not configured for this store");
+    await this.commit();
+    await this._deps.crossTabBus.send(type, payload, options);
+  }
+}
+
+/** 用依赖创建 Gpen 二进制文档存储。 */
+export function createGpenBinaryStore(deps: GpenBinaryStoreDeps): GpenBinaryStore {
+  const debounceMs = deps.debounceMs ?? 150;
+  if (!Number.isFinite(debounceMs) || debounceMs < 0) {
+    throw new RangeError("Gpen binary debounceMs must be a non-negative finite number");
+  }
+  const runtime = new GpenBinaryRuntime(deps, deps.cache ?? false, debounceMs);
+
+  return {
+    save: (id, document) => runtime.save(id, document),
+    load: (id) => runtime.load(id),
+    getMetadata: (id) => runtime.getMetadata(id),
+    del: (id) => runtime.del(id),
+    commit: () => runtime.commit(),
+    dispose: () => runtime.dispose(),
+    sendCrossTab: (type, payload, options) => runtime.sendCrossTab(type, payload, options),
   };
-  return store;
 }

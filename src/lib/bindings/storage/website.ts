@@ -4,9 +4,9 @@ import {
   type BlobStorageOptions,
   type HookedBlobBackend,
 } from "./blob.js";
-import { createKvStorage, type KvStorageOptions } from "./kv.js";
+import { createKvStorage } from "./kv.js";
 import { createOpfsTabBusBlobBackend } from "./opfs.js";
-import type { BlobBackend, JsonValue, KvBackend, Storage } from "./types.js";
+import type { BlobBackend, JsonValue, KvBackend, KvStorageOptions, Storage } from "./types.js";
 
 /** 网页端 IndexedDB 存储选项（库名 / 两个 store 名 / KV key）。 */
 export interface WebsiteStorageOptions<T extends JsonValue = JsonValue>

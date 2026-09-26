@@ -3,9 +3,15 @@ import { createBlobBackend, type BlobStorageOptions, type HookedBlobBackend } fr
 import { createMonkeyStorage, getMonkeyStorageApi, type MonkeyStorageOptions } from "./monkey.js";
 import { createVscodeStorage, hasVscodeStorage, type VscodeStorageOptions } from "./vscode.js";
 import { createWebsiteStorage, type WebsiteStorageOptions } from "./website.js";
-import { createKvStorage, type KvStorageOptions } from "./kv.js";
-import type { BlobBackend, JsonValue, KvBackend, Storage } from "./types.js";
-import type { KvStorage } from "./kv.js";
+import { createKvStorage } from "./kv.js";
+import type {
+  BlobBackend,
+  JsonValue,
+  KvBackend,
+  KvStorage,
+  KvStorageOptions,
+  Storage,
+} from "./types.js";
 
 export type {
   /** 一组 KV + Blob 后端（runtime 适配器的公共形状）。 */
@@ -24,6 +30,8 @@ export type {
 export {
   /** 用后端与选项创建 KV。 */
   createKvStorage,
+} from "./kv.js";
+export {
   /** 结构化克隆一份值（无 structuredClone 时退回 JSON）。 */
   deepClone,
   /** 不可变地删掉 `path` 指向的键，返回新的根。 */
@@ -32,7 +40,7 @@ export {
   listKeysAtPath,
   /** 不可变地往 `path` 写值，返回新的根（沿途缺容器则补）。 */
   setAtPath,
-} from "./kv.js";
+} from "./kvJson.js";
 export type {
   /** delete 钩子：删除时联动外部存储之类的副作用。 */
   KvDeleteHook,
@@ -58,7 +66,7 @@ export type {
   KvStorageProxy,
   /** 路径键：对象字段名或数组下标。 */
   StoragePathKey,
-} from "./kv.js";
+} from "./types.js";
 
 export {
   /** Add an operation proxy and mutable hooks to any Blob backend. The direct */

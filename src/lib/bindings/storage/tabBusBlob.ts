@@ -1,6 +1,6 @@
 import { asError } from "../../error.js";
 import type { BlobBackend } from "./types.js";
-import type { ITabBus, TabBusSendOptions } from "../../crossTabBus/index.js";
+import type { ITabBus, TabBusMessage, TabBusSendOptions } from "../../crossTabBus/index.js";
 
 /** tab bus Blob 后端选项（名字 / 超时 / 客户端 id）。 */
 export interface TabBusBlobOptions {
@@ -27,6 +27,12 @@ type BlobResponse = {
   data?: ArrayBuffer;
   type?: string;
   error?: string;
+};
+
+type PendingRequest = {
+  resolve(value: BlobResponse): void;
+  reject(error: unknown): void;
+  timer: ReturnType<typeof setTimeout>;
 };
 
 const BLOB_REQUEST = "gpen.storage.blob.request";
@@ -69,11 +75,102 @@ function timeoutMs(value: number | undefined): number {
   return result;
 }
 
-type PendingRequest = {
-  resolve(value: BlobResponse): void;
-  reject(error: unknown): void;
-  timer: ReturnType<typeof setTimeout>;
-};
+/** 结算一条属于本 client 的响应；其余消息按协议忽略。 */
+function settleResponse(
+  clientId: string,
+  message: TabBusMessage,
+  pending: Map<string, PendingRequest>,
+): void {
+  if (message.type !== BLOB_RESPONSE || !message.payload) return;
+  const response = message.payload as Partial<BlobResponse>;
+  if (typeof response.clientId !== "string" || response.clientId !== clientId) return;
+  if (typeof response.requestId !== "string" || typeof response.ok !== "boolean") return;
+
+  const request = pending.get(response.requestId);
+  if (!request) return;
+  pending.delete(response.requestId);
+  clearTimeout(request.timer);
+  if (response.ok) request.resolve(response as BlobResponse);
+  else request.reject(new Error(response.error ?? "Blob broker request failed"));
+}
+
+/** 发送一条请求并等待 broker 响应；超时 / 关闭 / 发送失败都 reject。 */
+function sendBlobRequest(
+  bus: ITabBus,
+  payload: BlobRequest,
+  transferables: readonly Transferable[] | undefined,
+  pending: Map<string, PendingRequest>,
+  requestTimeoutMs: number,
+  isClosed: () => boolean,
+): Promise<BlobResponse> {
+  return new Promise<BlobResponse>((resolve, reject) => {
+    if (isClosed()) {
+      reject(new Error("Blob broker client is closed"));
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      pending.delete(payload.requestId);
+      reject(new Error(`Blob broker request timed out: ${payload.operation}`));
+    }, requestTimeoutMs);
+    pending.set(payload.requestId, { resolve, reject, timer });
+
+    const sendOptions: TabBusSendOptions | undefined = transferables?.length
+      ? { transferables }
+      : undefined;
+    void bus.send(BLOB_REQUEST, payload, sendOptions).catch((error) => {
+      const current = pending.get(payload.requestId);
+      if (!current) {
+        console.debug("[gpen] ignored rejection: tabBusBlob pending entry missing", error);
+        return;
+      }
+      pending.delete(payload.requestId);
+      clearTimeout(current.timer);
+      reject(error);
+    });
+  });
+}
+
+/** 在 broker 侧执行一条请求，并把结果（或错误）写回响应。 */
+async function answerBlobRequest(
+  request: BlobRequest,
+  backend: BlobBackend,
+  sendResponse: (response: BlobResponse, transferables?: readonly Transferable[]) => Promise<void>,
+): Promise<void> {
+  try {
+    if (request.operation === "set") {
+      if (request.data === undefined) throw new Error("Blob set request has no data");
+      await backend.set(request.id, new Blob([request.data], { type: request.type }));
+      await sendResponse({ clientId: request.clientId, requestId: request.requestId, ok: true });
+      return;
+    }
+    if (request.operation === "delete") {
+      await backend.delete(request.id);
+      await sendResponse({ clientId: request.clientId, requestId: request.requestId, ok: true });
+      return;
+    }
+
+    const blob = await backend.get(request.id);
+    const data = blob?.arrayBuffer();
+    const response: BlobResponse = {
+      clientId: request.clientId,
+      requestId: request.requestId,
+      ok: true,
+      data: data ? await data : undefined,
+      type: blob?.type,
+    };
+    await sendResponse(response, response.data ? [response.data] : undefined);
+  } catch (error) {
+    await sendResponse({
+      clientId: request.clientId,
+      requestId: request.requestId,
+      ok: false,
+      error: asError(error, String(error)).message,
+    });
+    // oxlint-disable-next-line catch/no-bare-return -- 已通过 sendResponse 回传错误
+    return;
+  }
+}
 
 /** 通过 tab bus 远程读写 Blob 的后端。 */
 export function createTabBusBlobBackend(
@@ -87,53 +184,9 @@ export function createTabBusBlobBackend(
   let closed = false;
 
   const unsubscribe = bus.onMessage((message) => {
-    if (closed || message.type !== BLOB_RESPONSE || !message.payload) return;
-    const response = message.payload as Partial<BlobResponse>;
-    if (
-      typeof response.clientId !== "string" ||
-      response.clientId !== clientId ||
-      typeof response.requestId !== "string" ||
-      typeof response.ok !== "boolean"
-    ) {
-      return;
-    }
-
-    const request = pending.get(response.requestId);
-    if (!request) return;
-    pending.delete(response.requestId);
-    clearTimeout(request.timer);
-    if (response.ok) request.resolve(response as BlobResponse);
-    else request.reject(new Error(response.error ?? "Blob broker request failed"));
+    if (closed) return;
+    settleResponse(clientId, message, pending);
   });
-
-  const request = (payload: BlobRequest, transferables?: readonly Transferable[]) => {
-    return new Promise<BlobResponse>((resolve, reject) => {
-      if (closed) {
-        reject(new Error("Blob broker client is closed"));
-        return;
-      }
-
-      const timer = setTimeout(() => {
-        pending.delete(payload.requestId);
-        reject(new Error(`Blob broker request timed out: ${payload.operation}`));
-      }, requestTimeoutMs);
-      pending.set(payload.requestId, { resolve, reject, timer });
-
-      const sendOptions: TabBusSendOptions | undefined = transferables?.length
-        ? { transferables }
-        : undefined;
-      void bus.send(BLOB_REQUEST, payload, sendOptions).catch((error) => {
-        const current = pending.get(payload.requestId);
-        if (!current) {
-          console.debug("[gpen] ignored rejection: tabBusBlob pending entry missing", error);
-          return;
-        }
-        pending.delete(payload.requestId);
-        clearTimeout(current.timer);
-        reject(error);
-      });
-    });
-  };
 
   const nextPayload = (operation: BlobOperation, id: string): BlobRequest => ({
     clientId,
@@ -141,6 +194,8 @@ export function createTabBusBlobBackend(
     operation,
     id,
   });
+  const request = (payload: BlobRequest, transferables?: readonly Transferable[]) =>
+    sendBlobRequest(bus, payload, transferables, pending, requestTimeoutMs, () => closed);
 
   return {
     name: options.name ?? "tabbus:blob",
@@ -182,50 +237,7 @@ export function createTabBusBlobBroker(bus: ITabBus, backend: BlobBackend): { de
 
   const unsubscribe = bus.onMessage((message) => {
     if (destroyed || message.type !== BLOB_REQUEST || !isBlobRequest(message.payload)) return;
-    const request = message.payload;
-    void (async () => {
-      try {
-        if (request.operation === "set") {
-          if (request.data === undefined) throw new Error("Blob set request has no data");
-          await backend.set(request.id, new Blob([request.data], { type: request.type }));
-          await sendResponse({
-            clientId: request.clientId,
-            requestId: request.requestId,
-            ok: true,
-          });
-          return;
-        }
-        if (request.operation === "delete") {
-          await backend.delete(request.id);
-          await sendResponse({
-            clientId: request.clientId,
-            requestId: request.requestId,
-            ok: true,
-          });
-          return;
-        }
-
-        const blob = await backend.get(request.id);
-        const data = blob?.arrayBuffer();
-        const response: BlobResponse = {
-          clientId: request.clientId,
-          requestId: request.requestId,
-          ok: true,
-          data: data ? await data : undefined,
-          type: blob?.type,
-        };
-        await sendResponse(response, response.data ? [response.data] : undefined);
-      } catch (error) {
-        await sendResponse({
-          clientId: request.clientId,
-          requestId: request.requestId,
-          ok: false,
-          error: asError(error, String(error)).message,
-        });
-        // oxlint-disable-next-line catch/no-bare-return -- 已通过 sendResponse 回传错误
-        return;
-      }
-    })().catch((e) => {
+    void answerBlobRequest(message.payload, backend, sendResponse).catch((e) => {
       console.debug("[gpen] ignored rejection: tabBusBlob handleRequest", e);
       return;
     });
