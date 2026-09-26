@@ -5,7 +5,7 @@
  * ——它只认 `CodeAreaSource`。数据源可以是内存里的 `$state`（调试用）、协议文档字段、
  * 甚至 IndexedDB 里的 KV 快照，area 侧一视同仁。
  *
- * 两条约定（见 `docs/code-area.md`）：
+ * 两条约定（见 `src/lib/components/codeArea/README.md`）：
  *
  * 1. `read()` 是**同步**的，并在组件的 `$derived` 里调用：只要它内部读的是 `$state`，
  *    Svelte 自己就会订阅 → 实时刷新，不需要轮询、也不需要订阅机制。
@@ -75,7 +75,8 @@ export function codeAreaSourceIdOf(panelId: string): string | undefined {
  * 的布局）带崩。返回值仍然是 `read()` 的原始结果，所以 `$state` 订阅不受影响。
  */
 export function readCodeAreaSource(source: CodeAreaSource | undefined): unknown {
-  if (!source) return { error: "数据源不存在（可能来自旧布局，见 docs/code-area.md）" };
+  if (!source)
+    return { error: "数据源不存在（可能来自旧布局，见 src/lib/components/codeArea/README.md）" };
   try {
     return source.read();
   } catch (error) {

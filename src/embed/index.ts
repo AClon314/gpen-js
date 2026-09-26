@@ -1,7 +1,7 @@
 /**
  * gpen embed 入口：把 GpenOverlay + ContextMenu 挂进一个 ShadowRoot。
  *
- * 设计要点（见 docs/build-targets.md）：
+ * 设计要点（见 src/embed/README.md）：
  * - 宿主（页面/DOM）只看见一个零尺寸的 `<div id="gpen-host">`，所有样式都注入 shadow，
  *   不污染宿主页；Svelte 组件样式随构建产物一起内联（vite.embed.config.ts）。
  * - host 挂在 `document.documentElement` 末尾：不在 `guessWebLayer()` 的扫描范围内

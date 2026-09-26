@@ -9,7 +9,7 @@ src/lib/components/widgets/inputs/
 ├── Input.svelte        # 分发：number → InputSlider，其余 → 原生 <input>
 ├── InputNumber.svelte  # 数值：type="text" + inputmode="decimal"，自管数值语义
 ├── InputSlider.svelte  # 数值 + 浮层：Blender 风拖拽滑条（内嵌 InputNumber）
-├── CodeEditor.svelte   # 多行文本：CodeMirror 6 壳（→ docs/code-editor.md）
+├── CodeEditor.svelte   # 多行文本：CodeMirror 6 壳（→ src/lib/components/widgets/inputs/README-code-editor.md）
 └── types.ts
 ```
 
@@ -132,7 +132,7 @@ validValue = finiteNumber(value) === undefined
 
 ### 单位（`units` / `activeUnit`）
 
-单位表与换算纯逻辑在 [`docs/units.md`](units.md)（`src/lib/inputs/units.ts`），控件只做接线；
+单位表与换算纯逻辑在 [`src/lib/inputs/README.md`](../../../inputs/README.md)（`src/lib/inputs/units.ts`），控件只做接线；
 `InputNumber` 把「显示单位 + 两个换向 + 解析」打包成 `bindUnit()`，不自己拼散件。
 
 ```svelte
@@ -275,7 +275,7 @@ validValue = finiteNumber(value) === undefined
 
 `stepAtCaret` / `addStepToValue` / `toggleSign` / `softClampTo` / `finiteNumber` / `roundTo` /
 `clampTo` / `scrubValue` 被两个 CodeMirror 6 扩展与两个输入组件共用（方向键步进、`±` 拖拽把手），
-见 [`docs/codemirror.md`](codemirror.md)。拖拽像素→步进的量化也抽成了纯函数
+见 [`src/lib/components/widgets/inputs/README-codemirror.md`](README-codemirror.md)。拖拽像素→步进的量化也抽成了纯函数
 `consumeScrubSteps(accumulated, consumed, pixelsPerStep)`（返回该走几步 + 已花掉的像素，余量留到
 下一次，微动不反复触发），InputSlider 的三段分区与 CodeMirror 的连续拖拽共用同一个
 `SCRUB_PIXELS_PER_STEP = 6`。

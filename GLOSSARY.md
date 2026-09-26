@@ -1,7 +1,7 @@
 # 术语表（Glossary）
 
 本项目文档里出现的英文缩写 / 术语速查。按主题分组。
-（`docs/todo-safe.md` 等文里的缩写都指向这里。）
+（`src/lib/bindings/storage/README-trust-model.md` 等文里的缩写都指向这里。）
 
 ## Web 平台 / DOM
 
@@ -31,7 +31,7 @@
 | keymap dispatcher | 键位派发器 | 唯一的 window keydown 监听，命中即 `preventDefault` + `executeCommand`（`lib/commands/keymap.ts`） |
 | floating group | 浮动组 | dockview 里脱离网格、可拖动的面板容器（类名 `.dv-groupview-floating`） |
 | `light-dark()` | CSS 颜色函数 | 按 `color-scheme` 在深浅两支里取值；主题三态的机制（`themes/day-night.css`） |
-| soft/hard/stroke eraser | 橡皮三模式 | Blender 的 Dissolve / Point / Stroke，**枚举名与直觉相反**（`docs/stroke.md`） |
+| soft/hard/stroke eraser | 橡皮三模式 | Blender 的 Dissolve / Point / Stroke，**枚举名与直觉相反**（`src/lib/layers/README-stroke.md`） |
 
 ## 存储
 
@@ -95,7 +95,7 @@
 
 | 缩写 | 全称 | 说明 |
 | --- | --- | --- |
-| CM / CM6 | CodeMirror / CodeMirror 6 | 编辑器内核，本项目只用 `@codemirror/state` / `view` / `commands` 三个包（见 `docs/codemirror.md`、`docs/code-editor.md`） |
+| CM / CM6 | CodeMirror / CodeMirror 6 | 编辑器内核，本项目只用 `@codemirror/state` / `view` / `commands` 三个包（见 `src/lib/components/widgets/inputs/README-codemirror.md`、`src/lib/components/widgets/inputs/README-code-editor.md`） |
 | IME | Input Method Editor | 输入法。组字期间（`compositionstart` … `compositionend`）**不能**程序化回写输入区，否则打断候选串 |
 | NFKC | Normalization Form KC | Unicode 兼容归一化；单位解析用它把全角 / CJK 兼容字符折成 ASCII（`１２ｃｍ` → `12cm`、`㎝` → `cm`） |
 | ICB | initial containing block | `position: absolute` 在没有已定位祖先时的包含块（overlay 就挂在它上） |
@@ -112,4 +112,4 @@
 | CF Pages / CF Worker | Cloudflare Pages / Workers | 静态托管 / 边缘函数；**签发、验签 token 需要 Worker（或外部 IdP）** |
 | Durable Object / KV | CF 的存储原语 | 用于按用户配额、限速、状态 |
 | OPFS broker | — | 运行在可信 origin、用 OPFS 存 blob 的中转页（`src/routes/storage-broker`） |
-| FBS | FlatBuffers schema | 本项目协议格式（见 `docs/flatbuffers.md`） |
+| FBS | FlatBuffers schema | 本项目协议格式（见 `src/lib/protocol/README.md`） |

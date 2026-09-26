@@ -324,7 +324,7 @@
 	 * `addPanel({initialWidth, initialHeight})` + `addFloatingGroup(panel)`：前者会把面板
 	 * 开进活动组、顺手 `setSize()` 那个组，**整个网格被重排一次且不会恢复**。
 	 * 浮窗的几何（夹到容器内 + 居中）在 `workspaceLayout.ts` 里，有单测。
-	 * 详细坑与实测数据见 `docs/preferences.md`。
+	 * 详细坑与实测数据见 `src/lib/components/README-preferences.md`。
 	 */
 	function openPreferences(): void {
 		const instance = dockview;
@@ -470,7 +470,7 @@
 		// 老用户存下的布局里也没有它）。
 		preferences: BlenderPreferences,
 		// CodeArea：一个组件服务所有数据源（面板 id 是 `codearea:<sourceId>`），
-		// 默认当 viewport 组的 file tab 打开。见 `docs/code-area.md`。
+		// 默认当 viewport 组的 file tab 打开。见 `src/lib/components/codeArea/README.md`。
 		[CODE_AREA_COMPONENT]: BlenderCodeArea
 	};
 

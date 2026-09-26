@@ -6,7 +6,7 @@ export type WebLayerMetrics = {
 };
 
 const EXCLUDED_TAGS = new Set(["script", "style", "link", "meta", "noscript", "template"]);
-/** gpen's own chrome never counts as host content (`docs/build-targets.md`, risk R2). */
+/** gpen's own chrome never counts as host content (`src/embed/README.md`, risk R2). */
 const OVERLAY_SELECTOR = ".gpen-overlay, [data-version], [data-instance], [data-gpen-canvas-space]";
 const FIXED_VIEWPORT_FILL_RATIO = 0.9;
 const MIN_AREA = 1;

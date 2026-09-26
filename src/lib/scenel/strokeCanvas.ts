@@ -8,7 +8,7 @@
  * - render the committed strokes plus the stroke currently being drawn.
  *
  * It deliberately does **not** touch the wheel: the camera is native scrolling
- * (`docs/layer-view.md`), and preventing the wheel would break panning. The
+ * (`src/lib/layers/README.md`), and preventing the wheel would break panning. The
  * canvas only calls `event.preventDefault()` on `pointerdown` so drawing does
  * not turn into a text-selection / click gesture.
  *

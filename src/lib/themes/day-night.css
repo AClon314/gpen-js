@@ -17,7 +17,7 @@
  * 长度约定见 AGENTS.md：横向尺寸/间距用 ch，纵向（尤其 height/行高）用 lh；
  * 字号 / 边框宽度 / 圆角 / 阴影等非布局长度保留 px。
  *
- * 细节与 JS 侧（`theme.ts` / `theme.svelte.ts`）见 docs/theme.md。
+ * 细节与 JS 侧（`theme.ts` / `theme.svelte.ts`）见 src/lib/themes/README.md。
  */
 
 :root,

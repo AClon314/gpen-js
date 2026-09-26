@@ -15,7 +15,7 @@
 
 	// CodeEditor：多行输入统一用的 CodeMirror 6 壳（可注入语言 / 扩展，将来挂语法高亮）。
 	//
-	// 为什么自研（对照 docs/code-editor.md 的「缺口 + 自研代价」）：原生 <textarea> 除了
+	// 为什么自研（对照 src/lib/components/widgets/inputs/README-code-editor.md 的「缺口 + 自研代价」）：原生 <textarea> 除了
 	// 撤销栈以外没有任何编辑能力（隐式快捷键、按位权步进、± 拖拽、将来的语法高亮），
 	// 也拿不到「光标落在哪一位」这类结构化信息。CM6 已在仓库里（demo/code、
 	// numberStepper / numberScrubber），这里只做「CM 文档 ⇄ 表单值」的接线，不重写编辑逻辑。

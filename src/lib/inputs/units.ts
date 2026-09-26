@@ -22,7 +22,7 @@
  * object. That makes `Registry` effectively immutable — build one, then only
  * read from it (keep a second object if you need a variant).
  *
- * Details/tables: `docs/units.md`.
+ * Details/tables: `src/lib/inputs/README.md`.
  */
 
 /**
@@ -202,7 +202,7 @@ export function findUnit(registry: UnitSource, unitIdOrAlias: string): ResolvedU
 /**
  * Convert `value` between two units of the **same dimension**; `undefined` when
  * they differ, when a side is missing, or when `value` is not finite (callers
- * must never receive `NaN` — see `docs/input.md`).
+ * must never receive `NaN` — see `src/lib/components/widgets/inputs/README.md`).
  */
 export function convertValue(
   value: number,

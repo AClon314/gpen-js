@@ -54,7 +54,7 @@ themeTokens()["--gpen-panel-accent"]; // 响应式读取
 
 `--gpen-workspace-background` 供工作区容器使用，默认 `transparent`：工作区铺满 `visualViewport`，
 视口那一格是真正的“洞”，宿主网页从那里透出来，所以**容器不能有底色**，底色由各面板自己画
-（细节见 `docs/panel.md`）。
+（细节见 `src/lib/components/README-panel.md`）。
 
 ## dockview 主题桥（`themes/dockview.css`）
 

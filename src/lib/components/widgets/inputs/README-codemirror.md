@@ -76,5 +76,5 @@ numberScrubber({ lower: 0, upper: 100 });
 （`history`、`defaultKeymap`、`historyKeymap`、`drawSelection`），没有引入 `codemirror`
 元包（那会带上 autocomplete/fold/search 一大串）。
 
-> 要把这些扩展挂到现成的表单控件上（而非手搓 `EditorView`），用 [`docs/code-editor.md`](code-editor.md)
+> 要把这些扩展挂到现成的表单控件上（而非手搓 `EditorView`），用 [`src/lib/components/widgets/inputs/README-code-editor.md`](README-code-editor.md)
 > 里的 `CodeEditor`——它已经处理好 CM 文档 ⇄ 绑定值 ⇄ 表单镜像的同步，`extensions` prop 原样透传。

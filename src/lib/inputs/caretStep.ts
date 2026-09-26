@@ -2,7 +2,7 @@
  * Step computation for the numeric stepper, DOM/Svelte-free.
  *
  * Two layers share one core (`stepValue` / `addAtPrecision` / `formatValue`):
- * caret-relative `applyCaretStep` (cases 2–4 of `docs/input.md`) and the
+ * caret-relative `applyCaretStep` (cases 2–4 of `src/lib/components/widgets/inputs/README.md`) and the
  * value-level rules (`addStepToValue` / `stepByDigit` / `stepByPrecision` /
  * `stepByRule`). `numericCaret.ts` is the facade that picks between them.
  */
@@ -83,7 +83,7 @@ function caretForPlan(plan: PlacePlan, nextText: string, caret: number, delta: n
 
 /**
  * Apply a resolved place plan: step the magnitude, format with the field's
- * width, and return the new text + caret (cases 2–4 of `docs/input.md`). An
+ * width, and return the new text + caret (cases 2–4 of `src/lib/components/widgets/inputs/README.md`). An
  * explicit `+` survives stepping (`+5` ↑ → `+6`); only case 5 removes it.
  */
 export function applyCaretStep(

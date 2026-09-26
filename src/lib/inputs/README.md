@@ -1,7 +1,7 @@
 # Units 单位模型
 
 `src/lib/inputs/units.ts`：纯逻辑、无 DOM / Svelte，`bun test tests/units.test.ts` 覆盖。
-组件侧的接线（`units` / `activeUnit` prop、提交时换算、显示）见 [`docs/input.md`](input.md)。
+组件侧的接线（`units` / `activeUnit` prop、提交时换算、显示）见 [`src/lib/components/widgets/inputs/README.md`](../components/widgets/inputs/README.md)。
 
 ## 两层结构
 

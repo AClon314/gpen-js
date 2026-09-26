@@ -42,13 +42,13 @@
   浮窗几何（夹到容器内 + 居中）在 `components/workspaceLayout.ts`。
   三层数据并排：用户偏好（`gpen.preferences` KV）/ 工具栏（协议 `ToolbarState`）/ 布局
   （`gpen.workspaceState` KV）。面板形态、`floating` 的坑与实测数据见
-  [`preferences.md`](preferences.md)。
+  [`README-preferences.md`](README-preferences.md)。
 - **缩放下的指针坐标**：容器那句 `style:zoom={workspaceZoom}` 让「客户端 px」与
   「容器内 px」差一个缩放倍数，而 dockview 内部按 1:1 算。三个已修的交互：
   - **sash**（实测 2× 时手指 10px → 面板 20px）：`components/workspaceSashZoom.ts` 只在拖动
     期间把指针坐标换算回容器坐标再重新派发；
   - **右键菜单**（chrome 2 倍大、菜单 1 倍小）：靠根元素上的 `--gpen-workspace-zoom` 跟
-    （见 [`theme.md`](theme.md)）；
+    （见 [`themes/README.md`](../themes/README.md)）；
   - **浮窗拖动**（实测 2× 时 10px → 1328px）：dockview 的实现连 `offset` 与夹取边界都是
     `getBoundingClientRect()` 派生的，改坐标救不回来，所以 `components/workspaceFloatingDrag.ts`
     在 `zoom ≠ 1` 时直接接管拖动（自己算局部增量、夹在容器局部盒内、写 `left/top`）。
@@ -60,14 +60,14 @@
 - **CodeArea 是 viewport 组里的「文件 tab」**（`areas/CodeArea.svelte`，一个组件服务所有
   数据源，面板 id 是 `codearea:<sourceId>`）：默认当 `viewport` 组的新 tab 打开，切过去时那一组
   不再是「洞」；**不跨会话保留**，还原因此会在 `fromJSON` 之后把它们摘掉。它的数据同步、
-  `value`（提交值）/ `realtimeValue`（实时值）两条通道，见 [`code-area.md`](code-area.md)。
+  `value`（提交值）/ `realtimeValue`（实时值）两条通道，见 [`codeArea/README.md`](codeArea/README.md)。
 - **标题栏的菜单行**由 `components/menuBar.ts` 的节点表驱动（T9），节点引用命令 id，
-  快捷键提示从命令注册表读；灰掉的项带 `title` 说明。见 [`commands.md`](commands.md)。
+  快捷键提示从命令注册表读；灰掉的项带 `title` 说明。见 [`commands/README.md`](../commands/README.md)。
   菜单栏按钮带的 `data-context-menu-touch-opt-out`（导出为 `TOUCH_OPT_OUT_ATTRIBUTE`）
   让它们**不参与触屏长按**：它们是普通按钮，点一下就该开菜单（`openAt`），
   长按定时器只会吞掉浏览器自己的 click（`context-menu.e2e.ts` 有回归）。
   菜单本体不在 dockview 子树里，所以它靠根元素上的 `--gpen-workspace-zoom` 跟工作区缩放
-  （DOM 上是「不缩放的定位壳 + 吃 zoom 的菜单」两层，见 [`theme.md`](theme.md) 与
+  （DOM 上是「不缩放的定位壳 + 吃 zoom 的菜单」两层，见 [`themes/README.md`](../themes/README.md) 与
   `components/workspaceZoom.ts`）。
 - **窄容器（手机竖屏 / 拖窄的面板）按容器宽度让位**，不是按窗口宽度：
   1. 三列的最小宽度（`minimumWidth: 52 / 240 / 160`）由
@@ -99,7 +99,7 @@
   `initialWidth` / `initialHeight` 只对“新建组”的面板生效，split 出来的组会退回组最小值。
 - **持久化**：`panelLayout` 存 dockview 的 `toJSON()`，`uiScale` / `activeTool` / 浮球位置
   存在同一个 `workspace` 记录里（见 `components/gpenWorkspaceState.ts`）。后端是
-  `createRuntimeStorage()` 的 KV（普通网页 = IndexedDB，见 [`storage.md`](storage.md)）；
+  `createRuntimeStorage()` 的 KV（普通网页 = IndexedDB，见 [`bindings/storage/README.md`](../bindings/storage/README.md)）；
   旧版 localStorage 的 `gpen.workspaceState` 只在首次读取时迁移一次。
   记忆布局有三个必须守住的点（踩过坑，都是"面板越还原越大 / 越还原越空"的来源）：
   1. **只在真实尺寸下取快照**：刚挂载时 dockview 还停在它自己的默认尺寸（100×100），
@@ -115,10 +115,10 @@
      `重置面板布局` 会清掉 `panelLayout` 并重建默认布局
      （`clear()` + `buildDefaultLayout()` + 在下一趟 layout 落默认尺寸）。
 - **配色**：工作区不写死颜色，全部走 `--gpen-*`（白天 / 夜间两套）；dockview 的 `--dv-*`
-  由 `themes/dockview.css` 桥接到同一套 token，见 `docs/theme.md`。
+  由 `themes/dockview.css` 桥接到同一套 token，见 `src/lib/themes/README.md`。
 - **撤销 / 重做**：状态栏左侧是入口（图标按钮 + 当前可撤销步数），键盘是 `Ctrl+Z` /
   `Ctrl+Shift+Z` / `Ctrl+Y`（焦点在文本框 / CodeMirror 时让给控件）。历史模型见
-  [`stroke.md`](stroke.md) 与 `lib/history.ts`：**环形缓冲 + 条目预算**，不是 `shift()` 数组。
+  [`layers/README-stroke.md`](../layers/README-stroke.md) 与 `lib/history.ts`：**环形缓冲 + 条目预算**，不是 `shift()` 数组。
 
 ## 下个版本范围
 

@@ -243,7 +243,7 @@ active
 
 ## 与现有 gpen 面板设计的关系
 
-该 Registry 属于几何/交互适配层，不持有 panel 业务数据。它应遵循 [`docs/panel.md`](./panel.md) 中的边界：
+该 Registry 属于几何/交互适配层，不持有 panel 业务数据。它应遵循 [`src/lib/components/README-panel.md`](../components/README-panel.md) 中的边界：
 
 - panel definition、panel instance 和 layout tree 由 gpen 自己管理；
 - drop preview 可以由 Dockview 或 gpen 渲染，但 layout commit 只能有一个 owner；

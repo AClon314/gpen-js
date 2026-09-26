@@ -4,7 +4,7 @@
 
 	// 状态栏 = 撤销/重做入口 + 一行上下文提示 + 右端版本号。
 	// 撤销/重做按钮的可用状态由 `historyState` 驱动（历史本身不是响应式的，
-	// 见 lib/history.ts 与 docs/stroke.md），键盘快捷键在 GpenWorkspace 里。
+	// 见 lib/history.ts 与 src/lib/layers/README-stroke.md），键盘快捷键在 GpenWorkspace 里。
 	let {
 		state = { undoDepth: 0, redoDepth: 0 },
 		onUndo,

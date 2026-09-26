@@ -77,7 +77,7 @@ R(θ)·(dx,dy)   = (dx·cosθ - dy·sinθ, dx·sinθ + dy·cosθ)     // y 向�
   （读不到时用常量兜底），线宽逐段用 `point.radius`。
 - **重绘**：文档 / 旋转变化由 `Viewport` 的 `$effect` 触发；滚动 / resize 由 canvas 内部
   订阅 `observeViewport` + `ResizeObserver`。
-- **滚轮不拦**：相机是原生滚动，滚轮冒泡去滚页面就是平移（`docs/layer-view.md`）。
+- **滚轮不拦**：相机是原生滚动，滚轮冒泡去滚页面就是平移（`src/lib/layers/README.md`）。
 
 ## undo 模型
 
@@ -119,7 +119,7 @@ cache: true, debounceMs: 250 })`：
 - **Blob 回落**：`createRuntimeStorage` 的 Blob 默认先试 OPFS broker
   （`targetDomain` 默认 `https://xxx.github.com/storage-broker`）。该域名不可达时 penpal
   握手 10s 超时后才回落到当前 origin 的 IndexedDB；同一页面复用回落结果，但 reload 后会
-  再等一次 10s。e2e 因此把首次读 / 写的 poll 超时调到 25s（`docs/storage.md`）。
+  再等一次 10s。e2e 因此把首次读 / 写的 poll 超时调到 25s（`src/lib/bindings/storage/README.md`）。
 
 ## 已知缺口（本轮明确不做）
 

@@ -18,7 +18,7 @@
  * center when the rotation was applied". Dynamic pivots (changing origin
  * mid-rotation) are out of scope here: moving `transform-origin` jumps the
  * already-rotated content, and doing it without a jump needs matrix
- * composition (see `docs/layer-view.md`).
+ * composition (see `src/lib/layers/README.md`).
  */
 import { viewportOffset, viewportSize } from "../visualViewport.js";
 
@@ -236,7 +236,7 @@ export function createLayerView(target: LayerViewTarget): LayerView {
     // Canvas layers have no DOM element, so there is nothing to measure: the
     // origin is the document origin and the pivot is (0, 0). Rotation then
     // happens around the document origin instead of the viewport center — a
-    // documented gap (see docs/stroke.md); the element target is used whenever
+    // documented gap (see src/lib/layers/README-stroke.md); the element target is used whenever
     // a web layer could be guessed, which is the normal path.
     const mapping = { pivot: { x: 0, y: 0 }, rotation: 0, origin: { x: 0, y: 0 } };
     return {

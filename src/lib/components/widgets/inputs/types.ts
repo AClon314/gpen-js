@@ -14,7 +14,7 @@ export type InputOrientation = "horizontal" | "vertical";
  *
  * `step` 是唯一的步进量：`±` / 拖拽 / caret 贴边时的 ←/→ / 滑条中央分区都按它走，
  * 缺省按 HTML 语义取 `1`（显式 `step="any"` 表示没有固定步长）。它同时是**显示精度**
- * （显式 step 的十进制位数，如 `0.2` → 1 位、`30` → 整数），但不参与校验（见 docs/input.md）。
+ * （显式 step 的十进制位数，如 `0.2` → 1 位、`30` → 整数），但不参与校验（见 src/lib/components/widgets/inputs/README.md）。
  */
 export interface InputProps extends Omit<HTMLInputAttributes, "value"> {
   value?: InputValue;
@@ -28,7 +28,7 @@ export interface InputProps extends Omit<HTMLInputAttributes, "value"> {
    * - 传注册表时必须再给 `activeUnit`（否则无法确定量纲，等同于没有 units）；
    * - 无换算需求的纯标签（`%` / `px`）用一张单表即可：`{ base: '%', units: { '%': 1 } }`。
    *
-   * 见 [`docs/input.md`](../../../../docs/input.md) 与 [`docs/units.md`](../../../../docs/units.md)。
+   * 见 [`README.md`](README.md) 与 [`src/lib/inputs/README.md`](../../../inputs/README.md)。
    */
   units?: Registry | Dimension;
   /**

@@ -3,7 +3,7 @@
  *
  * dockview 用 `mount()` 起面板，props 只在 `init()` 时求值一次；面板要持续跟随
  * 文档 / 偏好 / 工作区状态，就得拿到**稳定的 `$state` 代理对象**，之后由 `$effect`
- * 往字段上赋值（受控值优先、回调总是触发，见 docs/tree.md §3.4）。
+ * 往字段上赋值（受控值优先、回调总是触发，见 src/lib/layers/tree/README.md §3.4）。
  *
  * 这一块从 `GpenWorkspace.svelte` 搬出来（那个文件逼近 1000 行）：props 的定义与
  * 「状态 → props」的同步都在这里，组件只保留注册进 dockview 的 `componentProps`。
@@ -63,7 +63,7 @@ function groupKeys(root: UiLayerTreeNode | null): Set<TreeKey> {
 }
 
 /**
- * 图层树的 props：受控三件套（受控值优先、回调总是触发，见 docs/tree.md §3.4）。
+ * 图层树的 props：受控三件套（受控值优先、回调总是触发，见 src/lib/layers/tree/README.md §3.4）。
  * 首次拿到树时把有子节点的项都展开。
  */
 function createOutlinerProps(deps: WorkspacePropsDeps) {

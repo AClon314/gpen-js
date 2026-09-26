@@ -357,7 +357,7 @@ test("scrolls in the panel, not inside a card", async ({ page }) => {
 });
 
 /**
- * 浮窗夹回（回归 `docs/panel.md` 的已知缺口）：`floatingGroupBounds` 只约束**用户拖动**，
+ * 浮窗夹回（回归 `src/lib/components/README-panel.md` 的已知缺口）：`floatingGroupBounds` 只约束**用户拖动**，
  * 容器变小（横竖屏切换 / 拖窗口）与还原布局时浮窗会按老尺寸留在原地、甚至有一半在屏外。
  * 修法见 `workspacePanelLayout.ts` 的 `reclampFloatingGroups()`：每趟布局末尾只把
  * **装不下**的浮窗重算一次落位（装得下的不碰，用户摆好的位置不会被重置）。

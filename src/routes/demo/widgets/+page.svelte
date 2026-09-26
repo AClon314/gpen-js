@@ -7,7 +7,7 @@
 	const PERCENT: Dimension = { base: '%', units: { '%': 1 } };
 	const PIXEL: Dimension = { base: 'px', units: { px: 1 } };
 
-	/** 各卡片的演示初值：集中一处，方便对照 docs/input.md 里的示例数字。 */
+	/** 各卡片的演示初值：集中一处，方便对照 src/lib/components/widgets/inputs/README.md 里的示例数字。 */
 	const DEMO_INITIAL = {
 		horizontal: 42,
 		fine: 23.45,
@@ -73,7 +73,7 @@
 					<p>范围 0–100，步长 1；把光标放到某一位后 ↑/↓ 按该位量级步进，caret 在最左侧时改首位数字（<code>^90</code> ↑ → <code>^100</code>、<code>^100</code> ↓ → <code>^90</code>）；caret 贴在最左/最右时 ←/→ 按配置 step 减/加。Home/End 按两次跳 min/max；悬浮在控件上、且未聚焦时按 Delete（激活后 Delete 为原生删除）或在控件上右键选「重置为默认值」回到初始值 42。
 						宽度由调用方决定：这里用内联 <code>style="width: 12ch"</code> 覆盖默认的
 						<code>width: 100%</code>；Tailwind 工具类（<code>w-[12ch]</code>）不行——它层叠优先级压不过
-						组件自己的 scoped 规则（见 <code>docs/input.md</code>）。</p>
+						组件自己的 scoped 规则（见 <code>src/lib/components/widgets/inputs/README.md</code>）。</p>
 				</div>
 				<output aria-live="polite">{horizontalValue}%</output>
 			</div>

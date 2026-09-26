@@ -1,5 +1,5 @@
 /**
- * Pointer → `DropTarget` resolution (the only place that does it, docs/tree.md
+ * Pointer → `DropTarget` resolution (the only place that does it, src/lib/layers/tree/README.md
  * §3.6). The geometry follows the Blender outliner:
  *
  * - a row's top and bottom ~25% resolve to `before` / `after` (sibling insert),

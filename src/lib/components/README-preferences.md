@@ -24,7 +24,7 @@ interface GpenPreferences {
   locale: 'system' | 'en' | 'zh-cn';
   defaultTool: GpenToolId;
   showStatusBar: boolean;
-  blur: number; // 磨砂玻璃模糊半径 px（0 = 关，0..16；见 theme.md）
+  blur: number; // 磨砂玻璃模糊半径 px（0 = 关，0..16；见 ../themes/README.md）
   autoSaveDebounceMs: number; // 0..10000
 }
 ```
@@ -106,7 +106,7 @@ dockview.addPanel({
 
 ## 主题三态
 
-见 [`theme.md`](theme.md)「三态」一节：`light-dark()` + `data-gpen-theme` 属性，没有
+见 [`themes/README.md`](../themes/README.md)「三态」一节：`light-dark()` + `data-gpen-theme` 属性，没有
 `@media (prefers-color-scheme: dark)` 覆盖块。
 
 ## 磨砂玻璃（`blur`，默认 0 = 关）
@@ -114,7 +114,7 @@ dockview.addPanel({
 `blur` 是**模糊半径**（CSS px，0 = 关，默认 0）：`blur > 0` → 面板 / chrome / 右键菜单半透明 +
 `backdrop-filter`，实现全在 [`themes/blur.css`](../src/lib/themes/blur.css)（token 覆盖 + filter），
 JS 只写 `data-gpen-blur` 根属性（存在即开）、把半径内联成 `--gpen-blur`，以及容器 / 菜单上的
-一对 class —— 理由与「视口那个洞不能糊」的约束见 [`theme.md`](theme.md)「磨砂玻璃」一节。
+一对 class —— 理由与「视口那个洞不能糊」的约束见 [`themes/README.md`](../themes/README.md)「磨砂玻璃」一节。
 
 偏好面板里用 `InputSlider`（`min=0` / `max=16` / `step=1` / `units={{ base: 'px', units: { px: 1 } }}`，
 `aria-label="磨砂玻璃（模糊半径）"`）——滑条本身就是开关，0 即关；写入走 `patchPreferences`，
@@ -133,7 +133,7 @@ JS 只写 `data-gpen-blur` 根属性（存在即开）、把半径内联成 `--g
    改用 `addPanel({ floating })` 后完全不碰网格（e2e 逐字节比对所有非浮动组矩形）。
 3. **`.dv-floating` 不存在**（见上）：e2e 断言按实测改成 `.dv-groupview-floating`。
 4. **Esc 关掉整个工作区**：浮动的偏好面板开着时按 Esc 会冒泡到工作区的「关工作区」处理；
-   改为捕获阶段的 Esc 优先收面板（见 [`commands.md`](commands.md)「Escape 的优先级」）。
+   改为捕获阶段的 Esc 优先收面板（见 [`commands/README.md`](../commands/README.md)「Escape 的优先级」）。
 5. **`@media (prefers-color-scheme: dark)` 顶掉手动 light**：媒体查询无法被属性覆盖；
    删掉媒体查询块，改为 `light-dark()`。不支持 `light-dark()` 的浏览器回落到普通值（降级不破版）。
 6. **偏好写了读不回来**：`createRuntimeGpenPreferencesStorage` 没传 `kvKey`，落到默认 `"root"`，

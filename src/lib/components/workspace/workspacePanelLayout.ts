@@ -8,7 +8,7 @@
  * 组件侧只提供三个 getter：dockview 实例、`workspaceState`（读写 `panelLayout`）、
  * 容器尺寸。测量视口本身留在组件里（它写组件的 `$state`），通过 `measure` 回调进来。
  *
- * 三个必须守住的不变量（都是踩过坑写下来的，改动前先读 `docs/panel.md`）：
+ * 三个必须守住的不变量（都是踩过坑写下来的，改动前先读 `src/lib/components/README-panel.md`）：
  *
  * 1. **只在真实尺寸下取快照**：刚挂载时 dockview 还停在它自己的默认尺寸（100×100），
  *    此时每个面板都卡在最小值，`toJSON()` 存下来就是一个坏布局。

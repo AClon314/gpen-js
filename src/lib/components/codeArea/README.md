@@ -5,7 +5,7 @@
 CodeArea 是 workspace 里的一块「文本面板」：默认当 **viewport 组的新 tab** 打开（VSCode 打开文件
 那种感觉），内容是 `CodeEditor`，数据来自一个注册过的 **`CodeAreaSource`**。
 
-它和 [`CodeEditor`](code-editor.md) 的分工：CodeEditor 是 **widget**（受控文本框，值一变就写回
+它和 [`CodeEditor`](../widgets/inputs/README-code-editor.md) 的分工：CodeEditor 是 **widget**（受控文本框，值一变就写回
 绑定），CodeArea 是 **area**（决定这块文本读什么、写回哪、什么时候提交）。
 
 ```svelte
@@ -74,7 +74,7 @@ interface CodeAreaSource {
   （尤其 `__host`）CM 的高度就会等于内容高度，`.cm-scroller` 不溢出，滚轮直接穿透到底下的
   web layer —— 用户看到的是「代码滚不动、页面在滚」。
 - **更新不抢位置**：实时更新走 `CodeEditor` 的 `preserveViewOnExternalChange`（见
-  [`code-editor.md`](code-editor.md)），caret 与滚动位置都留在原地。
+  [`README-code-editor.md`](../widgets/inputs/README-code-editor.md)），caret 与滚动位置都留在原地。
 
 ## 打开与关闭
 

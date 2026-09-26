@@ -154,7 +154,7 @@ export type PlacePlan =
 
 /**
  * Where the caret is and what the step should do (cases 2–5 of
- * `docs/input.md`): toggle the sign, append a zero, or step one place.
+ * `src/lib/components/widgets/inputs/README.md`): toggle the sign, append a zero, or step one place.
  */
 export type CaretPlan =
   | { kind: "toggle" }

@@ -11,7 +11,7 @@
  *
  * They are separate KV roots on purpose: `createKvStorage` keeps one in-memory
  * root per instance and `submit()` writes the whole root back, so two features
- * sharing a root would overwrite each other's namespace (see docs/storage.md).
+ * sharing a root would overwrite each other's namespace (see src/lib/bindings/storage/README.md).
  *
  * `theme` is a tri-state (`system` | `light` | `dark`) — see `themes/theme.ts`
  * for how the static CSS resolves it without duplicating the palette in JS.
@@ -200,7 +200,7 @@ export function createRuntimeGpenPreferencesStorage(
   try {
     // ⚠️ 必须传 `kvKey`：不传就落到 `"root"`，而工作区偏好用的是 `"gpen-root"`。
     // 同一页面里两个 runtime root 会各持一份内存副本、各自 `submit()` 整根写回**同一个**
-    // IndexedDB key，互相覆盖（实测：偏好写了读不回来）。见 docs/preferences.md。
+    // IndexedDB key，互相覆盖（实测：偏好写了读不回来）。见 src/lib/components/README-preferences.md。
     const storage = createRuntimeStorage<GpenPreferencesStorageRecord>({
       kvKey: GPEN_PREFERENCES_KEY,
       ...options,

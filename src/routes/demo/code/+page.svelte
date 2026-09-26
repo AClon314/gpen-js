@@ -83,7 +83,7 @@
 			<code>CodeEditor</code> 用 CodeMirror 6 承载多行文本，表单关联靠一个
 			<code>hidden</code> 的真 <code>&lt;textarea&gt;</code> 镜像（不是
 			<code>type="hidden"</code>，也不是 <code>&lt;noscript&gt;</code>，原因见
-			<code>docs/code-editor.md</code>）。镜像参与 <code>FormData</code> / <code>required</code> /
+			<code>src/lib/components/widgets/inputs/README-code-editor.md</code>）。镜像参与 <code>FormData</code> / <code>required</code> /
 			<code>checkValidity()</code>，但 <code>display:none</code> 不占布局、不进无障碍树。
 		</p>
 

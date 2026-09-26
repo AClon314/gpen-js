@@ -1,8 +1,8 @@
 /**
  * FBS-005: FlatBuffers Gpen documents on top of the existing Blob/KV storage.
  *
- * Binary Gpen payloads (unframed v1 FlatBuffers, see
- * `gpen-protocol/docs/flatbuffers.md`) are stored in the Blob backend under
+ * Binary Gpen payloads (unframed v1 FlatBuffers, see the
+ * `gpen-protocol` repo's `flatbuffers.md`) are stored in the Blob backend under
  * `gpen/<document-id>.bin`. The KV only holds versioned JSON metadata
  * (`kv.gpen.<id>`); Uint8Array/ArrayBuffer values are never written to KV.
  *

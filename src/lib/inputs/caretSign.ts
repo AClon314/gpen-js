@@ -1,7 +1,7 @@
 /**
  * Sign toggling and bound helpers for the numeric widgets, DOM/Svelte-free.
  *
- * The bounds here are the shared "soft" semantics of `docs/input.md`: a step
+ * The bounds here are the shared "soft" semantics of `src/lib/components/widgets/inputs/README.md`: a step
  * clamps only when the origin is already inside the bounds, and `validateNumeric`
  * is the explicit, opt-in hard clamp used by the components' output channel.
  */

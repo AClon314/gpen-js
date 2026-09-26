@@ -45,7 +45,7 @@
 		class: inputClass,
 		// 调用方的 style 作用于**控件外框**（根节点），不往下传给内部 input：
 		// 内联声明能压过组件自己的 `width: 100%`，所以 `style="width: 8ch"` 是唯一可靠的尺寸入口。
-		// （`class` 仍然落在内部 input 上，见 docs/input.md。）
+		// （`class` 仍然落在内部 input 上，见 src/lib/components/widgets/inputs/README.md。）
 		style,
 		'aria-label': ariaLabel,
 		...rest
@@ -105,7 +105,7 @@
 			!Number.isFinite(Number(draft)) &&
 			convertTypedQuantity(draft) === undefined,
 	);
-	// 校验后的值：只钳 min/max，**不按 step 取整**（step 不参与校验，见 docs/input.md）。
+	// 校验后的值：只钳 min/max，**不按 step 取整**（step 不参与校验，见 src/lib/components/widgets/inputs/README.md）。
 	// value 非有限（非法文本 NaN / 空）→ undefined，绝不下发 NaN。
 	const validValue = $derived.by(() => {
 		const current = finiteNumber(value);

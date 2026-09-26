@@ -15,7 +15,7 @@
 - [x] **storage 数据层**（OPFS 跨 tab、blob→kv 同步、upDownloader）
   - [x] `bindBlobToKv` / `createBlobKvSyncHooks` / `submit()` / 动态 proxy hooks
   - [x] `createRuntimeStorage` / `createGpenBinaryStore`（FBS-005：blob 存 bin、kv 存版本化 metadata）
-  - [x] `/storage-broker` 页面（跨 origin OPFS broker）+ `docs/storage.md` 契约
+  - [x] `/storage-broker` 页面（跨 origin OPFS broker）+ `src/lib/bindings/storage/README.md` 契约
 - [x] **FlatBuffers 协议接入**（FBS-001..008）
   - [x] TypeSpec → proto → fbs → TS accessor → fixtures 生成链 + buf lint + generated diff
   - [x] 直接用生成的 `GpenT`，撤掉手写 validator；三层（文档/toolbar+session/workspace+UI）内嵌 `Gpen`
@@ -157,13 +157,13 @@ F. 09-11 (用户手动增加)
 
 - [ ] 多标签页协同：同 session 多 tab 打开、编辑事件转发（crossTabBus）。
 - [ ] 防崩溃：策略性 page lifecycle / 编辑基线稳定（万一崩溃可恢复）。
-- [ ] 跨 origin 持久化与同步：`storage-broker` 跨 origin 读写一致性（docs/storage.md 契约为准）。
+- [ ] 跨 origin 持久化与同步：`storage-broker` 跨 origin 读写一致性（src/lib/bindings/storage/README.md 契约为准）。
 
 ---
 
 ## 多目标构建（targets）—— 已交付与暂缓
 
-已交付（详见 `docs/build-targets.md`）：embed 核心 + userscript / browser-ext / vscode 三个壳，
+已交付（详见 `src/embed/README.md`）：embed 核心 + userscript / browser-ext / vscode 三个壳，
 一壳一仓库，`gpen/scripts/targets.mjs` 跨仓库编排 build/test，全部本地构建、不发布。
 
 **暂缓 / 测试边界（本轮刻意不做复杂）**：
@@ -188,8 +188,8 @@ F. 09-11 (用户手动增加)
 
 ## 参考文档
 
-- 界面与图层 UX：`docs/panel.md`
-- 协议边界：`docs/flatbuffers.md`
-- storage 契约：`docs/storage.md`、`src/routes/storage-broker/+page.svelte`
-- web-component 评估：`docs/web-components.md`
+- 界面与图层 UX：`src/lib/components/README-panel.md`
+- 协议边界：`src/lib/protocol/README.md`
+- storage 契约：`src/lib/bindings/storage/README.md`、`src/routes/storage-broker/+page.svelte`
+- web-component 评估：`src/lib/components/README-web-components.md`
 - 界面示意：`docs/blender.png`

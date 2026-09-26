@@ -1,12 +1,12 @@
 /**
  * Types of the pure layer-tree behaviour layer (`src/lib/layers/tree/`).
  *
- * These modules are the implementation of `docs/tree.md`: they know nothing
+ * These modules are the implementation of `src/lib/layers/tree/README.md`: they know nothing
  * about Svelte, the DOM or storage, so the whole tree interaction model can be
  * unit tested with `bun test` (same split as `inputs/numericCaret.ts`).
  *
  * Every key is a `node_index` of `UiLayerTreeNode` (protocol index, globally
- * unique inside one document) — see docs/tree.md §3.11.
+ * unique inside one document) — see src/lib/layers/tree/README.md §3.11.
  */
 import type { UiLayerTreeNode } from "../types.js";
 

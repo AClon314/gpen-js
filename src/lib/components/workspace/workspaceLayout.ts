@@ -92,7 +92,7 @@ export interface FloatingBounds extends LayoutSize {
  *
  * Known gap (not this function's job): a float that is already open is not
  * re-bounded when the container shrinks or when a stored layout is restored —
- * dockview only bounds drags. See `docs/panel.md`.
+ * dockview only bounds drags. See `src/lib/components/README-panel.md`.
  */
 export function centeredFloatingBounds(
   container: LayoutSize,

@@ -10,7 +10,7 @@
 
 	// SWC 的组件靠 `sp-theme` 注入 Spectrum 设计 token（`--spectrum-*`）。
 	// 这里把它**限制在控件子树内**：不让第二套 token 体系污染 gpen 的 `--gpen-*`，
-	// 也让「哪些地方是 Adobe 风格」在代码里一眼可见（见 docs/color.md）。
+	// 也让「哪些地方是 Adobe 风格」在代码里一眼可见（见 src/lib/components/widgets/colors/README.md）。
 	//
 	// light / dark 两套主题都要 import（各自是一份 CSS custom property 表），
 	// 这是引入 SWC 的主要固定体积成本；`color` 由调用方按当前配色方案给。

@@ -6,7 +6,7 @@ import { openWorkspace } from "./helpers/workspace";
  * T4 回归：stroke 最小写入路径。
  *
  * 覆盖「画一笔 → 画布有像素 → undo → 像素消失 → 落盘 → reload → 笔画还在」。
- * 打开工作区 = 绘制模式：视口洞被 `canvas.stroke-surface` 接管（见 docs/stroke.md），
+ * 打开工作区 = 绘制模式：视口洞被 `canvas.stroke-surface` 接管（见 src/lib/layers/README-stroke.md），
  * 宿主网页的交互交还给「最小化」（tests/embed/embed.e2e.ts）。
  */
 
@@ -113,7 +113,7 @@ test.describe("stroke write path", () => {
   test("persists a stroke through gpenBinary and restores it after reload", async ({ page }) => {
     // 首次 Blob 写入会先试 OPFS broker（`https://xxx.github.com/storage-broker`，占位域
     // 在此环境不可达）：penpal 握手超时 10s 后才回落到当前 origin 的 IndexedDB，
-    // 之后同一页面复用回落结果（见 docs/storage.md）。所以第一次读 / 写要等得久一点。
+    // 之后同一页面复用回落结果（见 src/lib/bindings/storage/README.md）。所以第一次读 / 写要等得久一点。
     test.setTimeout(90_000);
     await page.goto("/");
     await openWorkspace(page, { canvas: true });

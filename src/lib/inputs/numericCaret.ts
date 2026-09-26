@@ -1,7 +1,7 @@
 /**
  * Facade over the caret-relative numeric stepper, independent of DOM/Svelte.
  *
- * The behavior is documented in `docs/input.md`; the implementation is split
+ * The behavior is documented in `src/lib/components/widgets/inputs/README.md`; the implementation is split
  * by concern:
  *
  * - `caretDigits.ts` — parse `text` + caret and resolve which decimal place to

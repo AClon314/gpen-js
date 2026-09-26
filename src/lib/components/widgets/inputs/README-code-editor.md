@@ -9,11 +9,11 @@
 
 只用已装的 `@codemirror/state` / `@codemirror/view` / `@codemirror/commands`（不引 `codemirror`
 元包，那会带上 autocomplete / fold / search 一大串），接线范式照
-[`docs/codemirror.md`](codemirror.md) 与 `src/routes/demo/code/+page.svelte`。
+[`src/lib/components/widgets/inputs/README-codemirror.md`](README-codemirror.md) 与 `src/routes/demo/code/+page.svelte`。
 
 ## 缺口 + 自研代价（仓库约定）
 
-仓库默认「原生优先」（见 [`docs/input.md`](input.md)）。`CodeEditor` 是第二个例外（第一个是
+仓库默认「原生优先」（见 [`src/lib/components/widgets/inputs/README.md`](README.md)）。`CodeEditor` 是第二个例外（第一个是
 `InputNumber` 的 `number`），缺口与代价都写在这里：
 
 | 需求                                            | 原生 `<textarea>` | 自研代价                                                                 |

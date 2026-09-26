@@ -3,7 +3,7 @@
  *
  * `visibleRows` is the single flattened entry point for rendering: folding a
  * node simply removes its whole subtree from the result, so the component
- * layer never re-derives the list from anywhere else (docs/tree.md §3.5).
+ * layer never re-derives the list from anywhere else (src/lib/layers/tree/README.md §3.5).
  */
 import type { UiLayerTreeNode } from "../types.js";
 import type { TreeKey, TreeRow } from "./types.js";

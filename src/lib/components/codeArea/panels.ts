@@ -1,7 +1,7 @@
 /**
  * CodeArea 面板的打开 / 清理策略（与组件解耦，方便单测）。
  *
- * 两条规则（成因见 `docs/code-area.md`）：
+ * 两条规则（成因见 `src/lib/components/codeArea/README.md`）：
  *
  * 1. **位置**：作为 `viewport` 组的**新 tab**（`direction: 'within'`），不新建组——不动网格布局。
  *    幂等：同源再开一次只 `setActive()`。

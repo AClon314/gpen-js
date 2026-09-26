@@ -3,7 +3,7 @@
  * the CodeMirror `±` handle (`#lib/inputs/codemirror/numberScrubber`) drags
  * continuously at the precision of the number under the cursor, and
  * `InputSlider` steps discretely in one of three zones (see `numericCaret.ts` /
- * `docs/input.md`) — both at `SCRUB_PIXELS_PER_STEP` pixels per unit.
+ * `src/lib/components/widgets/inputs/README.md`) — both at `SCRUB_PIXELS_PER_STEP` pixels per unit.
  */
 import { roundTo, softClampTo } from "./numericCaret.js";
 

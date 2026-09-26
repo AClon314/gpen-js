@@ -26,7 +26,7 @@
 		type OutlinerKeyAction
 	} from './outlinerRows.js';
 
-	// 受控三件套（见 docs/tree.md §3.4）：`*Keys` 存在时它就是唯一真相（default 只作初值），
+	// 受控三件套（见 src/lib/layers/tree/README.md §3.4）：`*Keys` 存在时它就是唯一真相（default 只作初值），
 	// 回调**总是**触发 —— 非受控用法靠它把新值写回本地 state。
 	interface OutlinerProps {
 		tree?: UiLayerTree | null;
@@ -42,7 +42,7 @@
 		onMove?: (ops: TreeOp[]) => void;
 		/**
 		 * 递增的「开始重命名」请求计数（F2 / 菜单「重命名活动项」）。
-		 * 重命名是**编辑态**而不是树状态（见 docs/tree.md §3.9），所以不进 `tree`，
+		 * 重命名是**编辑态**而不是树状态（见 src/lib/layers/tree/README.md §3.9），所以不进 `tree`，
 		 * 由外部用一个只增不减的请求号触发：面板自己决定对哪一行进入编辑态。
 		 */
 		renameRequest?: number;
@@ -76,7 +76,7 @@
 	);
 	const expanded = $derived(expandedKeys ?? localExpanded);
 
-	/// 扁平化只有一个入口（docs/tree.md §3.5）：折叠的子树不进 rows。
+	/// 扁平化只有一个入口（src/lib/layers/tree/README.md §3.5）：折叠的子树不进 rows。
 	const rows = $derived(visibleRows(root, expanded));
 
 	/// roving tabindex：只有一行 tabindex=0，其余 -1。
@@ -115,7 +115,7 @@
 		measureGeometry();
 	});
 
-	// 编辑态挂到 DOM 后取焦点（重命名状态不进 tree state，见 docs/tree.md §3.9）。
+	// 编辑态挂到 DOM 后取焦点（重命名状态不进 tree state，见 src/lib/layers/tree/README.md §3.9）。
 	$effect(() => {
 		if (renamingKey === undefined || !renameInput) return;
 		renameInput.focus();

@@ -4,7 +4,7 @@
  *
  * `decimalPlacesInText` is exponent-aware (`1e-7` → 7). `formatValue` keeps a
  * fixed decimal width and can strip trailing fractional zeros, which is what
- * case 4 of `docs/input.md` needs (its width follows the active place).
+ * case 4 of `src/lib/components/widgets/inputs/README.md` needs (its width follows the active place).
  */
 
 /** Number of fractional digits needed to write `text` (exponent-aware). */

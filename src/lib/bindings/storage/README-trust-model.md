@@ -1,8 +1,8 @@
 # storage-broker 安全设计（TODO / 草案）
 
 > 目标：**即使客户端的 gpen-js 被篡改，broker 也要把损失限制在「无害」**。
-> 相关：`src/routes/storage-broker/+page.svelte`、`src/lib/bindings/storage/`、`docs/storage.md`、`TODO.md` P1。
-> 缩写 / 术语速查见 [glossary.md](./glossary.md)。
+> 相关：`src/routes/storage-broker/+page.svelte`、`src/lib/bindings/storage/`、`src/lib/bindings/storage/README.md`、`TODO.md` P1。
+> 缩写 / 术语速查见 [GLOSSARY.md](../../../../GLOSSARY.md)。
 
 ---
 

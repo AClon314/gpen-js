@@ -212,7 +212,7 @@ VS Code host 可以提供 `workspaceState` / `globalState` 和持久化的 `blob
   Chrome 会弹窗或按启发式自动绦予；Safari/Firefox 还需真机验证过期策略）。实时中继不能靠 BroadcastChannel，
   得把存储当信箱（写 + 轮询/`storage` 事件），或用下面的 hub/服务端。
 - **要跨站实时中继**：顶层 hub 页（自有域名，顶层页不分区）或服务端 WebSocket。
-- **安全代价**：授权后**宿主页可以驱使 broker** 读同一份数据（见 `docs/todo-safe.md`），所以 SAA 路线天生
+- **安全代价**：授权后**宿主页可以驱使 broker** 读同一份数据（见 `src/lib/bindings/storage/README-trust-model.md`），所以 SAA 路线天生
   “页面可读”：只适合非敏感数据，或额外加鉴权（例如每用户密钥），而密钥本身又得存在不被宿主页读到的地方（回到 GM）。
 - **“未授权 → 分区”不算意外**：这正是当年跨站追踪被堵掉的那条路；同源 ≠ 同分区。
 

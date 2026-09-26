@@ -5,7 +5,7 @@
  * 只碰文档与存储，不碰 dockview / 面板 / 命令注册。组件保留「UI 什么时候调」，
  * 下面这些语义守卫集中在这里。
  *
- * 三个必须守住的点（都是踩过坑写下来的，改动前先读 `docs/stroke.md` 与 `docs/storage.md`）：
+ * 三个必须守住的点（都是踩过坑写下来的，改动前先读 `src/lib/layers/README-stroke.md` 与 `src/lib/bindings/storage/README.md`）：
  *
  * 1. **`ready` 之前不落盘**：load 是异步的，默认文档会在读到存档之前把存储里的那份覆盖掉。
  * 2. **load 返回时若用户已经改过文档**（`edited`）：不覆盖他的工作，也不清历史

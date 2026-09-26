@@ -2,7 +2,7 @@
  * Stroke construction: turn sampled pointer input (layer-local coordinates)
  * into protocol `StrokeT` data.
  *
- * This is the "input" stage of the stroke write path (see `docs/stroke.md`).
+ * This is the "input" stage of the stroke write path (see `src/lib/layers/README-stroke.md`).
  * Everything here is pure: no document is read or written, so the builders can
  * be unit tested without a DOM or a `GpenT`.
  */

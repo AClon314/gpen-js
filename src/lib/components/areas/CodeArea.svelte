@@ -12,7 +12,7 @@
 	 * CodeArea：**一块可编辑文本 + 一份数据的双向同步**，默认当作 viewport 组的
 	 * file tab 打开（VSCode 打开文件那种感觉）。
 	 *
-	 * 数据流（详见 `docs/code-area.md`）：
+	 * 数据流（详见 `src/lib/components/codeArea/README.md`）：
 	 *
 	 * ```
 	 * source.read() ──(实时，读 $state)──► 格式化文本 ──► draft ──bind:value──► CodeEditor
@@ -140,7 +140,7 @@
 				realtimeValue = next;
 				return;
 			}
-			// 用户动过就不覆盖（不丢输入；冲突提示暂缺，见 docs/code-area.md）。
+			// 用户动过就不覆盖（不丢输入；冲突提示暂缺，见 src/lib/components/codeArea/README.md）。
 			if (draft === committed) {
 				draft = next;
 				committed = next;

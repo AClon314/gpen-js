@@ -215,4 +215,4 @@ genObjectApi: 经过 bundle/类型检查后决定
 - 是否改变了 schema、默认值、field id 或 package export；
 - 未解决问题和对下一任务的明确依赖。
 
-相关设计文档：[`docs/panel.md`](panel.md) 只描述面板/图层 UX；协议字段和二进制边界以本文件及 [`gpen-protocol/protocol/v1/gpen.tsp`](../../gpen-protocol/protocol/v1/gpen.tsp) 为准。
+相关设计文档：[`src/lib/components/README-panel.md`](../components/README-panel.md) 只描述面板/图层 UX；协议字段和二进制边界以本文件及 [`gpen-protocol/protocol/v1/gpen.tsp`](../../gpen-protocol/protocol/v1/gpen.tsp) 为准。

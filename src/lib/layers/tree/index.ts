@@ -1,5 +1,5 @@
 /**
- * Pure layer-tree behaviour layer (implementation of `docs/tree.md`).
+ * Pure layer-tree behaviour layer (implementation of `src/lib/layers/tree/README.md`).
  *
  * No Svelte, no DOM, no storage: flattening, keyboard focus, selection,
  * typeahead, search and drag & drop are plain functions so they can be unit
