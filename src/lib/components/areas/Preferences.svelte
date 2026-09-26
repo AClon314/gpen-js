@@ -5,7 +5,6 @@
 	import '@spectrum-web-components/icons-workflow/icons/sp-icon-settings.js';
 
 	import ColorPicker from '#lib/components/widgets/colors/ColorPicker.svelte';
-	import InputSlider from '#lib/components/widgets/inputs/InputSlider.svelte';
 	import SelectRow from '#lib/components/widgets/inputs/SelectRow.svelte';
 	import { EraserMode, type BrushSettingsT, type EraserSettingsT } from 'gpen-protocol/flatbuffers';
 	import type { GpenPreferences } from '../gpenPreferences';
@@ -21,6 +20,9 @@
 		normalizeColor
 	} from '../toolbarOps';
 	import { Color4T } from 'gpen-protocol/flatbuffers';
+	import PreferenceCard from './PreferenceCard.svelte';
+	import PreferenceRow from './PreferenceRow.svelte';
+	import PreferenceSlider from './PreferenceSlider.svelte';
 
 	// 偏好设置面板：**浮动** dockview 面板（不是模态对话框，handoff §4.2），所以它是
 	// 普通 `.svelte` 组件、由 `panelComponents` 注册，标题栏保留（浮动手柄）。
@@ -30,6 +32,9 @@
 	//   2. 工具栏 / 会话（协议 `ToolbarState`，随文档走）
 	//   3. 工作区布局（`GpenWorkspaceState`，gpen.workspaceState KV）
 	// 面板不做状态缓存：值由父级 `$state` 代理进来，改动一律回调出去（受控三件套）。
+	//
+	// 卡片、行、滑条三个形状各自成一组，抽成同目录的 `PreferenceCard` /
+	// `PreferenceRow` / `PreferenceSlider`，这里只留「哪张卡、哪一行、绑哪个字段」。
 	interface Props {
 		preferences: GpenPreferences;
 		/** 工作区布局层：界面缩放 / 面板布局。 */
@@ -94,6 +99,10 @@
 		{ value: String(EraserMode.ERASER_MODE_HARD), label: '点（切开笔画）' }
 	];
 
+	// 纯标签量纲（不做换算）：尺寸 / 模糊半径都是 px，自动保存间隔是 ms。
+	const PX_UNITS = { base: 'px', units: { px: 1 } };
+	const MS_UNITS = { base: 'ms', units: { ms: 1 } };
+
 	// 画笔 `size` 是**直径**、`Point.radius` 是半径：滑条直接用直径表述，
 	// 换算只发生在 toolbarOps（`brushRadiusOf` / `eraserRadiusOf`）。
 	//
@@ -123,14 +132,8 @@
 </script>
 
 <div class="blender-panel blender-panel-preferences" aria-label="偏好设置">
-	<section class="property-card">
-		<header class="card-head">
-			<sp-icon-settings></sp-icon-settings>
-			<h2>界面</h2>
-		</header>
-
-		<div class="property-row">
-			<span class="property-label">界面缩放</span>
+	<PreferenceCard title="界面" icon="sp-icon-settings">
+		<PreferenceRow label="界面缩放">
 			<div class="scale-control" role="group" aria-label="界面缩放">
 				<button
 					class="gpen-panel-button"
@@ -152,7 +155,7 @@
 					onclick={() => onChangeUiScale?.(0.25)}
 				>+</button>
 			</div>
-		</div>
+		</PreferenceRow>
 
 		<SelectRow
 			label="主题"
@@ -163,23 +166,17 @@
 		/>
 
 		<!-- 磨砂玻璃是**数值**偏好（模糊半径，0 = 关），不再是 checkbox：滑条就是开关。 -->
-		<div class="property-row">
-			<span
-				class="property-label"
-				title="面板与菜单半透明 + 背景模糊（移动端会更吃 GPU）"
-			>磨砂玻璃</span>
-			<InputSlider
-				value={preferences.blur}
-				units={{ base: 'px', units: { px: 1 } }}
-				min={0}
-				max={16}
-				step={1}
-				aria-label="磨砂玻璃（模糊半径）"
-				onvalidvalue={(value) => {
-					if (typeof value === 'number') patchPreferences({ blur: value });
-				}}
-			/>
-		</div>
+		<PreferenceSlider
+			label="磨砂玻璃"
+			hint="面板与菜单半透明 + 背景模糊（移动端会更吃 GPU）"
+			ariaLabel="磨砂玻璃（模糊半径）"
+			value={preferences.blur}
+			units={PX_UNITS}
+			min={0}
+			max={16}
+			step={1}
+			onchange={(blur) => patchPreferences({ blur })}
+		/>
 
 		<SelectRow
 			label="语言"
@@ -188,8 +185,7 @@
 			onchange={(locale) => patchPreferences({ locale })}
 		/>
 
-		<div class="property-row">
-			<span class="property-label">显示状态栏</span>
+		<PreferenceRow label="显示状态栏">
 			<input
 				type="checkbox"
 				aria-label="显示状态栏"
@@ -197,15 +193,10 @@
 				onchange={(event) =>
 					patchPreferences({ showStatusBar: (event.currentTarget as HTMLInputElement).checked })}
 			/>
-		</div>
-	</section>
+		</PreferenceRow>
+	</PreferenceCard>
 
-	<section class="property-card">
-		<header class="card-head">
-			<sp-icon-brush></sp-icon-brush>
-			<h2>工具</h2>
-		</header>
-
+	<PreferenceCard title="工具" icon="sp-icon-brush">
 		<SelectRow
 			label="默认工具"
 			value={preferences.defaultTool}
@@ -214,61 +205,41 @@
 			onchange={(defaultTool) => patchPreferences({ defaultTool })}
 		/>
 
-		<div class="property-row">
-			<span class="property-label">画笔尺寸</span>
-			<InputSlider
-				value={brushSize}
-				units={{ base: 'px', units: { px: 1 } }}
-				min={1}
-				max={256}
-				step={1}
-				aria-label="画笔尺寸（直径）"
-				onvalidvalue={(value) => {
-					if (typeof value === 'number') onChangeBrush?.({ size: value });
-				}}
-			/>
-		</div>
+		<PreferenceSlider
+			label="画笔尺寸"
+			ariaLabel="画笔尺寸（直径）"
+			value={brushSize}
+			units={PX_UNITS}
+			min={1}
+			max={256}
+			step={1}
+			onchange={(size) => onChangeBrush?.({ size })}
+		/>
 
-		<div class="property-row">
-			<span class="property-label">画笔强度</span>
-			<InputSlider
-				value={brushStrength}
-				min={0}
-				max={1}
-				step={0.01}
-				aria-label="画笔强度"
-				onvalidvalue={(value) => {
-					if (typeof value === 'number') onChangeBrush?.({ strength: value });
-				}}
-			/>
-		</div>
+		<PreferenceSlider
+			label="画笔强度"
+			value={brushStrength}
+			min={0}
+			max={1}
+			step={0.01}
+			onchange={(strength) => onChangeBrush?.({ strength })}
+		/>
 
-		<div class="property-row">
-			<span class="property-label">画笔间距</span>
-			<InputSlider
-				value={brushSpacing}
-				min={0.01}
-				max={1}
-				step={0.01}
-				aria-label="画笔间距"
-				onvalidvalue={(value) => {
-					if (typeof value === 'number') onChangeBrush?.({ spacing: value });
-				}}
-			/>
-		</div>
+		<PreferenceSlider
+			label="画笔间距"
+			value={brushSpacing}
+			min={0.01}
+			max={1}
+			step={0.01}
+			onchange={(spacing) => onChangeBrush?.({ spacing })}
+		/>
 
-		<div class="property-row">
-			<span class="property-label">画笔颜色</span>
+		<PreferenceRow label="画笔颜色">
 			<ColorPicker value={brushColor} label="画笔颜色" onchange={patchColor} />
-		</div>
-	</section>
+		</PreferenceRow>
+	</PreferenceCard>
 
-	<section class="property-card">
-		<header class="card-head">
-			<sp-icon-erase></sp-icon-erase>
-			<h2>橡皮</h2>
-		</header>
-
+	<PreferenceCard title="橡皮" icon="sp-icon-erase">
 		<SelectRow
 			label="擦除模式"
 			value={eraserMode}
@@ -277,99 +248,72 @@
 			onchange={(value) => onChangeEraser?.({ mode: Number(value) as EraserMode })}
 		/>
 
-		<div class="property-row">
-			<span class="property-label">橡皮尺寸</span>
-			<InputSlider
-				value={eraserSize}
-				units={{ base: 'px', units: { px: 1 } }}
-				min={1}
-				max={256}
-				step={1}
-				aria-label="橡皮尺寸（直径）"
-				onvalidvalue={(value) => {
-					if (typeof value === 'number') onChangeEraser?.({ size: value });
-				}}
-			/>
-		</div>
+		<PreferenceSlider
+			label="橡皮尺寸"
+			ariaLabel="橡皮尺寸（直径）"
+			value={eraserSize}
+			units={PX_UNITS}
+			min={1}
+			max={256}
+			step={1}
+			onchange={(size) => onChangeEraser?.({ size })}
+		/>
 
-		<div class="property-row">
-			<span class="property-label">橡皮强度</span>
-			<InputSlider
-				value={eraserStrength}
-				min={0}
-				max={1}
-				step={0.01}
-				aria-label="橡皮强度"
-				onvalidvalue={(value) => {
-					if (typeof value === 'number') onChangeEraser?.({ strength: value });
-				}}
-			/>
-		</div>
-	</section>
+		<PreferenceSlider
+			label="橡皮强度"
+			value={eraserStrength}
+			min={0}
+			max={1}
+			step={0.01}
+			onchange={(strength) => onChangeEraser?.({ strength })}
+		/>
+	</PreferenceCard>
 
-	<section class="property-card">
-		<header class="card-head">
-			<sp-icon-color-fill></sp-icon-color-fill>
-			<h2>文件</h2>
-		</header>
+	<PreferenceCard title="文件" icon="sp-icon-color-fill">
+		<PreferenceSlider
+			label="自动保存间隔"
+			ariaLabel="自动保存间隔（毫秒）"
+			value={preferences.autoSaveDebounceMs}
+			units={MS_UNITS}
+			min={0}
+			max={10000}
+			step={50}
+			onchange={(autoSaveDebounceMs) => patchPreferences({ autoSaveDebounceMs })}
+		/>
 
-		<div class="property-row">
-			<span class="property-label">自动保存间隔</span>
-			<InputSlider
-				value={preferences.autoSaveDebounceMs}
-				units={{ base: 'ms', units: { ms: 1 } }}
-				min={0}
-				max={10000}
-				step={50}
-				aria-label="自动保存间隔（毫秒）"
-				onvalidvalue={(value) => {
-					if (typeof value === 'number') patchPreferences({ autoSaveDebounceMs: value });
-				}}
-			/>
-		</div>
-
-		<div class="property-row">
-			<span class="property-label">当前文档</span>
+		<PreferenceRow label="当前文档">
 			<code class="read-only">{documentId}</code>
-		</div>
+		</PreferenceRow>
 
-		<div class="property-row">
-			<span class="property-label">落盘状态</span>
+		<PreferenceRow label="落盘状态">
 			<code class="read-only">{storageStatus}</code>
-		</div>
+		</PreferenceRow>
 
 		{#if onClearDocument}
-			<div class="property-row">
-				<span class="property-label">清空当前文档</span>
+			<PreferenceRow label="清空当前文档">
 				<button class="gpen-pill danger" type="button" onclick={onClearDocument}>
 					清空笔画与图层
 				</button>
-			</div>
+			</PreferenceRow>
 		{/if}
-	</section>
+	</PreferenceCard>
 
-	<section class="property-card">
-		<header class="card-head">
-			<h2>重置</h2>
-		</header>
-
-		<div class="property-row">
-			<span class="property-label">恢复默认</span>
+	<PreferenceCard title="重置">
+		<PreferenceRow label="恢复默认">
 			<button
 				class="gpen-pill"
 				type="button"
 				title="偏好与画笔 / 橡皮设置回到默认值"
 				onclick={() => onResetPreferences?.()}
 			>恢复默认偏好</button>
-		</div>
+		</PreferenceRow>
 
-		<div class="property-row">
-			<span class="property-label">面板布局</span>
+		<PreferenceRow label="面板布局">
 			<button class="gpen-pill" type="button" onclick={() => onResetPanelLayout?.()}>
 				重置面板布局
 			</button>
-		</div>
-	</section>
+		</PreferenceRow>
+	</PreferenceCard>
 </div>
 
 <style>
@@ -384,8 +328,10 @@
 	/* 卡片不参与 flex 收缩：面板是唯一的滚动容器。默认的 `flex-shrink: 1` 会在内容
 	   变高时先压缩每张卡片（`overflow: hidden` 把裁切变成静默丢失 + 子滚动条），
 	   于是面板自己的 `scrollHeight` 看起来永远不溢出。见 923 handoff §1。
-	   选择器限定在设置面板下：`Properties.svelte` 也用 `.property-card`，那边是普通块布局。 */
-	.blender-panel-preferences > .property-card {
+	   卡片现在由子组件渲染，所以配对用 `:global`；前面的 `.blender-panel-preferences`
+	   仍是 scoped 的，规则只作用于本面板（`Properties.svelte` 也用 `.property-card`，
+	   那边是普通块布局，不该吃到这条）。 */
+	.blender-panel-preferences > :global(.property-card) {
 		flex: 0 0 auto;
 	}
 

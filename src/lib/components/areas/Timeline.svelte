@@ -3,11 +3,13 @@
 	import '@spectrum-web-components/icons-workflow/icons/sp-icon-play.js';
 	import '@spectrum-web-components/icons-workflow/icons/sp-icon-rewind.js';
 
+	import { frameGridLeft, timelineTickFrames } from './timelineTicks';
+
 	// 静态占位的时间轴：帧列宽固定（`--frame-width`），标尺、关键帧、播放头都按同一个
-	// 宽度换算位置，所以缩放面板宽度时三者不会错位。
+	// 宽度换算位置，所以缩放面板宽度时三者不会错位。刻度与偏移换算见 `timelineTicks.ts`。
 	const COLUMN_FRAMES = 12; // 每 COLUMN_FRAMES 帧标一个数字（CSS 侧用 --frames-per-tick 对齐）
 	const COLUMN_COUNT = 8; // 标尺上画多少列
-	const frames = Array.from({ length: COLUMN_COUNT }, (_, index) => index * COLUMN_FRAMES + 1);
+	const frames = timelineTickFrames(COLUMN_COUNT, COLUMN_FRAMES);
 
 	const firstFrame = 1;
 	const lastFrame = 250;
@@ -62,12 +64,9 @@
 			</div>
 			<div class="frame-grid">
 				{#each keyframes as frame (frame)}
-					<span class="keyframe" style:left={`calc((${frame - firstFrame}) * var(--frame-width))`}></span>
+					<span class="keyframe" style:left={frameGridLeft(frame, firstFrame)}></span>
 				{/each}
-				<span
-					class="playhead"
-					style:left={`calc((${playheadFrame - firstFrame}) * var(--frame-width))`}
-				></span>
+				<span class="playhead" style:left={frameGridLeft(playheadFrame, firstFrame)}></span>
 			</div>
 		</div>
 	</div>
