@@ -239,8 +239,11 @@ type PendingDocument = {
  * Serialized runtime behind `createGpenBinaryStore`. Kept as a class so the
  * debounce/persist state machine is split into individually small methods
  * instead of one long closure.
+ *
+ * `createGpenBinaryStore` returns this instance directly（与 `createKvRuntime` 一致）：
+ * 静态上由返回类型 `GpenBinaryStore` 收窄，`_` 成员不进入公开 API。
  */
-class GpenBinaryRuntime {
+class GpenBinaryRuntime implements GpenBinaryStore {
   _deps: GpenBinaryStoreDeps;
   _cache: boolean;
   _debounceMs: number;
@@ -484,15 +487,5 @@ export function createGpenBinaryStore(deps: GpenBinaryStoreDeps): GpenBinaryStor
   if (!Number.isFinite(debounceMs) || debounceMs < 0) {
     throw new RangeError("Gpen binary debounceMs must be a non-negative finite number");
   }
-  const runtime = new GpenBinaryRuntime(deps, deps.cache ?? false, debounceMs);
-
-  return {
-    save: (id, document) => runtime.save(id, document),
-    load: (id) => runtime.load(id),
-    getMetadata: (id) => runtime.getMetadata(id),
-    del: (id) => runtime.del(id),
-    commit: () => runtime.commit(),
-    dispose: () => runtime.dispose(),
-    sendCrossTab: (type, payload, options) => runtime.sendCrossTab(type, payload, options),
-  };
+  return new GpenBinaryRuntime(deps, deps.cache ?? false, debounceMs);
 }
