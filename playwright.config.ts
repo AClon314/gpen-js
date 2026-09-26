@@ -11,9 +11,13 @@ const executablePath = [
   "/bin/google-chrome",
 ].find((path) => path && existsSync(path));
 
+/**
+ * embed 项目直接注入 `dist/embed` 的 IIFE，不需要网站 dev server。
+ * `bun run test:embed` 会设 `GPEN_EMBED_ONLY=1` 跳过 webServer（embed 不依赖 SvelteKit）。
+ */
+const embedOnly = process.env.GPEN_EMBED_ONLY === "1";
+
 export default defineConfig({
-  testDir: "./tests/e2e",
-  testMatch: "**/*.e2e.ts",
   timeout: 30_000,
   expect: {
     timeout: 5_000,
@@ -24,24 +28,42 @@ export default defineConfig({
   workers: 1,
   reporter: "list",
   use: {
-    baseURL: hostA,
-    ignoreHTTPSErrors: protocol === "https",
     ...(executablePath ? { launchOptions: { executablePath } } : {}),
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
-  webServer: [
+  projects: [
     {
-      command: "bun run dev -- --port 4173",
-      url: `${hostA}/`,
-      reuseExistingServer: !process.env.CI,
-      timeout: 120_000,
+      name: "e2e",
+      testDir: "./tests/e2e",
+      testMatch: "**/*.e2e.ts",
+      use: {
+        baseURL: hostA,
+        ignoreHTTPSErrors: protocol === "https",
+      },
     },
     {
-      command: "bun run dev -- --port 4174",
-      url: `${hostB}/`,
-      reuseExistingServer: !process.env.CI,
-      timeout: 120_000,
+      name: "embed",
+      testDir: "./tests/embed",
+      testMatch: "**/*.e2e.ts",
     },
   ],
+  webServer: embedOnly
+    ? undefined
+    : [
+        {
+          command: "bun run dev -- --port 4173",
+          url: `${hostA}/`,
+          ignoreHTTPSErrors: protocol === "https",
+          reuseExistingServer: !process.env.CI,
+          timeout: 120_000,
+        },
+        {
+          command: "bun run dev -- --port 4174",
+          url: `${hostB}/`,
+          ignoreHTTPSErrors: protocol === "https",
+          reuseExistingServer: !process.env.CI,
+          timeout: 120_000,
+        },
+      ],
 });

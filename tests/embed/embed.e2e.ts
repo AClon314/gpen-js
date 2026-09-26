@@ -38,6 +38,7 @@ type EmbedGlobals = {
 declare global {
   interface Window {
     GpenEmbed: EmbedGlobals;
+    __clicked?: number;
   }
 }
 
@@ -108,7 +109,7 @@ test.describe("gpen embed", () => {
     const hole = await page.evaluate(() => {
       const group = document
         .querySelector("#gpen-host")
-        .shadowRoot.querySelector(".dv-groupview.gpen-hole");
+        ?.shadowRoot?.querySelector(".dv-groupview.gpen-hole");
       if (!group) return null;
       const styles = getComputedStyle(group);
       return { background: styles.backgroundColor, pointerEvents: styles.pointerEvents };

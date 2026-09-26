@@ -14,8 +14,10 @@ import { mount, unmount, type Component } from "svelte";
 
 import GpenOverlay from "#lib/components/GpenOverlay.svelte";
 import ContextMenu from "#lib/components/contextMenu/ContextMenu.svelte";
-import { gpenEmbedCss } from "./css.js";
 import { initTheme } from "../lib/themes/theme.svelte.js";
+
+/** 构建期被 vite.embed.config.ts 的 inlineCss 插件替换成真实 CSS 文本（JSON 字符串）。 */
+const gpenEmbedCss = "__GPEN_EMBED_CSS__";
 
 /** 嵌入宿主 div 的固定 id。 */
 export const GPEN_HOST_ID = "gpen-host";

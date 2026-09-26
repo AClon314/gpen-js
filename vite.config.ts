@@ -5,8 +5,7 @@ import { loadEnv } from "vite";
 import adapter from "@sveltejs/adapter-static";
 import { sveltekit } from "@sveltejs/kit/vite";
 import { existsSync, readFileSync } from "node:fs";
-
-const pkg = JSON.parse(readFileSync("package.json", "utf8"));
+import { gpenDefine, gpenSvelteCompilerOptions } from "./vite.embed.config.ts";
 
 export default defineConfig(({ mode }) => {
   const { allowedHost, httpsCert, httpsKey } = loadEnv(mode, process.cwd(), "");
@@ -15,9 +14,7 @@ export default defineConfig(({ mode }) => {
       ? { cert: readFileSync(httpsCert), key: readFileSync(httpsKey) }
       : undefined;
   return {
-    define: {
-      __GPEN_VERSION__: JSON.stringify(pkg.version),
-    },
+    define: { ...gpenDefine },
     server: {
       ...(allowedHost ? { allowedHosts: [allowedHost] } : {}),
       ...(https ? { https } : {}),
@@ -26,10 +23,8 @@ export default defineConfig(({ mode }) => {
       tailwindcss(),
       sveltekit({
         compilerOptions: {
-          // Force runes mode for the project, except for libraries. Can be removed in svelte 6.
-          runes: ({ filename }) =>
-            filename.split(/[/\\]/).includes("node_modules") ? undefined : true,
-          customElement: ({ filename }) => filename.endsWith(".web.svelte"),
+          // runes / customElement 与 embed 构建共用一份定义（见 vite.embed.config.ts）。
+          ...gpenSvelteCompilerOptions,
           experimental: { async: true },
         },
 

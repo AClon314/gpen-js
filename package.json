@@ -33,7 +33,7 @@
     "test:coverage": "bun test tests/*.test.ts --coverage --coverage-reporter=lcov && bun scripts/filter-lcov.ts",
     "health": "repowise health --format md --scope production --counts code_shape",
     "health:gate": "bun scripts/health-gate.ts",
-    "test:e2e": "set -a; . .env 2>/dev/null || true; set +a; playwright test",
+    "test:e2e": "set -a; . .env 2>/dev/null || true; set +a; playwright test --project=e2e",
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
     "lint": "bun run typecheck && oxlint && eslint && bun run lint:exports",
@@ -46,7 +46,7 @@
     "preview": "vite preview",
     "prepare": "svelte-kit sync && husky",
     "build:embed": "vite build -c vite.embed.config.ts",
-    "test:embed": "playwright test -c playwright.embed.config.ts"
+    "test:embed": "GPEN_EMBED_ONLY=1 playwright test --project=embed"
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.1",
