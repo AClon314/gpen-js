@@ -1,5 +1,5 @@
-import { createBlobBackend, type HookedBlobBackend } from "./blob.js";
-import { createKvStorage } from "./kv.js";
+import { createBlobBackend, type HookedBlobBackend } from "../objects/blob.js";
+import { createKvStorage } from "../objects/kv.js";
 import {
   createBridgeBlobBackend,
   createBridgeKvBackend,
@@ -7,7 +7,7 @@ import {
   getVscodeStorageApi,
 } from "./vscodeBridge.js";
 import { createHostBlobBackend, createHostKvBackend, DEFAULT_STATE_PATH } from "./vscodeFs.js";
-import type { JsonValue, Storage } from "./types.js";
+import type { JsonValue, Storage } from "../types.js";
 import type { VscodeStorageOptions } from "./vscodeTypes.js";
 
 export {

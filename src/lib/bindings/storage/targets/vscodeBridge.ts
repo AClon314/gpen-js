@@ -1,4 +1,4 @@
-import type { BlobBackend, JsonValue, KvBackend } from "./types.js";
+import type { BlobBackend, JsonValue, KvBackend } from "../types.js";
 import {
   VSCODE_STORAGE_REQUEST,
   VSCODE_STORAGE_RESPONSE,

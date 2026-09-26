@@ -11,7 +11,7 @@ import type {
   SetNamespace,
   SetNode,
   StoragePathKey,
-} from "./types.js";
+} from "../types.js";
 import {
   asPathKey,
   assertJsonValue,

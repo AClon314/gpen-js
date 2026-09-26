@@ -1,4 +1,4 @@
-import type { BlobBackend, BlobSetOptions } from "./types.js";
+import type { BlobBackend, BlobSetOptions } from "../types.js";
 
 /** OPFS broker iframe 的默认来源。 */
 export const DEFAULT_BLOB_TARGET_DOMAIN = "https://xxx.github.com";

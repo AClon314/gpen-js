@@ -1,9 +1,25 @@
-import { createBrowserStorage, getBrowserStorage, type BrowserStorageOptions } from "./browser.js";
-import { createBlobBackend, type BlobStorageOptions, type HookedBlobBackend } from "./blob.js";
-import { createMonkeyStorage, getMonkeyStorageApi, type MonkeyStorageOptions } from "./monkey.js";
-import { createVscodeStorage, hasVscodeStorage, type VscodeStorageOptions } from "./vscode.js";
-import { createWebsiteStorage, type WebsiteStorageOptions } from "./website.js";
-import { createKvStorage } from "./kv.js";
+import {
+  createBrowserStorage,
+  getBrowserStorage,
+  type BrowserStorageOptions,
+} from "./targets/browser.js";
+import {
+  createBlobBackend,
+  type BlobStorageOptions,
+  type HookedBlobBackend,
+} from "./objects/blob.js";
+import {
+  createMonkeyStorage,
+  getMonkeyStorageApi,
+  type MonkeyStorageOptions,
+} from "./targets/monkey.js";
+import {
+  createVscodeStorage,
+  hasVscodeStorage,
+  type VscodeStorageOptions,
+} from "./targets/vscode.js";
+import { createWebsiteStorage, type WebsiteStorageOptions } from "./targets/website.js";
+import { createKvStorage } from "./objects/kv.js";
 import type {
   BlobBackend,
   JsonValue,
@@ -30,7 +46,7 @@ export type {
 export {
   /** 用后端与选项创建 KV。 */
   createKvStorage,
-} from "./kv.js";
+} from "./objects/kv.js";
 export {
   /** 结构化克隆一份值（无 structuredClone 时退回 JSON）。 */
   deepClone,
@@ -40,7 +56,7 @@ export {
   listKeysAtPath,
   /** 不可变地往 `path` 写值，返回新的根（沿途缺容器则补）。 */
   setAtPath,
-} from "./kvJson.js";
+} from "./objects/kvJson.js";
 export type {
   /** delete 钩子：删除时联动外部存储之类的副作用。 */
   KvDeleteHook,
@@ -77,7 +93,7 @@ export {
   DEFAULT_BLOB_TARGET_DOMAIN,
   /** 把 Blob id 拆成路径段，拒绝空段与 `..` 穿越。 */
   splitBlobId,
-} from "./blob.js";
+} from "./objects/blob.js";
 export type {
   /** Blob delete 钩子：删除时联动 KV 之类的副作用。 */
   BlobDeleteHook,
@@ -113,7 +129,7 @@ export type {
   CreateBlobBackendOptions,
   /** 带钩子代理的 Blob 后端（get / set / delete / del + close）。 */
   HookedBlobBackend,
-} from "./blob.js";
+} from "./objects/blob.js";
 export {
   /** Convert a local path to a URL while preserving already URL-shaped sources. */
   asExternalUrl,
@@ -121,13 +137,13 @@ export {
   bindBlobToKv,
   /** Build the hooks separately when a backend is created before the KV object. */
   createBlobKvSyncHooks,
-} from "./sync.js";
+} from "./objects/sync.js";
 export type {
   /** Blob↔KV 同步钩子上下文（额外带 KV 键与记录路径）。 */
   BlobKvRecordContext,
   /** 把 Blob 写入映射成 KV 记录的选项。 */
   BlobKvSyncOptions,
-} from "./sync.js";
+} from "./objects/sync.js";
 export {
   /** 用依赖创建 Gpen 二进制文档存储。 */
   createGpenBinaryStore,
@@ -143,7 +159,7 @@ export {
   GPEN_SCHEMA_VERSION,
   /** Diagnostic error carrying the storage context for a failed Gpen document operation. */
   GpenStorageError,
-} from "./gpenBinary.js";
+} from "./objects/gpenBinary.js";
 export type {
   /** Gpen 文档的二进制存储接口（保存 / 读取 / 元数据 / 删除 / 提交）。 */
   GpenBinaryStore,
@@ -155,17 +171,17 @@ export type {
   GpenMetadata,
   /** Gpen 文档存储失败的诊断码。 */
   GpenStorageErrorCode,
-} from "./gpenBinary.js";
+} from "./objects/gpenBinary.js";
 export {
   /** 通过 tab bus 远程读写 Blob 的后端。 */
   createTabBusBlobBackend,
   /** 在持有真实 Blob 的页面里跑 broker，响应其他 tab 的读 / 写 / 删。 */
   createTabBusBlobBroker,
-} from "./tabBusBlob.js";
+} from "./objects/tabBusBlob.js";
 export type {
   /** tab bus Blob 后端选项（名字 / 超时 / 客户端 id）。 */
   TabBusBlobOptions,
-} from "./tabBusBlob.js";
+} from "./objects/tabBusBlob.js";
 export {
   /** 建一个直接读写 OPFS 的 Blob 后端。 */
   createOpfsBlobBackend,
@@ -173,13 +189,13 @@ export {
   createOpfsBlobBroker,
   /** 建一个通过 tab bus 访问远程 OPFS broker 的 Blob 后端。 */
   createOpfsTabBusBlobBackend,
-} from "./opfs.js";
+} from "./objects/opfs.js";
 export type {
   /** OPFS Blob 后端选项（根目录句柄 / 子目录）。 */
   OpfsBlobOptions,
   /** 通过 tab bus 访问远程 OPFS broker 的选项。 */
   OpfsTabBusBlobOptions,
-} from "./opfs.js";
+} from "./objects/opfs.js";
 
 export {
   /** 用扩展 storage 组装 Storage。 */
@@ -188,25 +204,25 @@ export {
   getBrowserStorage,
   /** 用扩展 storage.local 建 KV 后端。 */
   createBrowserKvBackend,
-} from "./browser.js";
+} from "./targets/browser.js";
 export type {
   /** WebExtension `storage.local` 的最小形状。 */
   BrowserStorageApi,
   /** 扩展存储选项（storageKey / 注入的 storage API）。 */
   BrowserStorageOptions,
-} from "./browser.js";
+} from "./targets/browser.js";
 export {
   /** 用油猴 GM 存储组装 Storage。 */
   createMonkeyStorage,
   /** 取注入的 / 全局的 GM 存储 API。 */
   getMonkeyStorageApi,
-} from "./monkey.js";
+} from "./targets/monkey.js";
 export type {
   /** 油猴 `GM_*` 存储 API 的最小形状。 */
   MonkeyStorageApi,
   /** 油猴存储选项（KV + Blob + storageKey / api）。 */
   MonkeyStorageOptions,
-} from "./monkey.js";
+} from "./targets/monkey.js";
 export {
   /** 组装 VS Code webview 端的 Storage。 */
   createVscodeStorage,
@@ -218,7 +234,7 @@ export {
   VSCODE_STORAGE_REQUEST,
   /** 扩展 → webview 的存储响应消息类型。 */
   VSCODE_STORAGE_RESPONSE,
-} from "./vscode.js";
+} from "./targets/vscode.js";
 export type {
   /** 扩展侧的文件系统操作（mkdir / write / read / remove）。 */
   VscodeBlobFileSystem,
@@ -242,7 +258,7 @@ export type {
   VscodeStorageScope,
   /** webview 侧 `postMessage` 的最小形状。 */
   VscodeWebviewApi,
-} from "./vscode.js";
+} from "./targets/vscode.js";
 export {
   /** 用已打开的 IndexedDB 连接建 Blob 后端。 */
   createIndexedDbBlobBackend,
@@ -252,11 +268,11 @@ export {
   createWebsiteStorage,
   /** 打开（必要时升级）IndexedDB，返回连接的 Promise。 */
   openStorageDatabase,
-} from "./website.js";
+} from "./targets/website.js";
 export type {
   /** 网页端 IndexedDB 存储选项（库名 / 两个 store 名 / KV key）。 */
   WebsiteStorageOptions,
-} from "./website.js";
+} from "./targets/website.js";
 
 /** 纯内存存储选项（KV + Blob）。 */
 export type MemoryStorageOptions<T extends JsonValue = JsonValue> = KvStorageOptions<T> &

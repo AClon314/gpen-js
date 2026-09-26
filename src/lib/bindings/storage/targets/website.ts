@@ -3,10 +3,10 @@ import {
   createBlobFallbackBackend,
   type BlobStorageOptions,
   type HookedBlobBackend,
-} from "./blob.js";
-import { createKvStorage } from "./kv.js";
-import { createOpfsTabBusBlobBackend } from "./opfs.js";
-import type { BlobBackend, JsonValue, KvBackend, KvStorageOptions, Storage } from "./types.js";
+} from "../objects/blob.js";
+import { createKvStorage } from "../objects/kv.js";
+import { createOpfsTabBusBlobBackend } from "../objects/opfs.js";
+import type { BlobBackend, JsonValue, KvBackend, KvStorageOptions, Storage } from "../types.js";
 
 /** 网页端 IndexedDB 存储选项（库名 / 两个 store 名 / KV key）。 */
 export interface WebsiteStorageOptions<T extends JsonValue = JsonValue>

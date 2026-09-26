@@ -3,11 +3,11 @@ import {
   createBlobFallbackBackend,
   type BlobStorageOptions,
   type HookedBlobBackend,
-} from "./blob.js";
-import { createKvStorage } from "./kv.js";
+} from "../objects/blob.js";
+import { createKvStorage } from "../objects/kv.js";
 import { createIndexedDbBlobBackend, openStorageDatabase } from "./website.js";
-import { createOpfsTabBusBlobBackend } from "./opfs.js";
-import type { JsonValue, KvStorageOptions, Storage } from "./types.js";
+import { createOpfsTabBusBlobBackend } from "../objects/opfs.js";
+import type { JsonValue, KvStorageOptions, Storage } from "../types.js";
 
 /** 油猴 `GM_*` 存储 API 的最小形状。 */
 export interface MonkeyStorageApi {

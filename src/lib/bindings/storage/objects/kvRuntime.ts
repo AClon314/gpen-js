@@ -6,7 +6,7 @@ import type {
   KvStorageOptions,
   KvStorageProxy,
   StoragePathKey,
-} from "./types.js";
+} from "../types.js";
 import { assertJsonValue, deepClone } from "./kvJson.js";
 
 /** KV 的运行期状态机（缓存、初始化、串行队列、钩子）。 */

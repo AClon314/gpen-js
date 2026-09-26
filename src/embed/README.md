@@ -111,7 +111,7 @@ export function unmountGpen(): void;
   走的是 Vite IIFE 分支（`buildBundle.ts:253-300`），但整条管线仍要跑 acorn-walk 扫 `@grant`、virtualHtml、
   fixWorker、css 注入等十几个插件，依赖含 `systemjs`/`acorn-walk`/`htmlparser2`/`postcss-url`/`cross-spawn`/`open`。
 - 它的 GM 客户端（`$` = `vite-plugin-monkey/dist/client`）只服务「从模块里 import GM API」这种写法；
-  我们的 `storage/monkey.ts` 是运行时读 `globalThis.GM_*`，**不需要客户端**，只需要正确的 `@grant`。
+  我们的 `storage/targets/monkey.ts` 是运行时读 `globalThis.GM_*`，**不需要客户端**，只需要正确的 `@grant`。
 
 **引擎限制（关键，不是工具选择问题）**：Violentmonkey 维护者 tophf 在
 [violentmonkey#2528](https://github.com/violentmonkey/violentmonkey/issues/2528) 明确说明：浏览器只在 DOM
@@ -184,7 +184,7 @@ mountGpen({ css }); // embed 建 shadow host 并把 <style> 塞进 shadow
   依赖用 gpen-js 根 node_modules（bun 向上解析），命令：
   `bunx wxt build -b chrome` / `-b firefox` / `-b safari`，输出 `dist/extension/{chrome-mv3,firefox-mv2,safari-mv2}`。
 - content 入口：`createShadowRootUi(ctx, { name:'gpen', cssInjectionMode:'ui', onMount: mountGpen, onRemove: unmountGpen })`，
-  WXT 自己管理 host 插入/销毁；`browser.storage.local` 由现有 `storage/browser.ts` 接管（`storage` 权限）。
+  WXT 自己管理 host 插入/销毁；`browser.storage.local` 由现有 `storage/targets/browser.ts` 接管（`storage` 权限）。
 - manifest：`permissions:['storage']`、`host_permissions:['<all_urls>']`；Firefox 需 `browser_specific_settings.gecko.id`；
   Safari 只出目录，转换必须在 macOS（`xcrun safari-web-extension-converter`），列为不测目标。
 - 分发：`bunx wxt zip [-b firefox]` + `wxt submit`（Chrome Web Store / AMO），密钥进 CI secrets，作为 release 阶段。
@@ -216,8 +216,8 @@ mountGpen({ css }); // embed 建 shadow host 并把 <style> 塞进 shadow
 | R2 | ~~`guessWebLayer()` 会选中自己的 overlay~~ → **已缓解，不用改** | `isHardExcluded` 已硬排除 `.gpen-overlay, [data-version], [data-instance]`（`canvas/webLayer.ts:37`）；实测 `/` 页点击悬浮球后 candidates = `[main, div#svelte-announcer]`，`surface` 里只移动了 `MAIN`，overlay 未被选中。注入目标下 overlay 在 shadow 内，更是扫不到 | 保持：给新加的 embed host 也带上 `data-*` 标记 |
 | R3 | dockview popout 用 `location.origin+pathname+#popout-id` 作为 `popoutUrl` | `GpenWorkspace.svelte:168-176,339` | 注入目标禁用 popout（或降级为 floating group） |
 | R4 | 严格 CSP 站点可能拦截注入的 inline `<style>` | 生成 shadow 内 `<style>`；扩展 `content_scripts.css` 不受页面 CSP 限制 | 首选 manifest css / `adoptedStyleSheets`；在 CSP 严格站点（如 GitHub）加一条 e2e |
-| R5 | GM 沙箱语义：`@grant` 非 none 时 `window` 是代理；`visualViewport`、DOM 手术是否透传 | `storage/monkey.ts` 读全局；`infiniteCanvas.ts` 操作宿主 DOM | 用真 Tampermonkey/Violentmonkey 手测一次；必要时 `unsafeWindow` 取 page window |
-| R6 | 存储落点不同：GM 全局 / 扩展 content script 走页面 origin 的 OPFS+IDB / 扩展 origin 不参与 | `storage/{monkey,browser,website}.ts` | 文档化每目标「kv 在哪、blob 在哪」，扩展可考虑升级为 background OPFS |
+| R5 | GM 沙箱语义：`@grant` 非 none 时 `window` 是代理；`visualViewport`、DOM 手术是否透传 | `storage/targets/monkey.ts` 读全局；`infiniteCanvas.ts` 操作宿主 DOM | 用真 Tampermonkey/Violentmonkey 手测一次；必要时 `unsafeWindow` 取 page window |
+| R6 | 存储落点不同：GM 全局 / 扩展 content script 走页面 origin 的 OPFS+IDB / 扩展 origin 不参与 | `storage/targets/{monkey,browser,website}.ts` | 文档化每目标「kv 在哪、blob 在哪」，扩展可考虑升级为 background OPFS |
 | R7 | 跨 tab 语义：BroadcastChannel 是「页面 origin」维度，扩展/用户脚本下不等于「脚本全局」 | `crossTabBus/*` | v1 接受；扩展跨站点同步后续用 `storage.onChanged` |
 | R8 | 版本单一来源（manifest / `@version` / vsix / `__GPEN_VERSION__`） | `vite.config.ts` define | 统一读 `gpen-js/package.json`，CI 加一致性检查 |
 | R9 | 体积预算：userscript 单文件会内联 CSS+JS | 现 build ~740K JS（依赖探查 588K） | CI 阈值；必要时 `?inline` 复用、按需裁 demo |

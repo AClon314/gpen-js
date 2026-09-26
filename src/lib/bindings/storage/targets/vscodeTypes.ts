@@ -1,5 +1,5 @@
-import type { BlobStorageOptions } from "./blob.js";
-import type { BlobBackend, JsonValue, KvStorageOptions } from "./types.js";
+import type { BlobStorageOptions } from "../objects/blob.js";
+import type { BlobBackend, JsonValue, KvStorageOptions } from "../types.js";
 
 /** webview → 扩展的存储请求消息类型。 */
 export const VSCODE_STORAGE_REQUEST = "gpen.storage.request";

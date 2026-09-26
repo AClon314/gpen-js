@@ -1,6 +1,6 @@
-import { asError } from "../../error.js";
-import type { BlobBackend } from "./types.js";
-import type { ITabBus, TabBusMessage, TabBusSendOptions } from "../../crossTabBus/index.js";
+import { asError } from "../../../error.js";
+import type { BlobBackend } from "../types.js";
+import type { ITabBus, TabBusMessage, TabBusSendOptions } from "../../../crossTabBus/index.js";
 
 /** tab bus Blob 后端选项（名字 / 超时 / 客户端 id）。 */
 export interface TabBusBlobOptions {

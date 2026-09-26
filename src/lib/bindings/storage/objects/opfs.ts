@@ -1,9 +1,9 @@
 import { DEFAULT_BLOB_TARGET_DOMAIN, splitBlobId, type BlobStorageOptions } from "./blob.js";
-import { asError } from "../../error.js";
-import { CrossOriginBus } from "../../crossTabBus/index.js";
+import { asError } from "../../../error.js";
+import { CrossOriginBus } from "../../../crossTabBus/index.js";
 import { createTabBusBlobBackend, createTabBusBlobBroker } from "./tabBusBlob.js";
-import type { BlobBackend } from "./types.js";
-import type { ITabBus } from "../../crossTabBus/index.js";
+import type { BlobBackend } from "../types.js";
+import type { ITabBus } from "../../../crossTabBus/index.js";
 
 /** OPFS Blob 后端选项（根目录句柄 / 子目录）。 */
 export interface OpfsBlobOptions {

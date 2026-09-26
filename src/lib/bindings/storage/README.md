@@ -7,6 +7,34 @@
 
 两者都挂在同一个 `Storage` 对象上，但不会组成跨存储事务。
 
+## 目录结构
+
+按「存到哪个 target」与「存什么对象」两轴分层，`objects/` 不感知运行环境，
+`targets/` 依赖 `objects/`（并共用 `types.ts`）；反向依赖不存在。
+
+```text
+storage/
+├── index.ts      公共出口（外部只用这一个入口）
+├── types.ts      共享契约：JsonValue / BlobBackend / KvBackend / Storage
+├── objects/      「存什么」：KV 与 Blob 两种对象及其组合
+│   ├── blob.ts           Blob 后端接口 + 钩子 / 路径代理
+│   ├── kv.ts             KV 路径访问器 + 缓存提交
+│   ├── kvJson.ts         JSON 路径读写纯函数
+│   ├── kvRuntime.ts      KV 缓存 / 提交运行时
+│   ├── opfs.ts           OPFS Blob 后端 + 跨域 broker
+│   ├── tabBusBlob.ts     经 tab bus 转发 Blob 的后端
+│   ├── sync.ts           Blob ↔ KV 引用同步
+│   └── gpenBinary.ts     Gpen 文档二进制存储（KV 元数据 + Blob 内容）
+└── targets/      「存到哪个 target」：各运行环境的 Storage 组装
+    ├── website.ts        普通网页（IndexedDB / OPFS）
+    ├── browser.ts        WebExtension（browser.storage.local）
+    ├── monkey.ts         userscript（GM_*）
+    └── vscode*.ts        VS Code host / webview（bridge / fs / jsonc）
+```
+
+新增一个运行环境 = 在 `targets/` 加一个组装函数；新增一种存储对象 =
+在 `objects/` 加一个后端。
+
 ## 选择存储
 
 通常使用 `createRuntimeStorage()`，它会根据当前环境选择实现：

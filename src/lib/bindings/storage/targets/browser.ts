@@ -1,12 +1,16 @@
-import { createBlobBackend, createBlobFallbackBackend, type HookedBlobBackend } from "./blob.js";
+import {
+  createBlobBackend,
+  createBlobFallbackBackend,
+  type HookedBlobBackend,
+} from "../objects/blob.js";
 import {
   createIndexedDbBlobBackend,
   openStorageDatabase,
   type WebsiteStorageOptions,
 } from "./website.js";
-import { createKvStorage } from "./kv.js";
-import { createOpfsTabBusBlobBackend } from "./opfs.js";
-import type { JsonValue, KvBackend, Storage } from "./types.js";
+import { createKvStorage } from "../objects/kv.js";
+import { createOpfsTabBusBlobBackend } from "../objects/opfs.js";
+import type { JsonValue, KvBackend, Storage } from "../types.js";
 
 /** WebExtension `storage.local` 的最小形状。 */
 export interface BrowserStorageApi {

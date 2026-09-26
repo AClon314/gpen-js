@@ -17,8 +17,8 @@
       "default": "./src/lib/bindings/upDownloader/index.ts"
     },
     "./storage/vscode": {
-      "types": "./src/lib/bindings/storage/vscode.ts",
-      "default": "./src/lib/bindings/storage/vscode.ts"
+      "types": "./src/lib/bindings/storage/targets/vscode.ts",
+      "default": "./src/lib/bindings/storage/targets/vscode.ts"
     },
     "./embed": {
       "types": "./src/embed/index.ts",

@@ -1,4 +1,4 @@
-import type { JsonValue, StoragePathKey } from "./types.js";
+import type { JsonValue, StoragePathKey } from "../types.js";
 
 type JsonRecord = { [key: string]: JsonValue };
 

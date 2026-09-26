@@ -1,6 +1,6 @@
-import { splitBlobId } from "./blob.js";
+import { splitBlobId } from "../objects/blob.js";
 import { encodeState, parseState } from "./vscodeJson.js";
-import type { BlobBackend, JsonValue, KvBackend } from "./types.js";
+import type { BlobBackend, JsonValue, KvBackend } from "../types.js";
 import type {
   VscodeBlobFileSystem,
   VscodeMemento,
