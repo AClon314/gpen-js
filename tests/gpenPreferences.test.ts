@@ -90,6 +90,77 @@ describe("gpen preferences", () => {
     expect(normalizeGpenPreferences(null).theme).toBe("system");
   });
 
+  test("missing fields fall back per field, including injected fallbacks", () => {
+    // 空对象：每个字段各自缺省（新装 / 全新 KV 根）。
+    expect(normalizeGpenPreferences({})).toEqual(createDefaultGpenPreferences());
+
+    // 注入的 fallback 逐字段生效，而不是整块替换。
+    const fallback = {
+      ...createDefaultGpenPreferences(),
+      theme: "dark" as const,
+      locale: "en" as const,
+      defaultTool: "eraser" as const,
+      showStatusBar: false,
+      blur: 6,
+      autoSaveDebounceMs: 900,
+    };
+    expect(normalizeGpenPreferences({ theme: "light" }, fallback)).toEqual({
+      version: 1,
+      theme: "light", // 给了的字段听它的
+      locale: "en", // 缺的字段听 fallback
+      defaultTool: "eraser",
+      showStatusBar: false,
+      blur: 6,
+      autoSaveDebounceMs: 900,
+    });
+  });
+
+  test("an old version marker is rewritten to the current schema", () => {
+    // 旧版本写过的 `version`（或根本不写）不能让它丢掉认识得到的字段。
+    expect(normalizeGpenPreferences({ version: 0, theme: "dark" }).version).toBe(1);
+    expect(normalizeGpenPreferences({ version: 2, theme: "dark" }).theme).toBe("dark");
+    expect(normalizeGpenPreferences({ version: "1", theme: "light" })).toEqual({
+      ...createDefaultGpenPreferences(),
+      theme: "light",
+    });
+  });
+
+  test("unknown keys are dropped instead of passing through", () => {
+    // 归一化是白名单：不会把历史遗留的未知字段一并落盘。
+    const normalized = normalizeGpenPreferences({ theme: "dark", legacyFlag: true, n: 1 });
+    expect(Object.keys(normalized).sort()).toEqual([
+      "autoSaveDebounceMs",
+      "blur",
+      "defaultTool",
+      "locale",
+      "showStatusBar",
+      "theme",
+      "version",
+    ]);
+  });
+
+  test("normalize clamps exactly at the range edges", () => {
+    expect(normalizeGpenPreferences({ blur: BLUR_MIN }).blur).toBe(BLUR_MIN);
+    expect(normalizeGpenPreferences({ blur: BLUR_MAX }).blur).toBe(BLUR_MAX);
+    expect(normalizeGpenPreferences({ blur: BLUR_MAX + 0.4 }).blur).toBe(BLUR_MAX);
+    expect(normalizeGpenPreferences({ blur: -0.4 }).blur).toBe(BLUR_MIN);
+    expect(
+      normalizeGpenPreferences({ autoSaveDebounceMs: AUTO_SAVE_DEBOUNCE_MIN_MS })
+        .autoSaveDebounceMs,
+    ).toBe(AUTO_SAVE_DEBOUNCE_MIN_MS);
+    expect(
+      normalizeGpenPreferences({ autoSaveDebounceMs: AUTO_SAVE_DEBOUNCE_MAX_MS })
+        .autoSaveDebounceMs,
+    ).toBe(AUTO_SAVE_DEBOUNCE_MAX_MS);
+    // `Infinity` / `-Infinity` 不是有限数：回落到 fallback（默认值）。
+    expect(
+      normalizeGpenPreferences({ autoSaveDebounceMs: Number.POSITIVE_INFINITY }).autoSaveDebounceMs,
+    ).toBe(AUTO_SAVE_DEBOUNCE_DEFAULT_MS);
+    expect(
+      normalizeGpenPreferences({ autoSaveDebounceMs: Number.NEGATIVE_INFINITY }).autoSaveDebounceMs,
+    ).toBe(AUTO_SAVE_DEBOUNCE_DEFAULT_MS);
+  });
+
   test("serialize round-trips through normalize", () => {
     const value = createDefaultGpenPreferences();
     value.theme = "light";

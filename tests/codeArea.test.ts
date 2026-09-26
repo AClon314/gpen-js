@@ -27,6 +27,36 @@ describe("formatDebugValue", () => {
     expect(result.text).toBe('{\n  "a": 1,\n  "b": [\n    true,\n    null\n  ],\n  "c": "x"\n}');
   });
 
+  test("each JSON value kind maps to a stable text form (table-driven)", () => {
+    // 「类型判定 → 转换 → 兜底」三段各自吃一类输入：这里的表把每一类的输出钉死，
+    // 以后拆 toSafeData 时行为漂移会立刻挂在这一张表上。
+    class Named {}
+    const cases: readonly [label: string, value: unknown, text: string][] = [
+      ["null", null, "null"],
+      ["boolean", true, "true"],
+      ["number", 42, "42"],
+      ["string", "hi", '"hi"'],
+      ["array", [1, "a"], '[\n  1,\n  "a"\n]'],
+      ["plain object", { k: 1 }, '{\n  "k": 1\n}'],
+      ["undefined", undefined, '"<undefined>"'],
+      ["bigint", 7n, '"<bigint 7n>"'],
+      ["symbol with description", Symbol("tag"), '"<symbol tag>"'],
+      ["symbol without description", Symbol(), '"<symbol >"'],
+      ["named function", function named() {}, '"<function named>"'],
+      ["date", new Date("2026-09-21T00:00:00.000Z"), '"<Date 2026-09-21T00:00:00.000Z>"'],
+      ["regexp", /ab+c/g, '"<RegExp ab+c>"'],
+      ["error", new Error("boom"), '{\n  "name": "Error",\n  "message": "boom"\n}'],
+      ["promise", Promise.resolve(1), '"<Promise>"'],
+      ["map", new Map([["k", 1]]), '{\n  "<Map>": [\n    [\n      "k",\n      1\n    ]\n  ]\n}'],
+      ["set", new Set([1]), '{\n  "<Set>": [\n    1\n  ]\n}'],
+      ["class instance", new Named(), "{}"],
+    ];
+
+    for (const [label, value, text] of cases) {
+      expect(formatDebugValue(value).text, label).toBe(text);
+    }
+  });
+
   test("renders values JSON cannot express as markers", () => {
     const result = formatDebugValue({
       missing: undefined,

@@ -82,8 +82,16 @@ function readProperty(container: object, key: string): unknown {
   }
 }
 
-function toSafeData(value: unknown, depth: number, context: FormatContext): unknown {
-  if (value === null) return null;
+/** 「不是原始值」的哨兵：`toSafeLeaf` 用它与 `undefined` 等真实值区分开。 */
+const NOT_A_LEAF = Symbol("not-a-leaf");
+
+/**
+ * 原始值 / 函数的标记：`null` 之外的 `typeof` 都在这张表里收敛成字符串或尖括号标记。
+ *
+ * 返回值是 JSON 里能出现的（string / number / boolean）或可直接 `stringify` 的标记；
+ * 落到 `NOT_A_LEAF` 说明是对象，交给 `toSafeBuiltin` / 递归分支。
+ */
+function toSafeLeaf(value: unknown): unknown {
   switch (typeof value) {
     case "string":
     case "number":
@@ -98,16 +106,34 @@ function toSafeData(value: unknown, depth: number, context: FormatContext): unkn
     case "function":
       return functionLabel(value as (...args: never[]) => unknown);
     default:
-      break;
+      return NOT_A_LEAF;
   }
+}
 
-  const object = value as object;
+/**
+ * 内建对象 → 可读标记（DOM 节点、`Date` / `RegExp` / `Error` / `Promise`）。
+ *
+ * 不认识的普通对象返回 `NOT_A_LEAF`，由调用方继续递归展开。
+ */
+function toSafeBuiltin(object: object): unknown {
   const dom = domNodeLabel(object);
   if (dom !== undefined) return dom;
   if (object instanceof Date) return `<Date ${object.toISOString()}>`;
   if (object instanceof RegExp) return `<RegExp ${object.source}>`;
   if (object instanceof Error) return { name: object.name, message: object.message };
   if (typeof Promise !== "undefined" && object instanceof Promise) return "<Promise>";
+  return NOT_A_LEAF;
+}
+
+function toSafeData(value: unknown, depth: number, context: FormatContext): unknown {
+  if (value === null) return null;
+
+  const leaf = toSafeLeaf(value);
+  if (leaf !== NOT_A_LEAF) return leaf;
+
+  const object = value as object;
+  const builtin = toSafeBuiltin(object);
+  if (builtin !== NOT_A_LEAF) return builtin;
 
   if (context.seen.has(object)) return "<circular>";
   if (depth >= context.maxDepth) {

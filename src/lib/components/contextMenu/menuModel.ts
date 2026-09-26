@@ -119,6 +119,31 @@ export function isMenuFocusable(item: MenuItem): boolean {
   return !isMenuSeparator(item) && !resolveMenuDisabled(item) && resolveMenuVisible(item);
 }
 
+/** 可聚焦节点的下标（升序）：跳过分隔项、禁用项与不可见项。 */
+function focusableIndices(items: readonly MenuItem[]): number[] {
+  const focusable: number[] = [];
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index];
+    if (item && isMenuFocusable(item)) focusable.push(index);
+  }
+  return focusable;
+}
+
+/**
+ * 在可聚焦下标里按方向找下一个，到头就从另一头环绕。
+ *
+ * `direction` 为 -1 表示向上（取当前之前最靠近的一个），为 1 表示向下。
+ */
+function stepFocusIndex(focusable: readonly number[], current: number, direction: -1 | 1): number {
+  const candidates = focusable.filter((index) =>
+    direction < 0 ? index < current : index > current,
+  );
+  if (candidates.length === 0) {
+    return (direction < 0 ? focusable[focusable.length - 1] : focusable[0]) ?? -1;
+  }
+  return (direction < 0 ? candidates[candidates.length - 1] : candidates[0]) ?? -1;
+}
+
 /**
  * 线性键盘导航：返回下一个应聚焦的兄弟下标，没有可聚焦项时返回 -1。
  *
@@ -130,24 +155,12 @@ export function nextMenuIndex(
   current: number,
   key: MenuNavigationKey,
 ): number {
-  const focusable: number[] = [];
-  for (let index = 0; index < items.length; index += 1) {
-    const item = items[index];
-    if (item && isMenuFocusable(item)) focusable.push(index);
-  }
+  const focusable = focusableIndices(items);
   if (focusable.length === 0) return -1;
 
   if (key === "Home") return focusable[0] ?? -1;
   if (key === "End") return focusable[focusable.length - 1] ?? -1;
-
-  const count = focusable.length;
-  if (key === "ArrowUp") {
-    const before = focusable.filter((index) => index < current);
-    return before.length > 0 ? (before[before.length - 1] ?? -1) : (focusable[count - 1] ?? -1);
-  }
-
-  const after = focusable.filter((index) => index > current);
-  return after.length > 0 ? (after[0] ?? -1) : (focusable[0] ?? -1);
+  return stepFocusIndex(focusable, current, key === "ArrowUp" ? -1 : 1);
 }
 
 /** 把 `keyBind` 归一成 `Ctrl+Z` 形式的显示文本。 */

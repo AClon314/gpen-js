@@ -104,6 +104,26 @@ describe("read/write toolbar state", () => {
     expect(state?.brush?.size).toBe(DEFAULT_BRUSH_SIZE);
   });
 
+  test("a patch overwrites nested protocol structs, not the whole settings object", () => {
+    const mapping = { radius: [1], opacity: [2] };
+    const next = writeBrushSettings(document(), { pressureMapping: mapping as never });
+    const brush = readToolbarState(next)?.brush;
+    expect(brush?.pressureMapping?.radius).toEqual([1]);
+    expect(brush?.pressureMapping?.opacity).toEqual([2]);
+    // 没在 patch 里的字段仍然来自默认值。
+    expect(brush?.size).toBe(DEFAULT_BRUSH_SIZE);
+    expect(brush?.spacing).toBeGreaterThan(0);
+  });
+
+  test("repeated patches accumulate and never mutate the previous document", () => {
+    const first = writeBrushSettings(document(), { size: 40 });
+    const second = writeBrushSettings(first, { spacing: 0.75 });
+    expect(readToolbarState(first)?.brush?.spacing).not.toBe(0.75);
+    const brush = readToolbarState(second)?.brush;
+    expect(brush?.size).toBe(40);
+    expect(brush?.spacing).toBe(0.75);
+  });
+
   test("patch writes into a document that had no toolbar state yet", () => {
     const next = writeBrushSettings(document(), { size: 8 });
     expect(readToolbarState(next)?.brush?.size).toBe(8);
@@ -165,6 +185,32 @@ describe("color conversion", () => {
     expect(hexToColor4("#12345")).toBeUndefined();
     expect(hexToColor4(undefined)).toBeUndefined();
     expect(hexToColor4(42)).toBeUndefined();
+  });
+
+  test("hex parsing is case- and whitespace-insensitive (table-driven)", () => {
+    const cases: readonly [input: string, expected: { r: number; g: number; b: number }][] = [
+      ["#4F46E5", { r: 0x4f / 255, g: 0x46 / 255, b: 0xe5 / 255 }],
+      ["  #4f46e5  ", { r: 0x4f / 255, g: 0x46 / 255, b: 0xe5 / 255 }],
+      ["#ABC", { r: 0xaa / 255, g: 0xbb / 255, b: 0xcc / 255 }],
+      ["rgb(4, 70, 229)", { r: 4 / 255, g: 70 / 255, b: 229 / 255 }],
+      ["rgb(4 70 229)", { r: 4 / 255, g: 70 / 255, b: 229 / 255 }],
+      // alpha 通道被忽略（协议那里是独立的 Color4.a）。
+      ["rgba(4, 70, 229, 0.25)", { r: 4 / 255, g: 70 / 255, b: 229 / 255 }],
+    ];
+    for (const [input, expected] of cases) {
+      const parsed = hexToColor4(input);
+      expect(parsed, input).toBeDefined();
+      expect(parsed?.r, `${input} r`).toBeCloseTo(expected.r, 6);
+      expect(parsed?.g, `${input} g`).toBeCloseTo(expected.g, 6);
+      expect(parsed?.b, `${input} b`).toBeCloseTo(expected.b, 6);
+    }
+  });
+
+  test("css output clamps before rounding to bytes", () => {
+    expect(color4ToCss({ r: 2, g: -1, b: 0.5 })).toBe("rgb(255 0 128)");
+    expect(color4ToCss({ r: Number.NaN, g: Number.POSITIVE_INFINITY, b: 0.5 })).toBe(
+      "rgb(0 0 128)",
+    );
   });
 
   test("round-trips hex -> Color4 -> hex", () => {

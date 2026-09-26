@@ -94,6 +94,35 @@ describe("menu keyboard navigation", () => {
     ).toBe(-1);
     expect(nextMenuIndex([], 0, "Home")).toBe(-1);
   });
+
+  test("boundary: a single focusable item is its own neighbour in both directions", () => {
+    const single: MenuItem[] = [{ label: "only" }];
+    expect(nextMenuIndex(single, -1, "ArrowDown")).toBe(0);
+    expect(nextMenuIndex(single, -1, "ArrowUp")).toBe(0);
+    expect(nextMenuIndex(single, 0, "ArrowDown")).toBe(0);
+    expect(nextMenuIndex(single, 0, "ArrowUp")).toBe(0);
+    expect(nextMenuIndex(single, 0, "Home")).toBe(0);
+    expect(nextMenuIndex(single, 0, "End")).toBe(0);
+  });
+
+  test("boundary: an out-of-range current wraps instead of clamping", () => {
+    expect(nextMenuIndex(items, 99, "ArrowDown")).toBe(0);
+    expect(nextMenuIndex(items, 99, "ArrowUp")).toBe(4);
+    expect(nextMenuIndex(items, 2, "ArrowDown")).toBe(3);
+    expect(nextMenuIndex(items, 2, "ArrowUp")).toBe(0);
+  });
+
+  test("boundary: every keyboard key keeps skipping the disabled and separators", () => {
+    const cases: readonly [key: Parameters<typeof nextMenuIndex>[2], expected: number][] = [
+      ["Home", 0],
+      ["End", 4],
+      ["ArrowDown", 3],
+      ["ArrowUp", 4],
+    ];
+    for (const [key, expected] of cases) {
+      expect(nextMenuIndex(items, 0, key), key).toBe(expected);
+    }
+  });
 });
 
 describe("menu key bind hint", () => {
