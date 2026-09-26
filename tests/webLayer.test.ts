@@ -6,7 +6,7 @@ import {
   isTransparentWrapper,
   webLayerScore,
   type WebLayerMetrics,
-} from "../src/lib/canvas/webLayer.ts";
+} from "../src/lib/layers/web.ts";
 
 function metrics(area: number, textLength: number): WebLayerMetrics {
   return { tag: "candidate", area, textLength };

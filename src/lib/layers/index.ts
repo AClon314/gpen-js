@@ -4,3 +4,4 @@ export * from "./layerOps.js";
 export * from "./layerView.js";
 export * from "./strokeOps.js";
 export * from "./tree/index.js";
+export * from "./web.js";
