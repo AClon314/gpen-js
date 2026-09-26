@@ -94,38 +94,66 @@ function hasJSDoc(node: ts.Node): boolean {
   return docs !== undefined && docs.length > 0;
 }
 
+/** 取节点所在行号（1-based）。 */
+type LineOf = (node: ts.Node) => number;
+
+/** 声明即导出的具名声明种类。 */
+type NamedExportStatement =
+  | ts.FunctionDeclaration
+  | ts.ClassDeclaration
+  | ts.InterfaceDeclaration
+  | ts.TypeAliasDeclaration
+  | ts.EnumDeclaration;
+
+function isNamedExportStatement(statement: ts.Statement): statement is NamedExportStatement {
+  return (
+    ts.isFunctionDeclaration(statement) ||
+    ts.isClassDeclaration(statement) ||
+    ts.isInterfaceDeclaration(statement) ||
+    ts.isTypeAliasDeclaration(statement) ||
+    ts.isEnumDeclaration(statement)
+  );
+}
+
+/** `export { a, b }` 列表里缺注释的标识符。 */
+function missingDocsInExportList(statement: ts.ExportDeclaration, lineOf: LineOf): string[] {
+  if (statement.exportClause === undefined || !ts.isNamedExports(statement.exportClause)) return [];
+  return statement.exportClause.elements
+    .filter((element) => !hasJSDoc(element))
+    .map((element) => `${lineOf(element)}: specifier ${element.name.text}`);
+}
+
+/** 声明即导出、且缺注释的语句。 */
+function missingDocsInDeclaration(
+  statement: ts.Statement,
+  sourceFile: ts.SourceFile,
+  lineOf: LineOf,
+): string[] {
+  if (ts.isVariableStatement(statement)) {
+    return statement.declarationList.declarations.map(
+      (declaration) => `${lineOf(declaration)}: variable ${declaration.name.getText(sourceFile)}`,
+    );
+  }
+  if (!isNamedExportStatement(statement)) return [];
+  return [
+    `${lineOf(statement)}: ${ts.SyntaxKind[statement.kind]} ${statement.name?.text ?? "<anonymous>"}`,
+  ];
+}
+
 /** 列出缺注释的具名导出：`<行号>: <kind> <name>`。 */
 function missingDocs(sourceFile: ts.SourceFile): string[] {
   const missing: string[] = [];
-  const lineOf = (node: ts.Node) =>
+  const lineOf: LineOf = (node) =>
     sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1;
   for (const statement of sourceFile.statements) {
     if (ts.isExportDeclaration(statement)) {
-      if (statement.exportClause === undefined || !ts.isNamedExports(statement.exportClause))
-        continue;
-      for (const element of statement.exportClause.elements) {
-        if (!hasJSDoc(element)) missing.push(`${lineOf(element)}: specifier ${element.name.text}`);
-      }
+      missing.push(...missingDocsInExportList(statement, lineOf));
       continue;
     }
     const modifiers = ts.canHaveModifiers(statement) ? (ts.getModifiers(statement) ?? []) : [];
     if (!modifiers.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword)) continue;
     if (hasJSDoc(statement)) continue;
-    if (
-      ts.isFunctionDeclaration(statement) ||
-      ts.isClassDeclaration(statement) ||
-      ts.isInterfaceDeclaration(statement) ||
-      ts.isTypeAliasDeclaration(statement) ||
-      ts.isEnumDeclaration(statement)
-    ) {
-      missing.push(
-        `${lineOf(statement)}: ${ts.SyntaxKind[statement.kind]} ${statement.name?.text ?? "<anonymous>"}`,
-      );
-    } else if (ts.isVariableStatement(statement)) {
-      for (const declaration of statement.declarationList.declarations) {
-        missing.push(`${lineOf(declaration)}: variable ${declaration.name.getText(sourceFile)}`);
-      }
-    }
+    missing.push(...missingDocsInDeclaration(statement, sourceFile, lineOf));
   }
   return missing;
 }
