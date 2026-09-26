@@ -1,50 +1,15 @@
 import { expect, test, type Page } from "playwright/test";
 
+import { countInkPixels } from "./helpers/canvas";
+import { openPreferences } from "./helpers/preferences";
+import { readMainDocumentSize } from "./helpers/storage";
 import { expectInsideViewport, gridSnapshot, openWorkspace } from "./helpers/workspace";
 
 /**
  * T8 回归：偏好设置面板（浮动）+ 主题三态 + 偏好持久化。
  */
-async function openPreferences(page: Page) {
-  await page.keyboard.press("Control+Alt+u");
-  await expect(page.locator(".blender-panel-preferences")).toBeVisible();
-}
-
 function themeAttribute(page: Page) {
   return page.evaluate(() => document.documentElement.getAttribute("data-gpen-theme"));
-}
-
-/** Size in bytes of the stored `gpen-main` binary (0 before the first save). */
-function documentSize(page: Page) {
-  return page.evaluate(async () => {
-    const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open("gpen-storage");
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-    const value = await new Promise<Record<string, unknown> | undefined>((resolve, reject) => {
-      const request = db.transaction("kv", "readonly").objectStore("kv").get("gpen-root");
-      request.onsuccess = () => resolve(request.result as Record<string, unknown> | undefined);
-      request.onerror = () => reject(request.error);
-    });
-    db.close();
-    const gpen = (value?.gpen ?? {}) as Record<string, { size?: number }>;
-    return gpen["gpen-main"]?.size ?? 0;
-  });
-}
-
-/** Non-transparent pixels on the stroke canvas. */
-function countInk(page: Page) {
-  return page.evaluate(() => {
-    const canvas = document.querySelector<HTMLCanvasElement>("canvas.stroke-surface");
-    if (!canvas) return -1;
-    const context = canvas.getContext("2d");
-    if (!context) return -1;
-    const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
-    let count = 0;
-    for (let index = 3; index < data.length; index += 4) if (data[index] > 0) count += 1;
-    return count;
-  });
 }
 
 test.describe("preferences panel", () => {
@@ -212,7 +177,7 @@ test.describe("preferences panel", () => {
     test.setTimeout(90_000);
     await page.goto("/");
     await openWorkspace(page);
-    await expect.poll(() => documentSize(page), { timeout: 25_000 }).toBeGreaterThan(0);
+    await expect.poll(() => readMainDocumentSize(page), { timeout: 25_000 }).toBeGreaterThan(0);
 
     // 先画一笔：toolbarState 这时才真正存在于文档里，所以「打开面板」的
     // 副作用会表现为文档字节数变化。
@@ -221,22 +186,22 @@ test.describe("preferences panel", () => {
     await page.mouse.down();
     await page.mouse.move(box!.x + box!.width * 0.5, box!.y + box!.height * 0.5, { steps: 8 });
     await page.mouse.up();
-    await expect.poll(() => documentSize(page), { timeout: 15_000 }).toBeGreaterThan(0);
+    await expect.poll(() => readMainDocumentSize(page), { timeout: 15_000 }).toBeGreaterThan(0);
     await page.waitForTimeout(1500);
-    const before = await documentSize(page);
+    const before = await readMainDocumentSize(page);
 
     await openPreferences(page);
     // 面板里的滑条 / 取色器会把自己的值回发一次（InputSlider 在 `$effect` 里发
     // `onvalidvalue`）。若回退值不是协议默认值（例如 size 回退成 0 被 min=1 钳住），
     // 这一次回发就会把默认 toolbarState 写进文档。所以「打开面板」必须零副作用。
     await page.waitForTimeout(2500);
-    expect(await documentSize(page)).toBe(before);
+    expect(await readMainDocumentSize(page)).toBe(before);
 
     // 而且不能凭空多出一条 undo（那说明写了一次“等值但重建”的文档）。
     await page.keyboard.press("Escape");
     await page.keyboard.press("Control+z");
     await page.waitForTimeout(400);
-    await expect.poll(() => countInk(page)).toBe(0);
+    await expect.poll(() => countInkPixels(page)).toBe(0);
   });
 
   test("reset restores the default preferences", async ({ page }) => {

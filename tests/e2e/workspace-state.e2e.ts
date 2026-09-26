@@ -1,29 +1,16 @@
-import { expect, test } from "playwright/test";
+import { expect, test, type Page } from "playwright/test";
+
+import { readKvRecord } from "./helpers/storage";
 
 /**
  * T5 回归：工作区偏好不再走 localStorage，而是 `createRuntimeStorage()` 的 KV
  * （网页里 = IndexedDB），并且旧 localStorage 记录会被迁移。
  */
-async function readStoredUiScale(
-  page: import("playwright/test").Page,
-): Promise<number | undefined> {
-  return page.evaluate(async () => {
-    const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open("gpen-storage");
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-    const value = await new Promise<Record<string, { uiScale?: number }> | undefined>(
-      (resolve, reject) => {
-        const request = db.transaction("kv", "readonly").objectStore("kv").get("root");
-        request.onsuccess = () =>
-          resolve(request.result as Record<string, { uiScale?: number }> | undefined);
-        request.onerror = () => reject(request.error);
-      },
-    );
-    db.close();
-    return value?.workspace?.uiScale;
-  });
+async function readStoredUiScale(page: Page): Promise<number | undefined> {
+  const value = (await readKvRecord(page, "root")) as
+    | { workspace?: { uiScale?: number } }
+    | undefined;
+  return value?.workspace?.uiScale;
 }
 
 test.describe("workspace state persistence", () => {

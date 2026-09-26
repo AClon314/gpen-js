@@ -1,5 +1,7 @@
 import { expect, test, type Locator, type Page } from "playwright/test";
 
+import { pasteText } from "./helpers/clipboard";
+
 /** The editor's content DOM (CM 的 role=textbox + aria-label 就是它的无障碍名). */
 function editor(page: Page, name: string): Locator {
   return page.getByRole("textbox", { name });
@@ -11,17 +13,6 @@ async function replaceText(page: Page, target: Locator, text: string) {
   await page.keyboard.press("ControlOrMeta+a");
   await page.keyboard.press("Delete");
   if (text !== "") await page.keyboard.type(text);
-}
-
-/** 在编辑器里派发一次带 text/plain 的粘贴事件（CM 读 event.clipboardData）。 */
-async function pasteText(target: Locator, text: string) {
-  await target.evaluate((element, value) => {
-    const data = new DataTransfer();
-    data.setData("text/plain", value);
-    element.dispatchEvent(
-      new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }),
-    );
-  }, text);
 }
 
 /** 读表单镜像 textarea 的值：既是文档文本，也顺带断言镜像与文档同步。 */

@@ -1,5 +1,7 @@
 import { expect, test, type Locator } from "playwright/test";
 
+import { pasteText } from "./helpers/clipboard";
+
 /** Drag the slider by `pixels` starting at `ratio` (0 = minus end, 1 = plus end). */
 async function dragSlider(field: Locator, ratio: number, pixels: number) {
   const slider = field.locator("xpath=ancestor::*[@data-input-slider]");
@@ -471,17 +473,6 @@ test.describe("gpen-input-number units", () => {
     return field.evaluate((element) => element.matches(":invalid"));
   }
 
-  /** Paste `text` into the field through a real `paste` event (clipboard API needs permissions). */
-  async function paste(field: Locator, text: string) {
-    await field.evaluate((element, value) => {
-      const data = new DataTransfer();
-      data.setData("text/plain", value);
-      element.dispatchEvent(
-        new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }),
-      );
-    }, text);
-  }
-
   test("value stays in the base unit while the field shows the active unit", async ({ page }) => {
     const field = page.getByLabel("长度");
     // activeUnit="cm"、初值 0.12 m → 显示 12 cm
@@ -550,17 +541,17 @@ test.describe("gpen-input-number units", () => {
   test("pasting a quantity converts it into the display unit", async ({ page }) => {
     const field = page.getByLabel("长度");
 
-    await paste(field, "12 cm");
+    await pasteText(field, "12 cm");
     await expect(field).toHaveValue("12");
 
-    await paste(field, "1 in");
+    await pasteText(field, "1 in");
     await expect(field).toHaveValue("2.54");
 
-    await paste(field, "  12 厘米 ");
+    await pasteText(field, "  12 厘米 ");
     await expect(field).toHaveValue("12");
 
     // 跨量纲（质量）被拒：不做换算，字段保持原样（合成的 paste 事件不会触发浏览器默认插入）
-    await paste(field, "2 kg");
+    await pasteText(field, "2 kg");
     await expect(field).toHaveValue("12");
   });
 

@@ -1,5 +1,8 @@
 import { expect, test, type Page } from "playwright/test";
 
+import { countInkPixels as countInk, dragOnCanvas } from "./helpers/canvas";
+import { openPreferences } from "./helpers/preferences";
+import { readMainDocumentSize } from "./helpers/storage";
 import { openWorkspace } from "./helpers/workspace";
 
 /**
@@ -8,19 +11,6 @@ import { openWorkspace } from "./helpers/workspace";
  * 三种擦除模式是 Blender 的真实语义（与枚举名相反，见 handoff §3）：
  * STROKE = 整笔删除、SOFT = 逐点降 opacity、HARD = 切开笔画。
  */
-
-function countInk(page: Page) {
-  return page.evaluate(() => {
-    const canvas = document.querySelector<HTMLCanvasElement>("canvas.stroke-surface");
-    if (!canvas) return -1;
-    const context = canvas.getContext("2d");
-    if (!context) return -1;
-    const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
-    let count = 0;
-    for (let index = 3; index < data.length; index += 4) if (data[index] > 0) count += 1;
-    return count;
-  });
-}
 
 /**
  * Total alpha over the whole canvas ("ink mass").
@@ -52,32 +42,13 @@ async function setEraserSize(page: Page, diameter: number) {
   await page.waitForTimeout(200);
 }
 
-/** Draw one straight stroke from a relative start to a relative end. */
-async function drawLine(page: Page, from: [number, number], to: [number, number]) {
-  const box = await page.locator("canvas.stroke-surface").boundingBox();
-  expect(box).not.toBeNull();
-  const x = (t: number) => box!.x + box!.width * t;
-  const y = (t: number) => box!.y + box!.height * t;
-  await page.mouse.move(x(from[0]), y(from[1]));
-  await page.mouse.down();
-  await page.mouse.move(x((from[0] + to[0]) / 2), y((from[1] + to[1]) / 2), { steps: 6 });
-  await page.mouse.move(x(to[0]), y(to[1]), { steps: 6 });
-  await page.mouse.up();
-  await page.waitForTimeout(150);
-}
+/** 画笔：相对坐标拖一笔（插值 6 步、抬手静置 150ms；编排在 `helpers/canvas.ts`）。 */
+const drawLine = (page: Page, from: [number, number], to: [number, number]) =>
+  dragOnCanvas(page, from, to, { steps: 6, settle: 150 });
 
-/** Drag the eraser across the same path (the canvas reports layer-local points). */
-async function eraseAlong(page: Page, from: [number, number], to: [number, number]) {
-  const box = await page.locator("canvas.stroke-surface").boundingBox();
-  const x = (t: number) => box!.x + box!.width * t;
-  const y = (t: number) => box!.y + box!.height * t;
-  await page.mouse.move(x(from[0]), y(from[1]));
-  await page.mouse.down();
-  await page.mouse.move(x((from[0] + to[0]) / 2), y((from[1] + to[1]) / 2), { steps: 8 });
-  await page.mouse.move(x(to[0]), y(to[1]), { steps: 8 });
-  await page.mouse.up();
-  await page.waitForTimeout(250);
-}
+/** 橡皮：沿同一路径擦过（插值 8 步、静置 250ms）。 */
+const eraseAlong = (page: Page, from: [number, number], to: [number, number]) =>
+  dragOnCanvas(page, from, to, { steps: 8, settle: 250 });
 
 async function selectTool(page: Page, label: string) {
   await page.locator(`.tool-buttons button[aria-label='${label}']`).click();
@@ -89,33 +60,9 @@ async function setEraserMode(page: Page, label: string) {
   await page.waitForTimeout(150);
 }
 
-async function openPreferences(page: Page) {
-  await page.keyboard.press("Control+Alt+u");
-  await expect(page.locator(".blender-panel-preferences")).toBeVisible();
-}
-
 /** 属性面板与设置面板共用同一批 `aria-label`，所以查值要限定作用域。 */
 function preferences(page: Page) {
   return page.locator(".blender-panel-preferences");
-}
-
-/** `Gpen.toolbarState.brush` / `.eraser` as stored in the document (via the KV blob). */
-function readToolbarStateFromStorage(page: Page) {
-  return page.evaluate(async () => {
-    const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open("gpen-storage");
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-    const record = await new Promise<Record<string, unknown> | undefined>((resolve, reject) => {
-      const request = db.transaction("kv", "readonly").objectStore("kv").get("gpen-root");
-      request.onsuccess = () => resolve(request.result as Record<string, unknown> | undefined);
-      request.onerror = () => reject(request.error);
-    });
-    db.close();
-    const gpen = (record?.gpen ?? {}) as Record<string, { size?: number }>;
-    return gpen["gpen-main"]?.size ?? 0;
-  });
 }
 
 test.describe("brush and eraser", () => {
@@ -250,10 +197,8 @@ test.describe("brush and eraser", () => {
     test.setTimeout(90_000);
     await page.goto("/");
     await openWorkspace(page, { canvas: true });
-    await expect
-      .poll(() => readToolbarStateFromStorage(page), { timeout: 25_000 })
-      .toBeGreaterThan(0);
-    const before = await readToolbarStateFromStorage(page);
+    await expect.poll(() => readMainDocumentSize(page), { timeout: 25_000 }).toBeGreaterThan(0);
+    const before = await readMainDocumentSize(page);
 
     await openPreferences(page);
     await preferences(page).getByLabel("画笔尺寸（直径）").fill("48");
@@ -263,7 +208,7 @@ test.describe("brush and eraser", () => {
 
     // 设置写进文档 → debounce 落盘 → 二进制变大。
     await expect
-      .poll(() => readToolbarStateFromStorage(page), { timeout: 15_000 })
+      .poll(() => readMainDocumentSize(page), { timeout: 15_000 })
       .toBeGreaterThan(before);
   });
 });

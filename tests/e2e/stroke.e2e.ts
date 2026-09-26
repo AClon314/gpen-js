@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "playwright/test";
 
+import { countInkPixels, dragOnCanvas } from "./helpers/canvas";
+import { readKvRecord } from "./helpers/storage";
 import { openWorkspace } from "./helpers/workspace";
 
 /**
@@ -10,61 +12,21 @@ import { openWorkspace } from "./helpers/workspace";
  * 宿主网页的交互交还给「最小化」（tests/embed/embed.e2e.ts）。
  */
 
-/** Count non-transparent pixels in the stroke canvas backing store. */
-function countInkPixels(page: Page) {
-  return page.evaluate(() => {
-    const canvas = document.querySelector<HTMLCanvasElement>("canvas.stroke-surface");
-    if (!canvas) return -1;
-    const context = canvas.getContext("2d");
-    if (!context) return -1;
-    const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
-    let count = 0;
-    for (let index = 3; index < data.length; index += 4) {
-      if (data[index] > 0) count += 1;
-    }
-    return count;
-  });
-}
-
-/** Draw a short diagonal stroke through the middle of the canvas. */
-async function drawStroke(page: Page, options: { offset?: number } = {}) {
-  const shift = options.offset ?? 0;
-  const box = await page.locator("canvas.stroke-surface").boundingBox();
-  expect(box).not.toBeNull();
-  const startX = box!.x + box!.width * 0.3 + shift;
-  const startY = box!.y + box!.height * 0.3;
-  const endX = box!.x + box!.width * 0.6 + shift;
-  const endY = box!.y + box!.height * 0.5;
-
-  await page.mouse.move(startX, startY);
-  await page.mouse.down();
-  await page.mouse.move((startX + endX) / 2, (startY + endY) / 2, { steps: 8 });
-  await page.mouse.move(endX, endY, { steps: 8 });
-  await page.mouse.up();
+/**
+ * 画一条穿过画布中部的短斜线（相对坐标 0.3,0.3 → 0.6,0.5）；
+ * `offset` 给两个端点的 x 加同一段像素偏移，用来并排画多条不重叠的笔画。
+ */
+function drawStroke(page: Page, options: { offset?: number } = {}) {
+  return dragOnCanvas(page, [0.3, 0.3], [0.6, 0.5], { steps: 8, offsetPx: options.offset ?? 0 });
 }
 
 /** `gpen-main` metadata in the runtime KV (IndexedDB), or null before it exists. */
-function readMetadata(page: Page) {
-  return page.evaluate(async () => {
-    const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open("gpen-storage");
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-    if (!db.objectStoreNames.contains("kv")) {
-      db.close();
-      return null;
-    }
-    const value = await new Promise<Record<string, unknown> | undefined>((resolve, reject) => {
-      const request = db.transaction("kv", "readonly").objectStore("kv").get("gpen-root");
-      request.onsuccess = () => resolve(request.result as Record<string, unknown> | undefined);
-      request.onerror = () => reject(request.error);
-    });
-    db.close();
-    const gpen = (value?.gpen ?? {}) as Record<string, { size?: number; updated_at?: string }>;
-    const entry = gpen["gpen-main"];
-    return entry ? { size: entry.size ?? 0, updatedAt: entry.updated_at ?? "" } : null;
-  });
+async function readMetadata(page: Page) {
+  const value = (await readKvRecord(page, "gpen-root")) as
+    | Record<string, Record<string, { size?: number; updated_at?: string }>>
+    | undefined;
+  const entry = value?.gpen?.["gpen-main"];
+  return entry ? { size: entry.size ?? 0, updatedAt: entry.updated_at ?? "" } : null;
 }
 
 test.describe("stroke write path", () => {
