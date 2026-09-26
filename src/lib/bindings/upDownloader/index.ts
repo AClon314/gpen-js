@@ -70,6 +70,28 @@ function revokeObjectUrl(url: string | undefined): void {
   }
 }
 
+/** 把下载值归一成可点击 URL（Blob 走 object URL，交由调用方回收）。 */
+function resolveBrowserDownloadUrl(value: Blob | string): { url: string; objectUrl?: string } {
+  if (typeof value === "string") return { url: value };
+  if (typeof URL === "undefined" || typeof URL.createObjectURL !== "function") {
+    throw new Error("Blob download requires URL.createObjectURL");
+  }
+  const objectUrl = URL.createObjectURL(value);
+  return { url: objectUrl, objectUrl };
+}
+
+/** 用隐藏的 `<a download>` 触发一次点击下载。 */
+function clickDownloadAnchor(url: string, name: string): void {
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = name;
+  anchor.rel = "noopener";
+  anchor.style.display = "none";
+  (document.body ?? document.documentElement)?.append(anchor);
+  anchor.click();
+  anchor.remove();
+}
+
 /** 用 `<a download>` 触发浏览器下载（Blob 先转 object URL）。 */
 export function downloadInBrowser(value: Blob | string, name: string): Promise<void> {
   if (typeof document === "undefined") {
@@ -78,25 +100,10 @@ export function downloadInBrowser(value: Blob | string, name: string): Promise<v
 
   let objectUrl: string | undefined;
   try {
-    if (typeof value !== "string") {
-      if (typeof URL === "undefined" || typeof URL.createObjectURL !== "function") {
-        throw new Error("Blob download requires URL.createObjectURL");
-      }
-      objectUrl = URL.createObjectURL(value);
-    }
-
-    const url = objectUrl ?? (typeof value === "string" ? value : undefined);
-    if (!url) throw new Error("Blob download URL is unavailable");
-
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = name;
-    anchor.rel = "noopener";
-    anchor.style.display = "none";
-    (document.body ?? document.documentElement)?.append(anchor);
-    anchor.click();
-    anchor.remove();
-
+    const resolved = resolveBrowserDownloadUrl(value);
+    objectUrl = resolved.objectUrl;
+    if (!resolved.url) throw new Error("Blob download URL is unavailable");
+    clickDownloadAnchor(resolved.url, name);
     if (objectUrl) setTimeout(() => revokeObjectUrl(objectUrl), 0);
     return Promise.resolve();
   } catch (cause) {
@@ -153,6 +160,50 @@ function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
   );
 }
 
+/** 一次 GM_download 的幂等结算状态。 */
+interface MonkeyDownloadSession {
+  finish(): void;
+  fail(reason: unknown): void;
+}
+
+/** 构造结算回调：只生效一次，并在结算时回收 object URL。 */
+function createMonkeyDownloadSession(
+  objectUrl: string | undefined,
+  resolve: () => void,
+  reject: (reason: unknown) => void,
+): MonkeyDownloadSession {
+  let settled = false;
+  const cleanup = () => {
+    if (objectUrl && typeof URL.revokeObjectURL === "function") URL.revokeObjectURL(objectUrl);
+  };
+  const settle = (action: () => void) => {
+    if (settled) return;
+    settled = true;
+    cleanup();
+    action();
+  };
+  return {
+    finish: () => settle(resolve),
+    fail: (reason) => settle(() => reject(asError(reason, "GM_download failed"))),
+  };
+}
+
+/** 调用 GM_download（同步抛错或返回 thenable 都汇入同一个 session）。 */
+function runMonkeyDownload(
+  download: MonkeyDownloadApi,
+  details: MonkeyDownloadDetails,
+  session: MonkeyDownloadSession,
+): void {
+  try {
+    const result = download(details);
+    if (isPromiseLike(result)) result.then(() => session.finish(), session.fail);
+  } catch (cause) {
+    session.fail(cause);
+    // oxlint-disable-next-line catch/no-bare-return -- session.fail() 已 reject，错误已传播
+    return;
+  }
+}
+
 function downloadWithMonkey(
   download: MonkeyDownloadApi,
   value: Blob | string,
@@ -168,39 +219,18 @@ function downloadWithMonkey(
 
   const url: string = typeof value === "string" ? value : objectUrl!;
   return new Promise<void>((resolve, reject) => {
-    let settled = false;
-    const cleanup = () => {
-      if (objectUrl && typeof URL.revokeObjectURL === "function") URL.revokeObjectURL(objectUrl);
-    };
-    const finish = () => {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      resolve();
-    };
-    const fail = (reason: unknown) => {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      reject(asError(reason, "GM_download failed"));
-    };
-
-    try {
-      const result = download({
+    const session = createMonkeyDownloadSession(objectUrl, resolve, reject);
+    runMonkeyDownload(
+      download,
+      {
         url,
         name,
-        onload: finish,
-        onerror: fail,
-        ontimeout: () => fail(new Error("GM_download timed out")),
-      });
-      if (isPromiseLike(result)) {
-        result.then(() => finish(), fail);
-      }
-    } catch (cause) {
-      fail(cause);
-      // oxlint-disable-next-line catch/no-bare-return -- fail() 已 reject，错误已传播
-      return;
-    }
+        onload: session.finish,
+        onerror: session.fail,
+        ontimeout: () => session.fail(new Error("GM_download timed out")),
+      },
+      session,
+    );
   });
 }
 

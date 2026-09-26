@@ -7,6 +7,12 @@ import {
   type MonkeyDownloadApi,
   type VscodeFileSystem,
 } from "../src/lib/bindings/upDownloader/index.ts";
+import {
+  createVscodeFileTransferBridge,
+  stripJsonComments,
+  VSCODE_FILE_REQUEST,
+  VSCODE_FILE_RESPONSE,
+} from "../src/lib/bindings/upDownloader/vscode.ts";
 
 function inputFor(file: File): HTMLInputElement {
   return { type: "file", files: [file] } as unknown as HTMLInputElement;
@@ -156,5 +162,140 @@ describe("upload/download bindings", () => {
     expect(requests[0]?.operation).toBe("download");
     expect(requests[0]?.name).toBe("model.txt");
     expect(requests[0]?.data).toBeInstanceOf(ArrayBuffer);
+  });
+});
+
+describe("stripJsonComments", () => {
+  const cases: Array<[string, string, string]> = [
+    ["普通 JSON 原样通过", '{"a":1}', '{"a":1}'],
+    ["行注释连同它前面的空白一起被删掉", '{\n  // note\n  "a": 1\n}', '{\n  \n  "a": 1\n}'],
+    ["行尾注释删到换行为止", '{"a":1}// done', '{"a":1}'],
+    ["块注释整体删除", '/* lead */{"a" /* mid */: 1}', '{"a" : 1}'],
+    ["未闭合的块注释删到结尾", '{"a":1} /* dangling', '{"a":1} '],
+    [
+      "字符串里的行注释标记原样保留",
+      '{"url":"https://example.com/a//b"}',
+      '{"url":"https://example.com/a//b"}',
+    ],
+    ["字符串里的块注释标记原样保留", '{"glob":"src/*/*.ts"}', '{"glob":"src/*/*.ts"}'],
+    ["字符串里的转义引号不会提前结束", '{"s":"a\\"//b"}', '{"s":"a\\"//b"}'],
+    ["字符串里的逗号与花括号不被误伤", '{"s":"a,b}"}', '{"s":"a,b}"}'],
+    ["尾逗号正则会作用于字符串内的 ,}（既有行为）", '{"s":"a,}"}', '{"s":"a}"}'],
+    ["对象尾逗号删除", '{"a":1,}', '{"a":1}'],
+    ["数组尾逗号删除", "[1,2,]", "[1,2]"],
+    ["带换行的尾逗号删除", '{"a":1,\n}', '{"a":1}'],
+    ["去注释后露出的尾逗号一并删除", '{"a":1, // c\n}', '{"a":1}'],
+  ];
+
+  for (const [name, input, expected] of cases) {
+    test(name, () => {
+      expect(stripJsonComments(input)).toBe(expected);
+    });
+  }
+});
+
+describe("VS Code file transfer bridge protocol", () => {
+  interface PostedMessage {
+    type?: unknown;
+    id?: string;
+    operation?: unknown;
+    path?: unknown;
+    [key: string]: unknown;
+  }
+
+  function bridgeWith(postMessage: (message: PostedMessage) => boolean | PromiseLike<boolean>) {
+    const posted: PostedMessage[] = [];
+    const bridge = createVscodeFileTransferBridge(
+      {
+        postMessage(message) {
+          posted.push(message as unknown as PostedMessage);
+          return postMessage(message as unknown as PostedMessage);
+        },
+      },
+      1000,
+    );
+    return { bridge, posted };
+  }
+
+  test("posts a typed request and resolves on the matching response", async () => {
+    const { bridge, posted } = bridgeWith(() => true);
+    const pending = bridge.request<{ value: string }>({ operation: "readFile", path: "/a/b" });
+    expect(posted).toHaveLength(1);
+    expect(posted[0]?.type).toBe(VSCODE_FILE_REQUEST);
+    expect(posted[0]?.operation).toBe("readFile");
+    expect(posted[0]?.path).toBe("/a/b");
+    expect(typeof posted[0]?.id).toBe("string");
+
+    globalThis.dispatchEvent(
+      new MessageEvent("message", {
+        data: {
+          type: VSCODE_FILE_RESPONSE,
+          id: posted[0]?.id,
+          ok: true,
+          value: { value: "bytes" },
+        },
+      }),
+    );
+    expect(await pending).toEqual({ value: "bytes" });
+    bridge.dispose?.();
+  });
+
+  test("ignores foreign messages and rejects on an error response", async () => {
+    const { bridge, posted } = bridgeWith(() => true);
+    const pending = bridge.request({ operation: "mkdir", path: "/x" });
+    const id = posted[0]?.id;
+
+    globalThis.dispatchEvent(new MessageEvent("message", { data: "not-an-object" }));
+    globalThis.dispatchEvent(
+      new MessageEvent("message", { data: { type: "other", id, ok: true } }),
+    );
+    globalThis.dispatchEvent(
+      new MessageEvent("message", {
+        data: { type: VSCODE_FILE_RESPONSE, id: "unknown", ok: true },
+      }),
+    );
+    globalThis.dispatchEvent(
+      new MessageEvent("message", {
+        data: { type: VSCODE_FILE_RESPONSE, id, ok: false, error: "boom" },
+      }),
+    );
+
+    await expect(pending).rejects.toThrow("boom");
+    bridge.dispose?.();
+  });
+
+  test("rejects when postMessage reports the message was not sent", async () => {
+    const { bridge } = bridgeWith(() => false);
+    await expect(bridge.request({ operation: "writeFile", path: "/x" })).rejects.toThrow(
+      "VS Code rejected the file transfer message",
+    );
+    bridge.dispose?.();
+  });
+
+  test("rejects when postMessage throws synchronously", async () => {
+    const { bridge } = bridgeWith(() => {
+      throw new Error("no channel");
+    });
+    await expect(bridge.request({ operation: "mkdir", path: "/x" })).rejects.toThrow("no channel");
+    bridge.dispose?.();
+  });
+
+  test("times out with the operation name", async () => {
+    const bridge = createVscodeFileTransferBridge({ postMessage: () => true }, 5);
+    await expect(bridge.request({ operation: "openFile", path: "/x" })).rejects.toThrow(
+      "timed out: openFile",
+    );
+    bridge.dispose?.();
+  });
+
+  test("dispose detaches the listener and rejects in-flight requests", async () => {
+    const { bridge } = bridgeWith(() => true);
+    const pending = bridge.request({ operation: "readFile", path: "/x" });
+    bridge.dispose?.();
+    await expect(pending).rejects.toThrow("VS Code file transfer bridge was closed");
+    // 监听已摘除，后续消息不会再抛错。
+    globalThis.dispatchEvent(
+      new MessageEvent("message", { data: { type: VSCODE_FILE_RESPONSE, id: "x", ok: true } }),
+    );
   });
 });
