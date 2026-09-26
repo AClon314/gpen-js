@@ -15,7 +15,7 @@
 **id 是点号**：`gpen.save`、`builtin.brush`、`addon.<vendor>.<op>`，等于协议
 `ToolReference.idname`，零转换。
 
-## 注册表（`lib/commands.ts`，纯逻辑）
+## 注册表（`lib/commands/commands.ts`，纯逻辑）
 
 ```ts
 registerCommand(command): () => void   // 返回 disposer

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 
-import { clearCommands, getCommand, registerCommand } from "../src/lib/commands";
+import { clearCommands, getCommand, registerCommand } from "../src/lib/commands/commands";
 import {
   editMenuItems,
   fileMenuItems,

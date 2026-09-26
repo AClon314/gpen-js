@@ -12,7 +12,7 @@
  * (`{ command: "gpen.save" }`) and the same ones the keymap binds, so a menu
  * item and its shortcut can never point at two different actions.
  */
-import { registerCommand } from "../commands.js";
+import { registerCommand } from "../commands/commands.js";
 import { registerKeyBinding } from "../commands/keymap.js";
 
 /** Everything the built-in commands need from the workspace. */

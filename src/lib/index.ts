@@ -18,7 +18,7 @@ export * from "./instanceId.js";
 export * from "./components/gpenWorkspaceState.js";
 export * from "./components/contextMenu/contextMenu.svelte.js";
 export * from "./history.js";
-export * from "./commands.js";
+export * from "./commands/commands.js";
 export * from "./commands/keymap.js";
 export * from "./commands/chord.js";
 export * from "./predicates.js";

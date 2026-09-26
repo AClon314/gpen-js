@@ -26,7 +26,7 @@
  * is `commands/chord.ts`. This file has no Svelte and no DOM so it can be unit
  * tested directly.
  */
-import { evaluatePredicate, type BooleanSource } from "./predicates.js";
+import { evaluatePredicate, type BooleanSource } from "../predicates.js";
 
 /** 命令 id（点分，与协议 `ToolReference.idname` 一致）。 */
 export type CommandId = string;

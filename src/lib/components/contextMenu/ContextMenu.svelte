@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { tick } from 'svelte';
-	import { executeCommand } from '#lib/commands';
+	import { executeCommand } from '#lib/commands/commands';
 	import { preferences } from '../gpenPreferencesState.svelte';
 	import {
 		clampMenuPosition,

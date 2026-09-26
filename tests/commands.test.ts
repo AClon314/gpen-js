@@ -10,7 +10,7 @@ import {
   registerCommand,
   resolveCommandLabel,
   unregisterCommand,
-} from "../src/lib/commands";
+} from "../src/lib/commands/commands";
 import {
   clearKeyBindings,
   commandForChord,

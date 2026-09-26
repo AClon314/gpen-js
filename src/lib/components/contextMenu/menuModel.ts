@@ -10,7 +10,7 @@
  * 原样透传 id，以及把命令注册表里的 `when` / `enabled` 合并进节点求值——否则菜单会
  * 显示一个按不动、或该消失却没消失的项（那是「假承诺」，handoff 明确禁止）。
  */
-import { commandEnabled, commandVisible, getCommand } from "../../commands.js";
+import { commandEnabled, commandVisible, getCommand } from "../../commands/commands.js";
 import { evaluatePredicate } from "../../predicates.js";
 
 /** 菜单节点种类；省略时按 `separator`/`children` 推导。 */

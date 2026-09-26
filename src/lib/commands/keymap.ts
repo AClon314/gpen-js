@@ -23,7 +23,7 @@
  * - `when` on the binding is an extra gate (e.g. "only while the workspace is
  *   open") and is evaluated *before* consuming the event.
  */
-import { executeCommand, getCommand, type CommandId } from "../commands.js";
+import { executeCommand, getCommand, type CommandId } from "./commands.js";
 import { evaluatePredicate, type BooleanSource } from "../predicates.js";
 import { eventToChord, normalizeChord, type ChordEventLike } from "./chord.js";
 
