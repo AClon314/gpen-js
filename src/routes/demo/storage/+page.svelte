@@ -1,12 +1,18 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { resolve } from '$app/paths';
 	import {
 		createRuntimeStorage,
 		type BlobBackend,
 		type Storage
 	} from '#lib/bindings/storage/index.js';
 	import { createUploadDownloadOnlyBlob } from '#lib/bindings/upDownloader/index.js';
+	import { causeMessage } from '../_components/causeMessage.js';
+	import DemoBackLink from '../_components/DemoBackLink.svelte';
+	import DemoStatus from '../_components/DemoStatus.svelte';
+
+	/** 演示页固定的存储位置与默认 Blob id；刷新后仍指向上次写入的数据。 */
+	const DEMO_DB_NAME = 'gpen-demo-storage';
+	const DEMO_BLOB_ID = 'demo-file';
 
 	type BlobMetadata = {
 		name: string;
@@ -30,7 +36,7 @@
 	let note = $state('');
 	let noteDraft = $state('');
 	let keys = $state<string[]>([]);
-	let blobId = $state('demo-file');
+	let blobId = $state(DEMO_BLOB_ID);
 	let selectedFile = $state<File | undefined>(undefined);
 	let storedBlob = $state<Blob | undefined>(undefined);
 	let storedMetadata = $state<BlobMetadata | undefined>(undefined);
@@ -70,7 +76,7 @@
 
 	async function initialize() {
 		try {
-			const nextStorage = createRuntimeStorage<DemoState>({ dbName: 'gpen-demo-storage' });
+			const nextStorage = createRuntimeStorage<DemoState>({ dbName: DEMO_DB_NAME });
 			storage = nextStorage;
 			visits = (await nextStorage.kv.get.visits) ?? 0;
 			note = (await nextStorage.kv.get.note) ?? '';
@@ -81,7 +87,7 @@
 			status = `已连接：${nextStorage.kv.name}`;
 		} catch (cause) {
 			status = '存储不可用';
-			errorMessage = cause instanceof Error ? cause.message : String(cause);
+			errorMessage = causeMessage(cause);
 			console.debug("[gpen] ignored rejection: demo.storage initialize", cause);
 			return;
 		}
@@ -95,7 +101,7 @@
 			await action();
 		} catch (cause) {
 			status = '操作失败';
-			errorMessage = cause instanceof Error ? cause.message : String(cause);
+			errorMessage = causeMessage(cause);
 			console.debug("[gpen] ignored rejection: demo.storage runAction", cause);
 			return;
 		} finally {
@@ -189,16 +195,14 @@
 </svelte:head>
 
 <main>
-	<p><a href={resolve('/')}>← gpen</a></p>
+	<DemoBackLink />
 	<header>
 		<p class="eyebrow">gpen-js / bindings / storage</p>
 		<h1>Storage demo</h1>
 		<p>同一套 callable KV API，在普通网页中自动使用 IndexedDB。</p>
 	</header>
 
-	<p class:error={Boolean(errorMessage)} class="status" aria-live="polite">
-		{status}{#if errorMessage}：{errorMessage}{/if}
-	</p>
+	<DemoStatus {status} error={errorMessage} />
 
 	<section aria-labelledby="kv-title">
 		<div class="section-heading">
@@ -333,16 +337,6 @@
 		font-weight: 700;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
-	}
-
-	.status {
-		min-height: 1.5lh;
-		margin: 1lh 0 0;
-		color: #36566b;
-	}
-
-	.status.error {
-		color: #a33b3b;
 	}
 
 	section {

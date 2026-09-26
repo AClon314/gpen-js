@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { resolve } from '$app/paths';
 	import { createTabBus, type ITabBus } from '#lib/crossTabBus/index.js';
+	import { causeMessage } from '../_components/causeMessage.js';
+	import DemoBackLink from '../_components/DemoBackLink.svelte';
+	import DemoStatus from '../_components/DemoStatus.svelte';
 
 	type DemoPayload = {
 		text: string;
@@ -16,11 +18,14 @@
 		time: number;
 	};
 
+	/** 演示数据：固定的频道名、初始草稿、日志上限与本次会话的标签页 id。 */
 	const channelName = 'gpen:demo:cross-tab';
+	const initialDraft = 'Hello from this tab';
+	const MAX_LOG_ENTRIES = 24;
 	const senderId = `${Math.random().toString(36).slice(2, 8)}-${Date.now().toString(36).slice(-4)}`;
 
 	let bus = $state<ITabBus | undefined>(undefined);
-	let draft = $state('Hello from this tab');
+	let draft = $state(initialDraft);
 	let log = $state<LogEntry[]>([]);
 	let isReady = $state(false);
 	let isSending = $state(false);
@@ -47,7 +52,7 @@
 				time: Date.now()
 			},
 			...log
-		].slice(0, 24);
+		].slice(0, MAX_LOG_ENTRIES);
 	}
 
 	function formatTime(time: number) {
@@ -72,7 +77,7 @@
 			status = '消息已发送；另一个标签页应该已经收到。';
 		} catch (cause) {
 			status = '发送失败';
-			errorMessage = cause instanceof Error ? cause.message : String(cause);
+			errorMessage = causeMessage(cause);
 			console.debug("[gpen] ignored rejection: cross-tab-bus sendText", cause);
 			return;
 		} finally {
@@ -111,7 +116,7 @@
 			};
 		} catch (cause) {
 			status = '连接失败';
-			errorMessage = cause instanceof Error ? cause.message : String(cause);
+			errorMessage = causeMessage(cause);
 			console.debug("[gpen] ignored rejection: cross-tab-bus onMount", cause);
 			return;
 		}
@@ -123,7 +128,7 @@
 </svelte:head>
 
 <main>
-	<p><a href={resolve('/')}>← gpen</a></p>
+	<DemoBackLink />
 
 	<header>
 		<p class="eyebrow">gpen-js / crossTabBus / createTabBus</p>
@@ -131,9 +136,7 @@
 		<p>打开两个同源标签页，发送一条消息，看看另一个页面如何通过 BroadcastChannel 实时收到。</p>
 	</header>
 
-	<p class:error={Boolean(errorMessage)} class="status" aria-live="polite">
-		{status}{#if errorMessage}：{errorMessage}{/if}
-	</p>
+	<DemoStatus {status} error={errorMessage} />
 
 	<section class="overview" aria-labelledby="overview-title">
 		<div>
@@ -243,16 +246,6 @@
 		font-weight: 700;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
-	}
-
-	.status {
-		min-height: 1.5lh;
-		margin: 1lh 0 0;
-		color: #36566b;
-	}
-
-	.status.error {
-		color: #a33b3b;
 	}
 
 	section {

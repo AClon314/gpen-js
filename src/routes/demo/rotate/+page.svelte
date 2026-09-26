@@ -1,12 +1,13 @@
 <script lang="ts">
-	import { resolve } from '$app/paths';
-
-	type Point = {
-		x: number;
-		y: number;
-	};
-
-	const quickAngles = [0, 90, 180, 270] as const;
+	import {
+		clampAngle,
+		lineAngle,
+		QUICK_ANGLES,
+		shortestAngleDelta,
+		wrapAngle,
+		type Point
+	} from './gestureAngles.js';
+	import DemoBackLink from '../_components/DemoBackLink.svelte';
 
 	let rotation = $state(0);
 	const angleLabel = $derived(`${rotation.toFixed(1)}°`);
@@ -15,16 +16,6 @@
 	// 触摸状态只保存指针位置，不保存或修改任何画布内容坐标。
 	const touchPoints = new Map<number, Point>();
 	let gestureAngle: number | null = null;
-
-	function clampAngle(value: number): number {
-		if (!Number.isFinite(value)) return 0;
-		return Math.min(360, Math.max(0, value));
-	}
-
-	function wrapAngle(value: number): number {
-		const wrapped = value % 360;
-		return wrapped < 0 ? wrapped + 360 : wrapped;
-	}
 
 	function setRotation(value: number) {
 		rotation = clampAngle(value);
@@ -65,18 +56,6 @@
 		}
 
 		return points.length === 2 ? [points[0], points[1]] : null;
-	}
-
-	function lineAngle([first, second]: [Point, Point]): number {
-		return (Math.atan2(second.y - first.y, second.x - first.x) * 180) / Math.PI;
-	}
-
-	// 将两次测量之间的差值压到 [-180, 180]，避免跨过 0° 时跳变一整圈。
-	function shortestAngleDelta(next: number, previous: number): number {
-		let delta = next - previous;
-		if (delta > 180) delta -= 360;
-		if (delta < -180) delta += 360;
-		return delta;
 	}
 
 	function onTouchStart(event: TouchEvent) {
@@ -136,7 +115,7 @@
 <svelte:head><title>Rotate view · gpen</title></svelte:head>
 
 <main>
-	<p class="back-link"><a href={resolve('/')}>← gpen</a></p>
+	<DemoBackLink />
 	<h1>画布旋转 · Rotate View</h1>
 	<p class="intro">
 		模拟 Photoshop 的 R 工具：旋转的是显示视图，不是文档数据。拖动滑杆、点击快捷角度，或在下方画布上用两根手指旋转。
@@ -167,7 +146,7 @@
 		</div>
 
 		<div class="quick-actions" aria-label="常用角度">
-			{#each quickAngles as quickAngle}
+			{#each QUICK_ANGLES as quickAngle}
 				<button
 					type="button"
 					class:active={rotation === quickAngle}
@@ -259,14 +238,6 @@
 		max-width: 168ch;
 		margin: 0 auto;
 		padding: 1lh 3.6ch 4lh;
-	}
-
-	.back-link {
-		margin: 0 0 1.5lh;
-	}
-
-	a {
-		color: #5b4be7;
 	}
 
 	h1 {

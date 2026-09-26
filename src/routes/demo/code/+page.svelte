@@ -1,83 +1,19 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 
-	import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
-	import { EditorState, type Extension } from '@codemirror/state';
-	import { drawSelection, EditorView, keymap } from '@codemirror/view';
-
 	import CodeEditor from '#lib/components/widgets/inputs/CodeEditor.svelte';
-	import { numberScrubber } from '#lib/inputs/codemirror/numberScrubber';
-	import { numberStepper } from '#lib/inputs/codemirror/numberStepper';
+	import { mountNumberPluginEditors, stepperExtensions } from './editors.js';
 
-	// ① 直接手搓 EditorView 的两个扩展 demo。
-	// 两个扩展都复用 InputNumber 的纯函数（stepAtCaret / scrubValue），只多了一层
-	// CodeMirror 接线（找 token、dispatch 事务、widget 拖拽）。
+	// ① 直接手搓 EditorView 的两个扩展 demo（搭建逻辑见 ./editors.ts）。
 	let singleHost = $state<HTMLDivElement>();
 	let multiHost = $state<HTMLDivElement>();
-	const views: EditorView[] = [];
-
-	function theme(height: string) {
-		return EditorView.theme({
-			'&': {
-				height,
-				border: '1px solid var(--gpen-panel-border)',
-				borderRadius: 'var(--gpen-radius)',
-				background: 'var(--gpen-panel-background)',
-				color: 'var(--gpen-panel-foreground)',
-				fontSize: 'var(--gpen-font-size)',
-			},
-			'&.cm-focused': {
-				outline: 'none',
-				borderColor: 'var(--gpen-panel-accent)',
-				boxShadow: '0 0 0 1px rgb(79 70 229 / 0.18)',
-			},
-			'.cm-scroller': {
-				overflow: 'auto',
-				fontFamily: 'var(--gpen-font-mono)',
-				lineHeight: 'var(--gpen-line-height)',
-			},
-			'.cm-content': { padding: '0.4lh 0' },
-			'.cm-line': { padding: '0 1ch' },
-		});
-	}
-
-	function baseExtensions(extra: Extension): Extension {
-		return [history(), drawSelection(), keymap.of([...defaultKeymap, ...historyKeymap]), extra];
-	}
 
 	onMount(() => {
 		if (singleHost === undefined || multiHost === undefined) return;
-		const single = new EditorView({
-			state: EditorState.create({
-				doc: '9.98',
-				extensions: baseExtensions([
-					numberStepper({ lower: 0, upper: 100, decimals: 2 }),
-					numberScrubber({ lower: 0, upper: 100 }),
-					theme('3lh'),
-				]),
-			}),
-			parent: singleHost,
-		});
-		const multi = new EditorView({
-			state: EditorState.create({
-				doc: '长度 12.5\n宽度 8.0',
-				extensions: baseExtensions([numberStepper(), numberScrubber(), theme('6lh')]),
-			}),
-			parent: multiHost,
-		});
-		views.push(single, multi);
-		single.focus();
-		return () => {
-			for (const view of views) view.destroy();
-			views.length = 0;
-		};
+		return mountNumberPluginEditors(singleHost, multiHost);
 	});
 
 	// ② CodeEditor 组件本身的 demo（表单关联、disabled/readonly、maxlength、注入扩展）。
-	// 一次性建好扩展数组：`extensions` 每次传新数组都会让配置 compartment 重配，
-	// 实例复用更省事（numberStepper 本身无状态，重配也不会丢什么，只是没必要）。
-	const stepperExtensions = [numberStepper({ lower: 0, upper: 100, decimals: 2 })];
-
 	let note = $state('');
 	let numeric = $state('9.98');
 	let formNote = $state('');

@@ -7,20 +7,37 @@
 	const PERCENT: Dimension = { base: '%', units: { '%': 1 } };
 	const PIXEL: Dimension = { base: 'px', units: { px: 1 } };
 
-	let horizontalValue = $state(42);
-	let fineValue = $state(23.45);
-	let illegalValue = $state(23.45);
-	let verticalValue = $state(25);
-	let textValue = $state('画笔名称');
-	let formValue = $state(3);
+	/** 各卡片的演示初值：集中一处，方便对照 docs/input.md 里的示例数字。 */
+	const DEMO_INITIAL = {
+		horizontal: 42,
+		fine: 23.45,
+		illegal: 23.45,
+		vertical: 25,
+		text: '画笔名称',
+		form: 3,
+		slider: 9.98,
+		fraction: 0.009,
+		valid: 5,
+		lengthMeters: 0.12,
+		massKg: 1.234
+	} as const;
+
+	const INITIAL_STATUS = '还没有提交变更';
+
+	let horizontalValue = $state(DEMO_INITIAL.horizontal);
+	let fineValue = $state(DEMO_INITIAL.fine);
+	let illegalValue = $state(DEMO_INITIAL.illegal);
+	let verticalValue = $state(DEMO_INITIAL.vertical);
+	let textValue = $state(DEMO_INITIAL.text);
+	let formValue = $state(DEMO_INITIAL.form);
 	let disabled = $state(true);
-	let sliderValue = $state(9.98);
-	let fractionValue = $state(0.009);
-	let validDemoValue = $state(5);
-	let validDemoOutput = $state<number | undefined>(5);
-	let lengthInMeters = $state(0.12);
-	let massInKg = $state(1.234);
-	let lastChange = $state('还没有提交变更');
+	let sliderValue = $state(DEMO_INITIAL.slider);
+	let fractionValue = $state(DEMO_INITIAL.fraction);
+	let validDemoValue = $state(DEMO_INITIAL.valid);
+	let validDemoOutput = $state<number | undefined>(DEMO_INITIAL.valid);
+	let lengthInMeters = $state(DEMO_INITIAL.lengthMeters);
+	let massInKg = $state(DEMO_INITIAL.massKg);
+	let lastChange = $state(INITIAL_STATUS);
 
 	type InputChangeEvent = Event & { currentTarget: HTMLInputElement };
 

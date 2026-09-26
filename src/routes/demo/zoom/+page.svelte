@@ -1,5 +1,5 @@
 <script lang="ts">
-import { resolve } from '$app/paths';
+import DemoBackLink from '../_components/DemoBackLink.svelte';
 
 const _init_dpr = window.devicePixelRatio || 1;
 const _init_dppc = measureDppc();
@@ -108,7 +108,7 @@ const counterPercent = $derived((counterScale * 100).toFixed(1));
 <svelte:head><title>Zoom counter · gpen</title></svelte:head>
 
 <main>
-<p><a href={resolve('/')}>← gpen</a></p>
+<DemoBackLink />
 <h1>读浏览器缩放 · 反向 zoom 抵消 · 捏合后固定元素</h1>
 <p>
 	按 <a href="https://github.com/tombigel/detect-zoom" rel="noreferrer">detect-zoom</a>
