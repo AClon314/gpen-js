@@ -268,34 +268,41 @@
 		return result.caret;
 	}
 
-	// ←/→ 贴边：原生无处可移，改成按配置 step 步进（← 减、→ 增），与 ± 按钮同一出口。
-	function stepFromEdge(
-		element: HTMLInputElement,
-		event: InputKeyEvent,
-	): number | undefined {
-		const text = element.value;
+	// caret 是否正好停在 `boundary`（且没有选区）：←/→ 贴边与 Home/End 共用。
+	function caretAtEdge(element: HTMLInputElement, boundary: number): boolean {
 		const start = element.selectionStart;
 		const end = element.selectionEnd;
-		const boundary = event.key === 'ArrowLeft' ? 0 : text.length;
-		if (
-			event.shiftKey ||
-			event.ctrlKey ||
-			event.metaKey ||
-			event.altKey ||
-			start === null ||
-			end === null ||
-			start !== end ||
-			start !== boundary
-		) {
-			return undefined;
-		}
+		return start !== null && end !== null && start === end && start === boundary;
+	}
 
+	// 带修饰键的按键一律让给原生（Shift+Delete 剪切、Ctrl/Alt+← 删词等）。
+	function hasModifier(event: KeyboardEvent): boolean {
+		return event.shiftKey || event.ctrlKey || event.metaKey || event.altKey;
+	}
+
+	// 贴边 ←/→ 的方向：不在贴边位置（或有修饰键 / 有选区）就返回 `undefined`，交回原生。
+	function edgeDirection(element: HTMLInputElement, event: InputKeyEvent): -1 | 1 | undefined {
+		if (hasModifier(event)) return undefined;
+		const left = event.key === 'ArrowLeft';
+		if (!caretAtEdge(element, left ? 0 : element.value.length)) return undefined;
+		return left ? -1 : 1;
+	}
+
+	// 可用的步进量：没有可用步长（显式非数值 step）或当前文本不是有限数 → `undefined`。
+	function usableStep(element: HTMLInputElement): number | undefined {
 		const amount = resolvedStep();
-		if (amount === undefined || !Number.isFinite(readInput(element))) return undefined;
+		if (amount === undefined) return undefined;
+		return Number.isFinite(readInput(element)) ? amount : undefined;
+	}
 
+	// ←/→ 贴边：原生无处可移，改成按配置 step 步进（← 减、→ 增），与 ± 按钮同一出口。
+	function stepFromEdge(element: HTMLInputElement, event: InputKeyEvent): number | undefined {
+		const direction = edgeDirection(element, event);
+		if (direction === undefined) return undefined;
+		const amount = usableStep(element);
+		if (amount === undefined) return undefined;
 		event.preventDefault();
-		const direction = event.key === 'ArrowLeft' ? -1 : 1;
-		const result = addStepToValue(text, direction, amount);
+		const result = addStepToValue(element.value, direction, amount);
 		const caret = direction === -1 ? 0 : result.caret;
 		applyResult(element, result, caret);
 		return caret;
@@ -312,76 +319,91 @@
 		return start <= front;
 	}
 
+	// --- 按键分派 -------------------------------------------------------------
+	// 每个键一个只做一件事的处理函数，`handleKeydown` 只负责「分派 + 补 caret」。
+	// 处理函数返回「写回后要恢复的 caret」；`undefined` 表示没动文本（原生照旧）。
+	type KeyRestore = number | undefined;
+	type KeyHandler = (element: HTMLInputElement, event: InputKeyEvent) => KeyRestore;
+
+	// Escape：回聚焦快照（没有快照 = 这次聚焦没改过值，文本不动）。
+	function handleEscapeKey(element: HTMLInputElement, event: InputKeyEvent): KeyRestore {
+		event.preventDefault();
+		if (focusSnapshot !== undefined) {
+			write(element, formattedText(focusSnapshot), focusSnapshot);
+		}
+		return undefined;
+	}
+
+	// ↑/↓：caret 位权步进（纯函数 stepAtCaret）；文本非法时不拦原生。
+	function handleArrowStepKey(element: HTMLInputElement, event: InputKeyEvent): KeyRestore {
+		if (finiteNumber(readInput(element)) === undefined) return undefined;
+		event.preventDefault();
+		return stepFromCaret(element, event.key === 'ArrowUp' ? 1 : -1);
+	}
+
+	// ←/→：贴边时按配置 step 步进，否则把 caret 移动交回原生（见 stepFromEdge）。
+	function handleEdgeStepKey(element: HTMLInputElement, event: InputKeyEvent): KeyRestore {
+		return stepFromEdge(element, event);
+	}
+
+	// `-` / `+`：caret 在符号区时切换正负号；带修饰键的（Ctrl+- 缩小等）让给原生。
+	function handleSignKey(element: HTMLInputElement, event: InputKeyEvent): KeyRestore {
+		if (event.ctrlKey || event.metaKey || event.altKey || !isSignZone(element)) return undefined;
+		event.preventDefault();
+		const result = toggleSign(
+			element.value,
+			selectionCaret(element, element.value),
+			event.key === '+' ? 'positive' : undefined,
+		);
+		applyResult(element, result);
+		return result.caret;
+	}
+
+	// Home/End：caret 已经贴边时命令式提交到 min/max（总是钳到边界）。
+	function handleBoundKey(element: HTMLInputElement, event: InputKeyEvent): KeyRestore {
+		const home = event.key === 'Home';
+		const bound = numericAttribute(home ? rest.min : rest.max);
+		if (bound === undefined || !caretAtEdge(element, home ? 0 : element.value.length)) {
+			return undefined;
+		}
+		event.preventDefault();
+		commandCommit(bound);
+		return home ? 0 : element.value.length;
+	}
+
+	const KEY_HANDLERS: Record<string, KeyHandler> = {
+		Escape: handleEscapeKey,
+		ArrowUp: handleArrowStepKey,
+		ArrowDown: handleArrowStepKey,
+		ArrowLeft: handleEdgeStepKey,
+		ArrowRight: handleEdgeStepKey,
+		'-': handleSignKey,
+		'+': handleSignKey,
+		Home: handleBoundKey,
+		End: handleBoundKey,
+	};
+
+	// Svelte 的 value={draft} 更新晚一拍：写 element.value 会把 caret 挪到末尾；
+	// 同步补一次防止连续按键吃掉一步，tick 后再补一次（仅当文本未改、caret 确实被推到末尾）。
+	async function restoreCaretAfterWrite(element: HTMLInputElement, caret: number) {
+		setCaret(element, caret);
+		const written = element.value;
+		await tick();
+		if (
+			input === element &&
+			element.value === written &&
+			element.selectionStart === element.value.length
+		) {
+			setCaret(element, caret);
+		}
+	}
+
 	async function handleKeydown(event: InputKeyEvent) {
 		const element = event.currentTarget;
-		let restoreCaret: number | undefined;
-
-		// 支配条件：disabled 时分支 2/3/5/6 全部不可达；提到最上层，分支里不再重复判。
-		if (element.disabled) {
-			onkeydown?.(event);
-			return;
-		}
-
-		if (event.key === 'Escape') {
-			event.preventDefault();
-			if (focusSnapshot !== undefined) {
-				write(element, formattedText(focusSnapshot), focusSnapshot);
-			}
-		} else if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
-			if (finiteNumber(readInput(element)) !== undefined) {
-				event.preventDefault();
-				restoreCaret = stepFromCaret(element, event.key === 'ArrowUp' ? 1 : -1);
-			}
-		} else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-			restoreCaret = stepFromEdge(element, event);
-		} else if (
-			(event.key === '-' || event.key === '+') &&
-			!event.ctrlKey &&
-			!event.metaKey &&
-			!event.altKey &&
-			isSignZone(element)
-		) {
-			event.preventDefault();
-			const result = toggleSign(
-				element.value,
-				selectionCaret(element, element.value),
-				event.key === '+' ? 'positive' : undefined,
-			);
-			applyResult(element, result);
-			restoreCaret = result.caret;
-		} else if (event.key === 'Home' || event.key === 'End') {
-			const start = element.selectionStart;
-			const end = element.selectionEnd;
-			const boundary = event.key === 'Home' ? 0 : element.value.length;
-			const bound = event.key === 'Home' ? numericAttribute(rest.min) : numericAttribute(rest.max);
-			if (
-				bound !== undefined &&
-				start !== null &&
-				end !== null &&
-				start === end &&
-				start === boundary
-			) {
-				event.preventDefault();
-				commandCommit(bound);
-				restoreCaret = event.key === 'Home' ? 0 : element.value.length;
-			}
-		}
-
+		// 支配条件：disabled 时一个分支都不可达，提到最上层，处理函数里不再重复判。
+		const restoreCaret = element.disabled ? undefined : KEY_HANDLERS[event.key]?.(element, event);
 		onkeydown?.(event);
-		if (restoreCaret !== undefined) {
-			// 写 element.value 会把 caret 挪到末尾，而 Svelte 的 value={draft} 更新晚一拍；
-			// 同步写一次防止连续按键吃掉一步，tick 后再补一次（仅当文本未改、caret 确实被推到末尾）。
-			setCaret(element, restoreCaret);
-			const written = element.value;
-			await tick();
-			if (
-				input === element &&
-				element.value === written &&
-				element.selectionStart === element.value.length
-			) {
-				setCaret(element, restoreCaret);
-			}
-		}
+		if (restoreCaret !== undefined) await restoreCaretAfterWrite(element, restoreCaret);
 	}
 
 	// 滚轮 = 键盘 ↑/↓（case 6），但**只在控件已激活（input 聚焦）时**；未激活时滚轮留给页面滚动。
@@ -406,8 +428,8 @@
 		const element = input;
 		if (!element || element.disabled) return;
 
-		const amount = resolvedStep();
-		if (amount === undefined || !Number.isFinite(readInput(element))) return;
+		const amount = usableStep(element);
+		if (amount === undefined) return;
 		applyResult(element, addStepToValue(element.value, direction, amount));
 	}
 
@@ -523,67 +545,76 @@
 		onvalidvalue?.(validValue);
 	});
 
+	// 外部值能否镜像进 draft：正在编辑的文本归用户所有（只在未聚焦时镜像，含 InputSlider
+	// 的拖拽）；非法提交后的绑定值是 NaN，没有文本表示，保留用户已输入的文本。
+	function canMirrorExternal(next: InputValue): boolean {
+		if (input !== undefined && document.activeElement === input) return false;
+		return !(typeof next === 'number' && !Number.isFinite(next));
+	}
+
+	// 外部值 → draft 文本（纯函数）：绑定值是基准单位，排版前换算到显示单位。
+	function mirroredText(next: InputValue): string {
+		const base = finiteNumber(next);
+		return formattedText(base === undefined ? next : toDisplay(base));
+	}
+
 	$effect(() => {
 		const next = value;
 		const unitId = binding?.unit.id;
 		if (Object.is(next, observedValue) && unitId === observedUnitId) return;
 		observedValue = next;
 		observedUnitId = unitId;
-		// 正在编辑的文本归用户所有：只在未聚焦时镜像外部变化（含 InputSlider 的拖拽）。
-		if (input !== undefined && document.activeElement === input) return;
-		// 非法提交后绑定值是 NaN：保留用户已输入的文本，不要清空。
-		if (typeof next === 'number' && !Number.isFinite(next)) return;
-		const base = finiteNumber(next);
-		draft = formattedText(base === undefined ? next : toDisplay(base));
+		if (!canMirrorExternal(next)) return;
+		draft = mirroredText(next);
 	});
 
 	// 悬浮但 input 未聚焦时按键不会进入 handleKeydown，用 window 兜底；
 	// 焦点在别的可编辑元素（页面输入框、contenteditable 等）时让路，不抢它们的 Delete / 剪切板。
+	function handleWindowKeydown(event: KeyboardEvent) {
+		if (!isBareDelete(event) || event.defaultPrevented) return;
+		const element = input;
+		if (element === undefined || element.disabled || event.target === element) return;
+		if (isEditableTarget(event.target)) return;
+		event.preventDefault();
+		commandCommit(defaultValue);
+	}
+
+	// Blender 习惯：鼠标悬浮在控件上（且焦点不在可编辑元素里）时，Ctrl+C 复制内部值、
+	// Ctrl+V 粘回去。用 copy/paste 事件而不是 navigator.clipboard：前者不需要权限、
+	// 也不依赖异步 API，而且在没有选区的页面上照样会触发。
+	// 焦点在本控件的 input 上时（正在编辑）一律让路，保留原生的选区复制/粘贴语义。
+	function canUseWindowClipboard(event: ClipboardEvent): HTMLInputElement | undefined {
+		const element = input;
+		if (element === undefined || element.disabled || element.readOnly) return undefined;
+		if (event.defaultPrevented || event.target === element) return undefined;
+		if (isEditableTarget(event.target)) return undefined;
+		return element;
+	}
+
+	function handleWindowCopy(event: ClipboardEvent) {
+		const element = canUseWindowClipboard(event);
+		if (element === undefined) return;
+		const current = currentDisplay;
+		// 复制的是**显示单位**下的值（所见即所拷）；非法/空值没有可拷的数值。
+		if (current === undefined) return;
+		event.preventDefault();
+		event.clipboardData?.setData('text/plain', String(current));
+	}
+
+	function handleWindowPaste(event: ClipboardEvent) {
+		const element = canUseWindowClipboard(event);
+		if (element === undefined) return;
+		const text = event.clipboardData?.getData('text/plain') ?? '';
+		// 先试「数字 + 单位」（会换算到显示单位），再退回纯数字；都不是就不动。
+		const next = convertTypedQuantity(text) ?? parsePlainNumber(text);
+		if (next === undefined) return;
+		event.preventDefault();
+		commit(element, displayText(next), next);
+	}
+
+	// 悬浮态窗口监听：`hovered` 是唯一依赖，处理函数本身不读它，所以它们留在 effect 外。
 	$effect(() => {
 		if (!hovered) return;
-
-		const handleWindowKeydown = (event: KeyboardEvent) => {
-			if (!isBareDelete(event) || event.defaultPrevented) return;
-			const element = input;
-			if (element === undefined || element.disabled || event.target === element) return;
-			if (isEditableTarget(event.target)) return;
-			event.preventDefault();
-			commandCommit(defaultValue);
-		};
-
-		// Blender 习惯：鼠标悬浮在控件上（且焦点不在可编辑元素里）时，Ctrl+C 复制内部值、
-		// Ctrl+V 粘回去。用 copy/paste 事件而不是 navigator.clipboard：前者不需要权限、
-		// 也不依赖异步 API，而且在没有选区的页面上照样会触发。
-		// 焦点在本控件的 input 上时（正在编辑）一律让路，保留原生的选区复制/粘贴语义。
-		const canUseWindowClipboard = (event: ClipboardEvent): HTMLInputElement | undefined => {
-			const element = input;
-			if (element === undefined || element.disabled || element.readOnly) return undefined;
-			if (event.defaultPrevented || event.target === element) return undefined;
-			if (isEditableTarget(event.target)) return undefined;
-			return element;
-		};
-
-		const handleWindowCopy = (event: ClipboardEvent) => {
-			const element = canUseWindowClipboard(event);
-			if (element === undefined) return;
-			const current = currentDisplay;
-			// 复制的是**显示单位**下的值（所见即所拷）；非法/空值没有可拷的数值。
-			if (current === undefined) return;
-			event.preventDefault();
-			event.clipboardData?.setData('text/plain', String(current));
-		};
-
-		const handleWindowPaste = (event: ClipboardEvent) => {
-			const element = canUseWindowClipboard(event);
-			if (element === undefined) return;
-			const text = event.clipboardData?.getData('text/plain') ?? '';
-			// 先试「数字 + 单位」（会换算到显示单位），再退回纯数字；都不是就不动。
-			const next = convertTypedQuantity(text) ?? parsePlainNumber(text);
-			if (next === undefined) return;
-			event.preventDefault();
-			commit(element, displayText(next), next);
-		};
-
 		window.addEventListener('keydown', handleWindowKeydown);
 		window.addEventListener('copy', handleWindowCopy);
 		window.addEventListener('paste', handleWindowPaste);

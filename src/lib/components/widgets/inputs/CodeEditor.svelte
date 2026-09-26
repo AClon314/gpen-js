@@ -11,7 +11,7 @@
 		placeholder as cmPlaceholder,
 	} from '@codemirror/view';
 
-	import { clampSelectionToLength, minimalTextChange } from './codeEditorView';
+	import { clampSelectionToLength, minimalTextChange, type TextChange } from './codeEditorView';
 
 	// CodeEditor：多行输入统一用的 CodeMirror 6 壳（可注入语言 / 扩展，将来挂语法高亮）。
 	//
@@ -202,18 +202,38 @@
 	}
 
 	/**
+	 * 外部文本 → 文档变更（纯函数）：文本相同（或变更空洞）返回 `undefined`；
+	 * `preserve` 走最小单段变更（实时视图），否则整篇替换。
+	 */
+	function externalChange(previous: string, next: string, preserve: boolean): TextChange | undefined {
+		if (previous === next) return undefined;
+		const change = preserve
+			? minimalTextChange(previous, next)
+			: { from: 0, to: previous.length, insert: next };
+		if (change.from === change.to && change.insert === '') return undefined;
+		return change;
+	}
+
+	// 同步写一次不够：CM 的 measure 周期会把映射后的 viewport 再应用一次，
+	// 所以下一帧（CM 那轮 measure 之后）再写一次。
+	function restoreScroll(scroller: HTMLElement, top: number, left: number) {
+		scroller.scrollTop = top;
+		scroller.scrollLeft = left;
+		requestAnimationFrame(() => {
+			scroller.scrollTop = top;
+			scroller.scrollLeft = left;
+		});
+	}
+
+	/**
 	 * 外部值 → 文档（不重建 view，undo 历史保留）。
 	 *
 	 * 默认整篇替换；`preserveViewOnExternalChange` 下改成**最小单段变更 + 显式恢复
 	 * caret / 滚动**（实时视图要的行为）——两个坑的实测数据见 `codeEditorView.ts`。
 	 */
 	function writeExternal(current: EditorView, next: string) {
-		const previous = current.state.doc.toString();
-		if (previous === next) return;
-		const change = preserveViewOnExternalChange
-			? minimalTextChange(previous, next)
-			: { from: 0, to: current.state.doc.length, insert: next };
-		if (change.from === change.to && change.insert === '') return;
+		const change = externalChange(current.state.doc.toString(), next, preserveViewOnExternalChange);
+		if (change === undefined) return;
 		// 实时视图：把 caret 与滚动位置记下来。单段变更一旦跨过 caret（多个数字同时变时很常见），
 		// CM 会把它夹到变更边界 = 跳到别处；viewport 稳定性也只对「变更不在视口内」有效。
 		const preserved = preserveViewOnExternalChange ? current.state.selection : undefined;
@@ -235,16 +255,7 @@
 		} finally {
 			ignoreLengthFilter = false;
 		}
-		if (scroller) {
-			// 同步写一次不够：CM 的 measure 周期会把映射后的 viewport 再应用一次，
-			// 所以下一帧（CM 那轮 measure 之后）再写一次。
-			scroller.scrollTop = scrollTop;
-			scroller.scrollLeft = scrollLeft;
-			requestAnimationFrame(() => {
-				scroller.scrollTop = scrollTop;
-				scroller.scrollLeft = scrollLeft;
-			});
-		}
+		if (scroller !== undefined) restoreScroll(scroller, scrollTop, scrollLeft);
 	}
 
 	// 文档 → 绑定值 / 镜像。`doc.toString()` 只在 docChanged 时物化一次。

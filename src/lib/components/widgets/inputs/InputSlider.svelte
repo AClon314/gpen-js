@@ -177,21 +177,31 @@
 		}, LONG_PRESS_MS);
 	}
 
+	// 沿拖拽轴的「指针 - 起点」位移（正 = 往 + 方向）。
+	function pointerOffset(event: PointerEvent): number {
+		return vertical ? startY - event.clientY : event.clientX - startX;
+	}
+
+	// 是否已经越过拖拽阈值（未越过时还当点击处理）。
+	function crossesDragThreshold(event: PointerEvent): boolean {
+		return Math.abs(pointerOffset(event)) >= DRAG_THRESHOLD;
+	}
+
+	// 本次移动要累加的位移：锁定后指针不再移动（clientX/Y 冻结），只能靠相对位移累加；
+	// 未锁定（touch / pen / 触屏优先设备）用绝对坐标，分区不在移动中重采样。
+	function moveDelta(event: PointerEvent): number {
+		if (!locked) return pointerOffset(event);
+		return accumulated + (vertical ? -event.movementY : event.movementX);
+	}
+
 	function handlePointerMove(event: PointerEvent) {
 		if (!pending || event.pointerId !== pointerId) return;
 		if (!scrubbing) {
-			const delta = vertical ? startY - event.clientY : event.clientX - startX;
-			if (Math.abs(delta) < DRAG_THRESHOLD) return;
+			if (!crossesDragThreshold(event)) return;
 			beginScrub();
 		}
 		if (!scrubbing) return;
-		if (locked) {
-			// 锁定后指针不再移动（clientX/Y 冻结），只能靠相对位移累加。
-			accumulated += vertical ? -event.movementY : event.movementX;
-		} else {
-			// 未锁定（touch / pen / 触屏优先设备）：绝对坐标。分区不在移动中重采样。
-			accumulated = vertical ? startY - event.clientY : event.clientX - startX;
-		}
+		accumulated = moveDelta(event);
 		stepAccumulated();
 	}
 
