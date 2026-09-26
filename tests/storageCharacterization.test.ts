@@ -230,6 +230,36 @@ describe("characterization — KV JSON validation and path helpers", () => {
     expect(listKeysAtPath({ a: 1 }, ["a"])).toEqual([]);
   });
 
+  test("treats __proto__ as a plain JSON key without touching the prototype", async () => {
+    const written = setAtPath({}, ["__proto__", "polluted"], "value") as Record<
+      string,
+      { polluted: string }
+    >;
+    expect(Object.hasOwn(written, "__proto__")).toBe(true);
+    expect(Object.getPrototypeOf(written)).toBe(Object.prototype);
+    expect(Object.hasOwn(Object.prototype, "polluted")).toBe(false);
+    expect(written["__proto__"].polluted).toBe("value");
+    expect(listKeysAtPath(written, ["__proto__"])).toEqual(["polluted"]);
+    deleteAtPath(written, ["__proto__", "polluted"]);
+    expect(listKeysAtPath(written, ["__proto__"])).toEqual([]);
+
+    // Inherited names are not KV data either.
+    const plain = setAtPath({}, ["toString"], "own") as Record<string, JsonValue>;
+    expect(Object.hasOwn(plain, "toString")).toBe(true);
+    expect(await createKvBackend<Record<string, JsonValue>>().get.toString).toBeUndefined();
+
+    // The same path is reachable through the KV proxy; it must stay data-only.
+    const kv = createKvBackend<Record<string, JsonValue>>();
+    try {
+      await kv.set["__proto__"]["gpenProbePolluted"](true);
+      await kv.submit();
+      expect(Object.hasOwn(Object.prototype, "gpenProbePolluted")).toBe(false);
+      expect(await kv.get["__proto__"]["gpenProbePolluted"]).toBe(true);
+    } finally {
+      delete (Object.prototype as unknown as Record<string, unknown>)["gpenProbePolluted"];
+    }
+  });
+
   test("runs named hooks in insertion order and lets get hooks rewrite", async () => {
     const order: string[] = [];
     const kv = createKvStorage(createMemoryKvBackend<{ value?: number }>(), {
@@ -471,6 +501,33 @@ describe("characterization — Gpen binary store", () => {
       expect(error).toBeInstanceOf(GpenStorageError);
       expect(error?.message).toContain(message);
     }
+  });
+
+  test("rejects an unsafe blob reference with a diagnostic instead of a raw path error", async () => {
+    const kv = createKvStorage(createMemoryKvBackend<GpenKvRoot>());
+    const blob = createMemoryBlobBackend();
+    const store = createGpenBinaryStore({ kv, blob });
+    await kv.set.gpen["unsafe"]({
+      document_id: "unsafe",
+      schema_version: "v1",
+      codec_version: 1,
+      size: 1,
+      updated_at: "t",
+      blob: "../../secret",
+    } as unknown as JsonValue);
+    await kv.submit();
+
+    const error = await store.load("unsafe").then(
+      () => undefined,
+      (cause: unknown) => cause as GpenStorageError,
+    );
+    expect(error).toBeInstanceOf(GpenStorageError);
+    expect(error?.code).toBe("invalid_metadata");
+    expect(error?.message).toContain("blob reference");
+
+    // The same tampered entry must not block deletion.
+    await store.del("unsafe");
+    expect(await store.getMetadata("unsafe")).toBeUndefined();
   });
 
   test("delete still removes malformed metadata entries", async () => {

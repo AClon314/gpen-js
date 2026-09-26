@@ -14,6 +14,7 @@
  */
 import type { GpenT } from "../../protocol/codec";
 import { decodeGpen, encodeGpen, GpenCodecError } from "../../protocol/codec";
+import { splitBlobId } from "./blob.js";
 import type { KvStorage } from "./types.js";
 import type { ITabBus, TabBusSendOptions } from "../../crossTabBus/index.js";
 import type { BlobBackend } from "./types.js";
@@ -157,6 +158,26 @@ function assertDocumentId(id: string): void {
   }
 }
 
+/** Validate a Blob reference as a safe relative Blob id (no traversal). */
+function assertSafeBlobReference(blob: unknown, id: string): string {
+  if (typeof blob !== "string" || blob.length === 0) {
+    throw storageError("invalid_metadata", id, "blob reference must be a non-empty string");
+  }
+  try {
+    // A tampered entry must not read outside the store, nor escape `load` as a
+    // raw path error instead of a diagnostic.
+    splitBlobId(blob);
+  } catch (cause) {
+    throw storageError(
+      "invalid_metadata",
+      id,
+      `blob reference ${JSON.stringify(blob)} is not a safe relative Blob id`,
+      cause,
+    );
+  }
+  return blob;
+}
+
 /** Validate a raw KV value as a well-formed metadata entry for `id`. */
 function parseMetadata(value: unknown, id: string): GpenMetadata {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
@@ -196,16 +217,13 @@ function parseMetadata(value: unknown, id: string): GpenMetadata {
   if (typeof updatedAt !== "string") {
     throw storageError("invalid_metadata", id, "updated_at must be a string");
   }
-  if (typeof blob !== "string" || blob.length === 0) {
-    throw storageError("invalid_metadata", id, "blob reference must be a non-empty string");
-  }
   return {
     document_id: id,
     schema_version: schemaVersion,
     codec_version: codecVersion,
     size,
     updated_at: updatedAt,
-    blob,
+    blob: assertSafeBlobReference(blob, id),
   };
 }
 

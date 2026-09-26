@@ -14,7 +14,11 @@ function readChild(
   container: JsonValue[] | JsonRecord,
   key: StoragePathKey,
 ): JsonValue | undefined {
-  return (container as unknown as Record<string, JsonValue | undefined>)[String(key)];
+  const name = String(key);
+  // Only own properties are KV data. Reading through the prototype chain would
+  // expose `Object.prototype` members (and let `__proto__` reach the prototype).
+  if (!Object.hasOwn(container, name)) return undefined;
+  return (container as unknown as Record<string, JsonValue | undefined>)[name];
 }
 
 function deleteChild(container: JsonValue[] | JsonRecord, key: StoragePathKey): void {
@@ -52,7 +56,14 @@ function assignAtPath(
     return;
   }
 
-  (container as JsonRecord)[String(key)] = value;
+  // `container[key] = value` would run the inherited `__proto__` setter when a
+  // key is literally `__proto__`, mutating the prototype instead of storing data.
+  Object.defineProperty(container, String(key), {
+    value,
+    writable: true,
+    enumerable: true,
+    configurable: true,
+  });
 }
 
 /** 不可变地往 `path` 写值，返回新的根（沿途缺容器则补）。 */
