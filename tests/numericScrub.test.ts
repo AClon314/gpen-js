@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import {
   consumeScrubSteps,
   SCRUB_PIXELS_PER_STEP,
+  scrubDragText,
   scrubQuantum,
   scrubSensitivity,
   scrubValue,
@@ -39,5 +40,20 @@ describe("consumeScrubSteps", () => {
     expect(consumeScrubSteps(-13, 0)).toEqual({ steps: -2, consumed: -12 });
     // 余量留在 consumed 里：小幅回摆不会反向触发一步
     expect(consumeScrubSteps(4, 6)).toEqual({ steps: 0, consumed: 6 });
+  });
+});
+
+describe("scrubDragText", () => {
+  test("writes the scrubbed value with the token's fixed width", () => {
+    expect(scrubDragText(9.98, SCRUB_PIXELS_PER_STEP, 2, 9.98)).toBe("9.99");
+    expect(scrubDragText(9.98, SCRUB_PIXELS_PER_STEP * 2, 2, 9.98)).toBe("10.00");
+    expect(scrubDragText(5, 0, 0, 5)).toBe("5");
+  });
+
+  test("keeps the padding and applies the same soft bounds as scrubValue", () => {
+    expect(scrubDragText(99, SCRUB_PIXELS_PER_STEP * 10, 0, 99, 0, 100)).toBe("100");
+    // origin 已超界 → 不再钳制，拖拽可用
+    expect(scrubDragText(150, SCRUB_PIXELS_PER_STEP, 0, 150, 0, 100)).toBe("151");
+    expect(scrubDragText(0.5, -SCRUB_PIXELS_PER_STEP, 1, 0.5, 0, 1)).toBe("0.4");
   });
 });

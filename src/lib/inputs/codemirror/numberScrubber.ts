@@ -19,7 +19,7 @@ import {
 } from "@codemirror/view";
 
 import { decimalPlacesInText } from "../numericCaret.js";
-import { scrubValue } from "../numericScrub.js";
+import { scrubDragText } from "../numericScrub.js";
 
 /** A contiguous decimal number (same shape as the stepper's token). */
 const NUMBER_SOURCE = "[+-]?(?:\\d+\\.?\\d*|\\.\\d+)";
@@ -90,6 +90,8 @@ class ScrubWidget extends WidgetType {
     return true;
   }
 
+  // `WidgetType.ignoreEvent()` already returns `true`, so events reach the
+  // handle without an override (the drag math itself lives in `scrubDragText`).
   toDOM(view: EditorView): HTMLElement {
     const element = document.createElement("span");
     element.className = "gpen-number-scrubber";
@@ -111,18 +113,18 @@ class ScrubWidget extends WidgetType {
         const startX = event.clientX;
         const startValue = Number(target.text);
         const decimals = decimalPlacesInText(target.text);
+        const { lower, upper } = this;
         let length = target.text.length;
 
         const onMove = (moveEvent: PointerEvent) => {
-          const next = scrubValue(
+          const text = scrubDragText(
             startValue,
             moveEvent.clientX - startX,
             decimals,
             startValue,
-            this.lower,
-            this.upper,
+            lower,
+            upper,
           );
-          const text = next.toFixed(decimals);
           view.dispatch({ changes: { from: target.from, to: target.from + length, insert: text } });
           length = text.length;
         };
@@ -140,10 +142,6 @@ class ScrubWidget extends WidgetType {
     );
 
     return element;
-  }
-
-  ignoreEvent(): boolean {
-    return true;
   }
 
   destroy(dom: HTMLElement): void {

@@ -54,3 +54,19 @@ export function scrubValue(
   const next = roundTo(start + pixels * scrubSensitivity(decimals), decimals);
   return softClampTo(next, origin, lower, upper);
 }
+
+/**
+ * Replacement text for a scrub drag of `pixels`: the value at the token's
+ * precision, written with the token's fixed decimal width. The CodeMirror `±`
+ * handle inserts this as-is.
+ */
+export function scrubDragText(
+  start: number,
+  pixels: number,
+  decimals: number,
+  origin: number,
+  lower?: number,
+  upper?: number,
+): string {
+  return scrubValue(start, pixels, decimals, origin, lower, upper).toFixed(decimals);
+}

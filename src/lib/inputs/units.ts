@@ -136,25 +136,46 @@ function resolveUnit(
   return { dimension, base: table.base, id, toBase: factor.toBase, fromBase: factor.fromBase };
 }
 
+/** Register one unit id under its normalized key (first declaration wins). */
+function addUnit(
+  index: Map<string, ResolvedUnit>,
+  dimension: string,
+  table: Dimension,
+  id: string,
+  factor: UnitFactor,
+): void {
+  const key = normalizeUnitKey(id);
+  if (key === "" || index.has(key)) return;
+  index.set(key, resolveUnit(dimension, table, id, factor));
+}
+
+/** Register one alias, pointing at its unit when the target exists in `dimension`. */
+function addAlias(
+  index: Map<string, ResolvedUnit>,
+  dimension: string,
+  alias: string,
+  id: string,
+): void {
+  const key = normalizeUnitKey(alias);
+  if (key === "" || index.has(key)) return;
+  const target = index.get(normalizeUnitKey(id));
+  if (target === undefined || target.dimension !== dimension) return;
+  index.set(key, target);
+}
+
 /** Build the lookup index in one pass over unit ids, then one over aliases. */
 function buildIndex(registry: Registry): Map<string, ResolvedUnit> {
   const index = new Map<string, ResolvedUnit>();
   for (const [dimension, table] of Object.entries(registry)) {
     for (const [id, factor] of Object.entries(table.units ?? {})) {
-      const key = normalizeUnitKey(id);
-      if (key === "" || index.has(key)) continue;
-      index.set(key, resolveUnit(dimension, table, id, factor));
+      addUnit(index, dimension, table, id, factor);
     }
   }
   // Aliases second: a declared unit id always wins over an alias of the same
   // spelling, and an alias is dropped when its target is missing.
   for (const [dimension, table] of Object.entries(registry)) {
     for (const [alias, id] of Object.entries(table.alias ?? {})) {
-      const key = normalizeUnitKey(alias);
-      if (key === "" || index.has(key)) continue;
-      const target = index.get(normalizeUnitKey(id));
-      if (target === undefined || target.dimension !== dimension) continue;
-      index.set(key, target);
+      addAlias(index, dimension, alias, id);
     }
   }
   return index;
