@@ -10,18 +10,22 @@ import {
   type TabBusSendOptions,
 } from "./base.js";
 
+/** 跨域对端窗口（penpal WindowMessenger 接受的形状）。 */
 export type CrossOriginWindow = ConstructorParameters<typeof WindowMessenger>[0]["remoteWindow"];
 
+/** 对端暴露的 `receive` 方法。 */
 export interface CrossOriginRemote {
   receive(message: TabBusMessage, options?: CallOptions): void | Promise<void>;
 }
 
 type CrossOriginMethods = Methods & CrossOriginRemote;
 
+/** penpal 连接的 `destroy` + 远端代理 Promise。 */
 export type CrossOriginConnection = Pick<Connection<CrossOriginMethods>, "destroy"> & {
   promise: PromiseLike<CrossOriginRemote | RemoteProxy<CrossOriginMethods>>;
 };
 
+/** 跨域 bus 选项（目标 origin、channel、messenger / 连接、超时）。 */
 export interface CrossOriginBusOptions {
   /** Penpal's allowed origin when using a WindowMessenger. */
   targetOrigin?: string;
@@ -178,6 +182,7 @@ export class CrossOriginBus extends TabBusBase {
   }
 }
 
+/** 无状态中继选项（对端窗口、targetOrigin、channel、BroadcastChannel）。 */
 export interface CrossOriginStatelessRelayOptions {
   remoteWindow: CrossOriginWindow;
   targetOrigin: string;
@@ -187,6 +192,7 @@ export interface CrossOriginStatelessRelayOptions {
   timeout?: number;
 }
 
+/** 跨域连接与同源 BroadcastChannel 之间的中继（destroy）。 */
 export interface CrossOriginStatelessRelay {
   destroy(): void;
 }

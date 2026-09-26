@@ -1,10 +1,13 @@
+/** 宿主提供的命令执行器（通常是 child_process.execFile）。 */
 export type ShellCommandRunner = (
   command: string,
   args: readonly string[],
 ) => void | PromiseLike<void>;
 
+/** 目标平台的命令方言。 */
 export type SymlinkPlatform = "posix" | "windows";
 
+/** 建符号链接的选项（执行器 + 平台）。 */
 export interface SymlinkOptions {
   /** Host-provided command runner, usually backed by child_process.execFile. */
   run?: ShellCommandRunner;
@@ -15,6 +18,7 @@ function runningOnWindows(): boolean {
   return typeof process !== "undefined" && process.platform === "win32";
 }
 
+/** 按平台给出建符号链接的命令与参数。 */
 export function symlinkCommand(
   target: string,
   linkPath: string,

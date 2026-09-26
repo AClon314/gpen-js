@@ -19,6 +19,7 @@
  */
 import { themeTarget } from "../themes/theme.svelte";
 
+/** 工作区缩放值所在的 CSS 自定义属性名。 */
 export const WORKSPACE_ZOOM_VARIABLE = "--gpen-workspace-zoom";
 
 /** 工作区关闭 / 未挂载时的缩放（菜单按 1× 渲染）。 */

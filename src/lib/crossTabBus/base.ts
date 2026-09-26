@@ -25,12 +25,14 @@ export interface ITabBus<TPayload = unknown> {
 /** Selects the transport used by the tab-bus factory. */
 export type TabBusTransport = "same-origin" | "cross-origin";
 
+/** 断言消息类型是非空字符串（否则抛 TypeError）。 */
 export function assertMessageType(type: unknown): asserts type is string {
   if (typeof type !== "string" || type.length === 0) {
     throw new TypeError("Tab bus message type must be a non-empty string");
   }
 }
 
+/** 是否是合法的 tab bus 消息（type + payload）。 */
 export function isTabBusMessage<TPayload = unknown>(
   value: unknown,
 ): value is TabBusMessage<TPayload> {
@@ -43,6 +45,7 @@ export function isTabBusMessage<TPayload = unknown>(
   );
 }
 
+/** 各 tab bus 的公共基类（监听器集合 + dispatch）。 */
 export abstract class TabBusBase<TPayload = unknown> implements ITabBus<TPayload> {
   protected readonly listeners = new Set<TabBusListener<TPayload>>();
   protected destroyed = false;

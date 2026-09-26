@@ -5,12 +5,18 @@ import {
   type RuntimeStorageOptions,
 } from "../bindings/storage/index.js";
 
+/** 旧版 localStorage 里整份工作区状态的 key。 */
 export const GPEN_WORKSPACE_STATE_KEY = "gpen.workspaceState";
+/** 旧版 localStorage 里 uiScale 的 key。 */
 export const GPEN_UI_SCALE_KEY = "gpen.uiScale";
 
+/** uiScale 下限。 */
 export const UI_SCALE_MIN = 0.5;
+/** uiScale 上限。 */
 export const UI_SCALE_MAX = 2;
+/** uiScale 的步进（归一化时对齐到它）。 */
 export const UI_SCALE_STEP = 0.25;
+/** uiScale 默认值（1 = 不缩放）。 */
 export const UI_SCALE_DEFAULT = 1;
 
 /**
@@ -30,6 +36,7 @@ export const TOOL_IDS = [
   "page",
 ] as const;
 
+/** 工具栏可选的工具 id。 */
 export type GpenToolId = (typeof TOOL_IDS)[number];
 
 /** The JSON-safe layout returned by dockview.toJSON(). */
@@ -62,10 +69,13 @@ export interface GpenWorkspaceState {
   ballPosition: GpenBallPosition | null;
 }
 
+/** 落盘用的工作区状态（与 `GpenWorkspaceState` 同形）。 */
 export type GpenWorkspaceStateSnapshot = GpenWorkspaceState;
 
+/** 部分工作区状态（恢复 / 迁移时用）。 */
 export type GpenWorkspaceStatePatch = Partial<GpenWorkspaceState>;
 
+/** 工作区状态的存储适配器接口。 */
 export interface GpenWorkspaceStateStorage {
   load(): Promise<GpenWorkspaceStatePatch | undefined>;
   save(state: GpenWorkspaceStateSnapshot): Promise<void>;
@@ -73,15 +83,18 @@ export interface GpenWorkspaceStateStorage {
   close?(): void | Promise<void>;
 }
 
+/** KV 里存的工作区记录（`{ workspace }`）。 */
 export type GpenWorkspaceStorageRecord = {
   workspace: GpenWorkspaceStateSnapshot;
 };
 
+/** 把 uiScale 对齐到步进并夹进上下限。 */
 export function normalizeUiScale(value: number): number {
   const stepped = Math.round(value / UI_SCALE_STEP) * UI_SCALE_STEP;
   return Number(Math.min(UI_SCALE_MAX, Math.max(UI_SCALE_MIN, stepped)).toFixed(2));
 }
 
+/** 默认工作区状态（未打开、无布局、无浮窗位置）。 */
 export function createDefaultGpenWorkspaceState(): GpenWorkspaceState {
   return {
     version: 1,
@@ -127,6 +140,7 @@ function normalizeBallPosition(value: unknown): GpenBallPosition | null {
   return { x: Math.round(x), y: Math.round(y) };
 }
 
+/** 用容错规则把未知值归一化成一棵合法工作区状态。 */
 export function normalizeGpenWorkspaceState(
   value: unknown,
   fallback: GpenWorkspaceState = createDefaultGpenWorkspaceState(),
@@ -153,6 +167,7 @@ export function normalizeGpenWorkspaceState(
   };
 }
 
+/** 写出前做一次归一化，保证落盘值合法。 */
 export function serializeGpenWorkspaceState(state: GpenWorkspaceState): GpenWorkspaceStateSnapshot {
   return {
     version: 1,
@@ -247,6 +262,7 @@ export function createKvGpenWorkspaceStateStorage(
   };
 }
 
+/** 深拷贝一份 dockview 布局（无效值返回 null）。 */
 export function cloneGpenPanelLayout(value: unknown): GpenPanelLayout | null {
   return normalizePanelLayout(value);
 }

@@ -15,8 +15,10 @@ import type { LayerFlagsT, LayerGroupT, LayerT, Vec3T } from "gpen-protocol/flat
  * `item_index`; a node with kind `LAYER_NODE_GROUP` addresses `Gpen.groups`.
  */
 export const LAYER_NODE_LAYER = 0;
+/** 节点 kind 的 wire 值：组。 */
 export const LAYER_NODE_GROUP = 1;
 
+/** UI 层的节点种类：层或组。 */
 export type UiNodeKind = typeof LAYER_NODE_LAYER | typeof LAYER_NODE_GROUP;
 
 /**

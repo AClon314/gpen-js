@@ -45,6 +45,7 @@ function formatStep(value: number, decimals: number | undefined): string {
   return decimals === undefined ? String(value) : value.toFixed(decimals);
 }
 
+/** 方向键步进的软边界与舍入位数（输入值本身不会被夹取）。 */
 export interface NumberStepperOptions {
   /** Soft lower bound for arrow steps (typed values are never clamped). */
   lower?: number;

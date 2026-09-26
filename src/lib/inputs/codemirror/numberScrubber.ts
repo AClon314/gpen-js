@@ -152,6 +152,7 @@ class ScrubWidget extends WidgetType {
   }
 }
 
+/** 拖动数值时的软边界（输入值本身不会被夹取）。 */
 export interface NumberScrubberOptions {
   /** Soft lower bound for scrubbing (typed values are never clamped). */
   lower?: number;

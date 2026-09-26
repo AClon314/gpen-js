@@ -7,11 +7,16 @@ import { readWorkspaceZoomVariable } from "../workspaceZoom.js";
 import type { MenuItem, MenuItemProviderInput } from "./menuModel.js";
 
 export type {
+  /** 一个菜单节点：标签、命令引用、可见性 / 禁用谓词与子菜单。 */
   MenuItem,
+  /** 已求值的菜单节点数组。 */
   MenuItemProvider,
+  /** 菜单节点数组，或返回它的惰性函数。 */
   MenuItemProviderInput,
+  /** 菜单节点种类；省略时按 `separator`/`children` 推导。 */
   MenuItemType,
 } from "./menuModel.js";
+/** 打开一个浮动菜单的输入：注册 id，或直接给节点列表 / 惰性 provider。 */
 export type ContextMenuOptions = string | MenuItemProviderInput;
 
 type RegisteredProvider = {
@@ -247,6 +252,7 @@ export function openAt(id: string, anchor: Element, options: { gap?: number } = 
   return open(id, rect.left, y, anchor);
 }
 
+/** 关闭当前浮动菜单并清掉锚点。 */
 export function close() {
   if (menuState.visible) menuState.visible = false;
   menuState.anchor = null;

@@ -2,6 +2,7 @@ const DEFAULT_SURFACE = 200_000;
 const MIN_SURFACE = 1;
 const SPACE_ATTRIBUTE = "data-gpen-canvas-space";
 
+/** 页面级 spacer 的 handle（元素 + destroy）。 */
 export type InfiniteCanvas = {
   /** The spacer node (null when there is no document to append it to). */
   readonly element: HTMLDivElement | null;

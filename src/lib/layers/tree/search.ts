@@ -5,6 +5,7 @@
  */
 import type { TreeRow } from "./types.js";
 
+/** 在行文本里做大小写不敏感的子串过滤（空查询返回空）。 */
 export function searchRows(rows: readonly TreeRow[], query: string): TreeRow[] {
   const needle = query.trim().toLowerCase();
   if (needle === "") return [];

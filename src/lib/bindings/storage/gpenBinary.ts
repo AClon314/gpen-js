@@ -26,6 +26,7 @@ export const GPEN_CODEC_VERSION = 1;
 export const GPEN_KV_NAMESPACE = "gpen";
 /** Blob path prefix; full blob id is `${GPEN_BLOB_PREFIX}/${id}.bin`. */
 export const GPEN_BLOB_PREFIX = "gpen";
+/** 二进制文档 Blob 的 MIME 类型。 */
 export const GPEN_BLOB_TYPE = "application/octet-stream";
 
 /**
@@ -54,6 +55,7 @@ export type GpenKvRoot = {
   gpen: Record<string, GpenMetadata>;
 };
 
+/** Gpen 文档存储失败的诊断码。 */
 export type GpenStorageErrorCode =
   /** The document could not be encoded (codec-level failure). */
   | "encode_failed"
@@ -91,6 +93,7 @@ export class GpenStorageError extends Error {
   }
 }
 
+/** Gpen 二进制文档存储的依赖（KV / Blob / 可选 bus 与缓存）。 */
 export interface GpenBinaryStoreDeps {
   readonly kv: KvStorage<GpenKvRoot>;
   readonly blob: BlobBackend;
@@ -102,6 +105,7 @@ export interface GpenBinaryStoreDeps {
   readonly debounceMs?: number;
 }
 
+/** Gpen 文档的二进制存储接口（保存 / 读取 / 元数据 / 删除 / 提交）。 */
 export interface GpenBinaryStore {
   /**
    * Encode and persist a Gpen document. Writes the binary payload
@@ -205,6 +209,7 @@ function parseMetadata(value: unknown, id: string): GpenMetadata {
   };
 }
 
+/** 用依赖创建 Gpen 二进制文档存储。 */
 export function createGpenBinaryStore(deps: GpenBinaryStoreDeps): GpenBinaryStore {
   const cache = deps.cache ?? false;
   const debounceMs = deps.debounceMs ?? 150;

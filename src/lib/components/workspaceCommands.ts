@@ -53,6 +53,7 @@ export interface WorkspaceCommandDeps {
   closeWorkspace(): void;
 }
 
+/** 工作区命令的稳定 id（与协议 `ToolReference.idname` 一致）。 */
 export const GPEN_COMMAND_IDS = {
   undo: "gpen.undo",
   redo: "gpen.redo",
@@ -75,7 +76,9 @@ export const GPEN_COMMAND_IDS = {
 
 /** Repository the help menu points at (verified origin of this workspace). */
 export const GPEN_REPOSITORY_URL = "https://github.com/AClon314/gpen";
+/** 仓库文档目录的 URL。 */
 export const GPEN_DOCS_URL = `${GPEN_REPOSITORY_URL}/tree/main/gpen-js/docs`;
+/** 提 issue 的 URL。 */
 export const GPEN_ISSUE_URL = `${GPEN_REPOSITORY_URL}/issues/new`;
 
 /** Open a URL in a new tab; the browser may block it, which is not an error. */

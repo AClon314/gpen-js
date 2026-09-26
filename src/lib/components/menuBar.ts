@@ -27,6 +27,7 @@
 import type { MenuItem } from "./contextMenu/menuModel.js";
 import { GPEN_COMMAND_IDS } from "./workspaceCommands.js";
 
+/** 各菜单的稳定 id（测试与命令面板按它枚举）。 */
 export const GPEN_MENU_IDS = {
   file: "gpen-file-menu",
   edit: "gpen-edit-menu",
@@ -38,6 +39,7 @@ export const GPEN_MENU_IDS = {
   settings: "gpen-settings-menu",
 } as const;
 
+/** 菜单 id 的联合类型。 */
 export type GpenMenuId = (typeof GPEN_MENU_IDS)[keyof typeof GPEN_MENU_IDS];
 
 /** Title every not-yet-implemented entry carries, so hover explains itself. */

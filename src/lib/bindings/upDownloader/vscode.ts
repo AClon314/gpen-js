@@ -1,8 +1,12 @@
 import { createSymlink, type ShellCommandRunner, type SymlinkPlatform } from "../shell/symlink.js";
+/** webview → 扩展的文件传输请求消息类型。 */
 export const VSCODE_FILE_REQUEST = "gpen.upDownloader.request";
+/** 扩展 → webview 的文件传输响应消息类型。 */
 export const VSCODE_FILE_RESPONSE = "gpen.upDownloader.response";
+/** 默认的本地状态文件路径（`.gpen/state.jsonc`）。 */
 export const DEFAULT_EXTERNAL_STATE_PATH = ".gpen/state.jsonc";
 
+/** 文件传输桥支持的操作。 */
 export type VscodeFileOperation =
   | "upload"
   | "download"
@@ -12,6 +16,7 @@ export type VscodeFileOperation =
   | "mkdir"
   | "symlink";
 
+/** 一条文件传输请求（请求 id + 操作 + 载荷）。 */
 export interface VscodeFileTransferRequest {
   type: typeof VSCODE_FILE_REQUEST;
   id: string;
@@ -23,6 +28,7 @@ export interface VscodeFileTransferRequest {
   data?: ArrayBuffer;
 }
 
+/** 一条文件传输响应（ok / 值 / 错误）。 */
 export interface VscodeFileTransferResponse {
   type: typeof VSCODE_FILE_RESPONSE;
   id: string;
@@ -31,15 +37,18 @@ export interface VscodeFileTransferResponse {
   error?: string;
 }
 
+/** 文件传输请求 / 响应桥（带超时与 dispose）。 */
 export interface VscodeFileTransferBridge {
   request<T>(message: Omit<VscodeFileTransferRequest, "type" | "id">): Promise<T>;
   dispose?(): void;
 }
 
+/** webview 侧 `postMessage` 的最小形状。 */
 export interface VscodeFileTransferWebviewApi {
   postMessage(message: VscodeFileTransferRequest): boolean | PromiseLike<boolean>;
 }
 
+/** 扩展侧的文件系统操作（读 / 写 / mkdir / 符号链接 / 打开）。 */
 export interface VscodeFileSystem {
   readFile?(path: string): Promise<Uint8Array | ArrayBuffer | undefined>;
   writeFile?(path: string, data: Uint8Array): Promise<void>;
@@ -48,6 +57,7 @@ export interface VscodeFileSystem {
   openFile?(path: string): Promise<void>;
 }
 
+/** 宿主提供的文件传输 API（上传 / 下载 / 文件操作）。 */
 export interface VscodeFileTransferApi {
   mode?: "local" | "web" | "ssh";
   upload?(file: File, destination?: string): Promise<File | VscodeUploadResult | void>;
@@ -62,8 +72,10 @@ export interface VscodeFileTransferApi {
 /** A host can be passed directly, or the same shape can be used by tests. */
 export type VscodeFileTransferHost = VscodeFileTransferApi & VscodeFileSystem;
 
+/** 上传输入：文件输入元素、File 或路径字符串。 */
 export type VscodeUploadInput = HTMLInputElement | File | string;
 
+/** 一次上传的结果（目标文件、来源 / 目的地、是否建链 / 记账）。 */
 export interface VscodeUploadResult {
   file?: File;
   source?: string;
@@ -72,6 +84,7 @@ export interface VscodeUploadResult {
   recorded?: boolean;
 }
 
+/** VS Code 文件传输选项（模式、宿主 / 桥、路径策略、状态文件）。 */
 export interface VscodeFileTransferOptions {
   mode?: "local" | "web" | "ssh";
   /** Combined host adapter for callers that expose one unified VS Code API. */
@@ -122,6 +135,7 @@ function messageTarget(): MessageTarget {
   return target as MessageTarget;
 }
 
+/** 基于 webview postMessage 的请求 / 响应桥。 */
 export function createVscodeFileTransferBridge(
   api: VscodeFileTransferWebviewApi,
   timeoutMs = 30000,
@@ -335,6 +349,7 @@ function ensureObject(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
+/** 创建 VS Code 版上传 / 下载选择器。 */
 export function createVscodeUploadDownloadSelector(
   options: VscodeFileTransferOptions = {},
 ): VscodeUploadDownloadSelector {
@@ -631,6 +646,7 @@ export function createVscodeUploadDownloadSelector(
   return selector;
 }
 
+/** VS Code 选择器的对外接口（含 detailed 上传）。 */
 export interface VscodeUploadDownloadSelector {
   upload(input: VscodeUploadInput, destination?: string): Promise<File | undefined>;
   /** Same operation with the link/record/write outcome exposed to callers. */

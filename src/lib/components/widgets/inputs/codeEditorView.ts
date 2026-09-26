@@ -19,6 +19,7 @@
  */
 import { EditorSelection } from "@codemirror/state";
 
+/** 一段文本替换（旧文档坐标的 from / to 与插入文本）。 */
 export interface TextChange {
   /** 替换起点（旧文档坐标）。 */
   from: number;

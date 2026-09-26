@@ -31,6 +31,7 @@ import {
 } from "./workspaceLayout.js";
 import { floatingLocalBox } from "./workspaceFloatingGeometry.js";
 
+/** 状态栏面板的固定 id。 */
 export const STATUS_BAR_PANEL_ID = "statusbar";
 
 /** 低于这个尺寸的布局不是“用户的布局”，见 `capture`。 */
@@ -45,6 +46,7 @@ export const MIN_LAYOUT_DIMENSION = 120;
  */
 export const CHROME_MINIMUM_HEIGHTS = { menu: 28, timeline: 48, statusbar: 22 } as const;
 
+/** 面板布局控制器需要的宿主 getter（dockview、工作区状态、容器尺寸、浮窗参数）。 */
 export interface PanelLayoutDeps {
   getDockview(): DockviewApi | undefined;
   /** 工作区状态（读 / 写 `panelLayout`）。 */
@@ -60,6 +62,7 @@ export interface PanelLayoutDeps {
   getFloatingMargin(): number;
 }
 
+/** 面板布局控制器：默认布局、尺寸约束、快照与浮窗夹取。 */
 export interface PanelLayoutController {
   /** 首屏：按存储决定「还原」还是「建默认布局」，并记一次快照。 */
   restoreOrBuildDefault(): void;
@@ -78,6 +81,7 @@ export interface PanelLayoutController {
   dispose(): void;
 }
 
+/** 用宿主 getter 创建面板布局控制器。 */
 export function createPanelLayoutController(deps: PanelLayoutDeps): PanelLayoutController {
   let frame: number | undefined;
   /** 存储里有布局 → 第一趟真实尺寸的 layout 之后再还原。 */

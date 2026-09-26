@@ -19,11 +19,13 @@
 import { rowByKey } from "./rows.js";
 import type { DropPoint, DropPosition, DropTarget, RowLayout, TreeRow } from "./types.js";
 
+/** 目标合法性校验（返回 false 则整个目标作废）。 */
 export type DropValidator = (target: DropTarget) => boolean;
 
 const BEFORE_BAND = 0.25;
 const AFTER_BAND = 0.75;
 
+/** 把指针位置解析成放置目标（before / after / on / root）。 */
 export function dropTargetFromPoint(
   rows: readonly TreeRow[],
   point: DropPoint,

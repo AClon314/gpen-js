@@ -27,6 +27,7 @@ import { executeCommand, getCommand, type CommandId } from "../commands.js";
 import { evaluatePredicate, type BooleanSource } from "../predicates.js";
 import { eventToChord, normalizeChord, type ChordEventLike } from "./chord.js";
 
+/** 一条快捷键绑定：和弦、命令 id、可选附加条件。 */
 export interface KeyBinding {
   /** Chord in display form (`Ctrl+Z`, `Mod+K`, `Shift+F2`). */
   key: string | readonly string[];

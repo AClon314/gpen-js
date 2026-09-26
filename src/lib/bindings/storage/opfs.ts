@@ -5,11 +5,13 @@ import { createTabBusBlobBackend, createTabBusBlobBroker } from "./tabBusBlob.js
 import type { BlobBackend } from "./types.js";
 import type { ITabBus } from "../../crossTabBus/index.js";
 
+/** OPFS Blob 后端选项（根目录句柄 / 子目录）。 */
 export interface OpfsBlobOptions {
   root?: FileSystemDirectoryHandle;
   directory?: string;
 }
 
+/** 通过 tab bus 访问远程 OPFS broker 的选项。 */
 export interface OpfsTabBusBlobOptions extends BlobStorageOptions {
   /** Path of the broker page on targetDomain. */
   brokerPath?: string;
@@ -51,6 +53,7 @@ function isNotFoundError(error: unknown): boolean {
   );
 }
 
+/** 建一个直接读写 OPFS 的 Blob 后端。 */
 export function createOpfsBlobBackend(options: OpfsBlobOptions = {}): BlobBackend {
   const directoryParts = splitDirectory(options.directory ?? "gpen/blob");
   let rootPromise: Promise<FileSystemDirectoryHandle> | undefined;
@@ -113,6 +116,7 @@ export function createOpfsBlobBackend(options: OpfsBlobOptions = {}): BlobBacken
   };
 }
 
+/** 在 OPFS 宿主页里跑 broker，替跨域页面读写 Blob。 */
 export async function createOpfsBlobBroker(
   bus: ITabBus,
   options: OpfsBlobOptions = {},
@@ -189,6 +193,7 @@ type OpfsTabBusConnection = {
   backend: BlobBackend & { close(): void };
 };
 
+/** 建一个通过 tab bus 访问远程 OPFS broker 的 Blob 后端。 */
 export function createOpfsTabBusBlobBackend(
   options: OpfsTabBusBlobOptions = {},
 ): BlobBackend & { ready(): Promise<void>; close(): Promise<void> } {

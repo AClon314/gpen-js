@@ -36,7 +36,9 @@ export const GPEN_TOKENS = [
   "--gpen-blur",
 ] as const;
 
+/** 主题层管理的 token 名。 */
 export type GpenToken = (typeof GPEN_TOKENS)[number];
+/** token 名 → 值（允许只覆盖一部分）。 */
 export type GpenTokens = Partial<Record<GpenToken, string>>;
 
 /**

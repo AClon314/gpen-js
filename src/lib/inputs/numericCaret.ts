@@ -229,6 +229,7 @@ function frontStep(
   return { place, intoFraction: false };
 }
 
+/** 一次按位权步进的结果：新文本与光标位置。 */
 export interface StepResult {
   text: string;
   caret: number;

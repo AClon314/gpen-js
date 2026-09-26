@@ -1,7 +1,9 @@
 import { assertMessageType, isTabBusMessage, TabBusBase, type TabBusSendOptions } from "./base.js";
 
+/** 可注入的 BroadcastChannel 构造器（测试 / 降级）。 */
 export type BroadcastChannelFactory = (name: string) => BroadcastChannel;
 
+/** 取注入的 channel / 工厂，否则建原生 BroadcastChannel。 */
 export function createBroadcastChannel(
   name: string,
   options: {
@@ -18,6 +20,7 @@ export function createBroadcastChannel(
   return new globalThis.BroadcastChannel(name);
 }
 
+/** 同源 bus 选项（channel 名，或注入 channel / 工厂）。 */
 export interface SameOriginBusOptions {
   channelName?: string;
   channel?: BroadcastChannel;

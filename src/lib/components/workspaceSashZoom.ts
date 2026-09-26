@@ -53,6 +53,7 @@ function correctedPointerEvent(
   return new PointerEvent("pointermove", init);
 }
 
+/** 面板分隔条拖动缩放修正器（卸载时 `dispose()`）。 */
 export interface SashZoomCorrection {
   dispose(): void;
 }

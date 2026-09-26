@@ -41,6 +41,7 @@ export const COLUMN_MINIMUM_WIDTHS = { tools: 52, viewport: 240, side: 160 } as 
 export const MINIMUM_GRID_WIDTH =
   COLUMN_MINIMUM_WIDTHS.tools + COLUMN_MINIMUM_WIDTHS.viewport + COLUMN_MINIMUM_WIDTHS.side;
 
+/** 三列（工具 / 视口 / 侧栏）的最小宽度。 */
 export interface ColumnMinimumWidths {
   tools: number;
   viewport: number;
@@ -69,6 +70,7 @@ export function minimumColumnWidths(available: number): ColumnMinimumWidths {
  */
 export const FLOATING_MINIMUM_SIZE = { width: 240, height: 200 } as const;
 
+/** 浮窗在容器内的坐标与尺寸。 */
 export interface FloatingBounds extends LayoutSize {
   x: number;
   y: number;

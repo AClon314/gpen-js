@@ -1,6 +1,17 @@
 import * as flatbuffers from "flatbuffers";
 import { Gpen, GpenT, ToolbarState, ToolbarStateT } from "gpen-protocol/flatbuffers";
 
+export {
+  /** FlatBuffers 生成的 Gpen 只读访问器（协议再导出）。 */
+  Gpen,
+  /** FlatBuffers 生成的 Gpen 对象 API（协议再导出）。 */
+  GpenT,
+  /** FlatBuffers 生成的 ToolbarState 只读访问器（协议再导出）。 */
+  ToolbarState,
+  /** FlatBuffers 生成的 ToolbarState 对象 API（协议再导出）。 */
+  ToolbarStateT,
+};
+
 /**
  * FlatBuffers codec boundary (FBS-004).
  *
@@ -17,8 +28,7 @@ import { Gpen, GpenT, ToolbarState, ToolbarStateT } from "gpen-protocol/flatbuff
 
 export type GpenBytes = Uint8Array;
 
-export { Gpen, GpenT, ToolbarState, ToolbarStateT };
-
+/** FlatBuffers 编解码失败时抛出的错误（带 cause）。 */
 export class GpenCodecError extends Error {
   readonly cause: unknown;
 
@@ -65,6 +75,7 @@ export function encodeGpen(document: GpenT): GpenBytes {
   }
 }
 
+/** 把字节解成 `ToolbarStateT`。 */
 export function decodeToolbarState(bytes: GpenBytes): ToolbarStateT {
   const input = normalizeBytes(bytes);
   try {
@@ -76,6 +87,7 @@ export function decodeToolbarState(bytes: GpenBytes): ToolbarStateT {
   }
 }
 
+/** 把 `ToolbarStateT` 编成字节。 */
 export function encodeToolbarState(state: ToolbarStateT): GpenBytes {
   try {
     const builder = new flatbuffers.Builder(512);

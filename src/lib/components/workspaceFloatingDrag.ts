@@ -37,10 +37,12 @@ function localPosition(
   return { left: box.left, top: box.top };
 }
 
+/** 浮窗拖动缩放修正器（卸载时 `dispose()`）。 */
 export interface FloatingDragZoomCorrection {
   dispose(): void;
 }
 
+/** 缩放 ≠ 1 时接管浮窗拖动，把局部坐标换算回容器坐标。 */
 export function installFloatingDragZoomCorrection(options: {
   container: HTMLElement;
   getZoom(): number;

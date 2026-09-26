@@ -19,8 +19,10 @@
 import { rowIndex } from "./rows.js";
 import type { TreeKey, TreeRow } from "./types.js";
 
+/** 树内聚焦移动方向。 */
 export type TreeMove = "up" | "down" | "left" | "right" | "home" | "end";
 
+/** 按移动方向返回下一个应聚焦的行键。 */
 export function nextFocusKey(
   rows: readonly TreeRow[],
   current: TreeKey | undefined,

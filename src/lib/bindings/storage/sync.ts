@@ -8,11 +8,13 @@ import {
 import type { BlobBackend, JsonValue } from "./types.js";
 import type { KvStorage, StoragePathKey } from "./kv.js";
 
+/** Blob↔KV 同步钩子上下文（额外带 KV 键与记录路径）。 */
 export interface BlobKvRecordContext extends BlobSetHookContext {
   readonly key: string;
   readonly recordPath: readonly StoragePathKey[];
 }
 
+/** 把 Blob 写入映射成 KV 记录的选项。 */
 export interface BlobKvSyncOptions<T extends JsonValue> {
   /** KV store receiving the external Blob reference. */
   kv: KvStorage<T>;

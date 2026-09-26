@@ -1,8 +1,10 @@
 import type { JsonValue, KvBackend } from "./types.js";
 
+/** 路径键：对象字段名或数组下标。 */
 export type StoragePathKey = string | number;
 type JsonRecord = { [key: string]: JsonValue };
 
+/** get 钩子的上下文：路径、根、当前值。 */
 export interface KvGetHookContext<T extends JsonValue> {
   readonly self: KvStorage<T>;
   readonly path: readonly StoragePathKey[];
@@ -11,6 +13,7 @@ export interface KvGetHookContext<T extends JsonValue> {
   readonly value: JsonValue | undefined;
 }
 
+/** set 钩子的上下文：路径、根、新值与旧值。 */
 export interface KvSetHookContext<T extends JsonValue> {
   readonly self: KvStorage<T>;
   readonly path: readonly StoragePathKey[];
@@ -20,6 +23,7 @@ export interface KvSetHookContext<T extends JsonValue> {
   readonly previousValue: JsonValue | undefined;
 }
 
+/** delete 钩子的上下文：路径、根与被删的旧值。 */
 export interface KvDeleteHookContext<T extends JsonValue> {
   readonly self: KvStorage<T>;
   readonly path: readonly StoragePathKey[];
@@ -28,16 +32,20 @@ export interface KvDeleteHookContext<T extends JsonValue> {
   readonly previousValue: JsonValue | undefined;
 }
 
+/** get 钩子：可改写 / 兜底读到的值（返回 undefined 走原逻辑）。 */
 export type KvGetHook<T extends JsonValue> = (
   context: KvGetHookContext<T>,
 ) => JsonValue | undefined | PromiseLike<JsonValue | undefined>;
+/** set 钩子：写入时联动外部存储之类的副作用。 */
 export type KvSetHook<T extends JsonValue> = (
   context: KvSetHookContext<T>,
 ) => unknown | PromiseLike<unknown>;
+/** delete 钩子：删除时联动外部存储之类的副作用。 */
 export type KvDeleteHook<T extends JsonValue> = (
   context: KvDeleteHookContext<T>,
 ) => unknown | PromiseLike<unknown>;
 
+/** 可按名字注册的 get / set / delete 钩子集合。 */
 export interface KvStorageHooks<T extends JsonValue> {
   getters?: Record<string, KvGetHook<T>>;
   setters?: Record<string, KvSetHook<T>>;
@@ -110,11 +118,13 @@ type GetNamespace<T, Depth extends number = 6> = ReadChildren<T, Depth>;
 type SetNamespace<T, Depth extends number = 6> = SetChildren<T, Depth>;
 type DeleteNamespace<T, Depth extends number = 6> = DeleteChildren<T, Depth>;
 
+/** 首次读取前的初始值：值、Promise，或基于旧值的迁移函数。 */
 export type KvInitialValue<T extends JsonValue> =
   | T
   | PromiseLike<T>
   | ((oldValue: T) => T | PromiseLike<T>);
 
+/** 创建 KV 时的选项（缓存开关、初始值、版本、钩子）。 */
 export interface KvStorageOptions<T extends JsonValue> {
   /** Initial cache mode; can be changed through KvStorage.cache. */
   cache?: boolean;
@@ -127,6 +137,7 @@ export interface KvStorageOptions<T extends JsonValue> {
   hooks?: KvStorageHooks<T>;
 }
 
+/** 路径访问器（get / set / del / proxy）+ 提交接口。 */
 export type KvStorage<T extends JsonValue, Depth extends number = 6> = {
   readonly name: string;
   cache: boolean;
@@ -190,6 +201,7 @@ function assignAtPath(
   (container as JsonRecord)[String(key)] = value;
 }
 
+/** 不可变地往 `path` 写值，返回新的根（沿途缺容器则补）。 */
 export function setAtPath(root: JsonValue, path: StoragePathKey[], value: JsonValue): JsonValue {
   if (path.length === 0) return value;
 
@@ -213,6 +225,7 @@ export function setAtPath(root: JsonValue, path: StoragePathKey[], value: JsonVa
   return result;
 }
 
+/** 不可变地删掉 `path` 指向的键，返回新的根。 */
 export function deleteAtPath(root: JsonValue, path: StoragePathKey[]): JsonValue {
   if (path.length === 0) return {};
   if (!isContainer(root)) return root;
@@ -228,11 +241,13 @@ export function deleteAtPath(root: JsonValue, path: StoragePathKey[]): JsonValue
   return root;
 }
 
+/** 列出 `path` 处的键（不是容器则返回空数组）。 */
 export function listKeysAtPath(root: JsonValue, path: StoragePathKey[]): string[] {
   const value = getAtPath(root, path);
   return isContainer(value) ? Object.keys(value) : [];
 }
 
+/** 结构化克隆一份值（无 structuredClone 时退回 JSON）。 */
 export function deepClone<T>(value: T): T {
   if (typeof structuredClone === "function") return structuredClone(value);
   return JSON.parse(JSON.stringify(value)) as T;
@@ -637,6 +652,7 @@ function createDeleteNamespace<T, TRoot extends JsonValue>(
   }) as DeleteNamespace<T>;
 }
 
+/** 用后端与选项创建 KV。 */
 export function createKvStorage<T extends JsonValue>(
   backend: KvBackend<T>,
   options: KvStorageOptions<T> = {},

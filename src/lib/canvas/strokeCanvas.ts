@@ -30,6 +30,7 @@ export const STROKE_FALLBACK_COLOR = "#4f46e5";
 /** Minimum distance between sampled points in client pixels (debounce). */
 export const MIN_POINT_DISTANCE = 2;
 
+/** 笔画画布的依赖（画布、笔画源、视图映射、回写回调）。 */
 export interface StrokeCanvasDeps {
   canvas: HTMLCanvasElement;
   /** Committed strokes to render, in draw order (recomputed on every redraw). */
@@ -62,6 +63,7 @@ export interface StrokeCanvasDeps {
   minDistance?: number;
 }
 
+/** 笔画画布 handle（重绘 / 销毁）。 */
 export interface StrokeCanvasHandle {
   /** Repaint committed + in-progress strokes. Call on document / view changes. */
   redraw(): void;
@@ -84,6 +86,7 @@ export function distance(a: LayerPoint, b: LayerPoint): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
+/** 在给定画布上创建笔画绘制与指针采样。 */
 export function createStrokeCanvas(deps: StrokeCanvasDeps): StrokeCanvasHandle {
   const { canvas } = deps;
   const context = canvas.getContext("2d");

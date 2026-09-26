@@ -28,8 +28,10 @@
  */
 import { evaluatePredicate, type BooleanSource } from "./predicates.js";
 
+/** 命令 id（点分，与协议 `ToolReference.idname` 一致）。 */
 export type CommandId = string;
 
+/** 一条命令：id、标签、动作与可见性 / 可用性谓词。 */
 export interface Command {
   id: CommandId;
   label: string | (() => string);
@@ -72,6 +74,7 @@ export function unregisterCommand(id: CommandId): boolean {
   return registry.delete(id);
 }
 
+/** 按 id 取已注册命令。 */
 export function getCommand(id: CommandId): Command | undefined {
   return registry.get(id)?.command;
 }
@@ -83,6 +86,7 @@ export function listCommands(): Command[] {
     .sort((left, right) => (left.id < right.id ? -1 : left.id > right.id ? 1 : 0));
 }
 
+/** 求值命令标签（函数形式会被调用）。 */
 export function resolveCommandLabel(command: Command): string {
   return typeof command.label === "function" ? command.label() : command.label;
 }

@@ -10,6 +10,7 @@
  */
 let counter = 0;
 
+/** 生成当前挂载实例的唯一 id。 */
 export function createInstanceId(): string {
   counter += 1;
   const cryptoObject = typeof globalThis.crypto === "undefined" ? undefined : globalThis.crypto;

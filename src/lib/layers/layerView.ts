@@ -22,8 +22,10 @@
  */
 import { viewportOffset, viewportSize } from "../visualViewport.js";
 
+/** 视图作用的宿主：网页元素或 gpen 画布。 */
 export type LayerViewTarget = { kind: "element"; element: HTMLElement } | { kind: "canvas" };
 
+/** 一层的视图投影：旋转变换与层局部 ↔ 客户端坐标换算。 */
 export interface LayerView {
   readonly kind: LayerViewTarget["kind"];
 
@@ -49,6 +51,7 @@ export interface LayerView {
   restore(): void;
 }
 
+/** 一个点（层局部或客户端坐标，按调用上下文）。 */
 export interface LayerPoint {
   x: number;
   y: number;

@@ -2,7 +2,9 @@ import type { HTMLInputAttributes } from "svelte/elements";
 
 import type { Dimension, Registry } from "#lib/inputs/units";
 
+/** 输入组件的值：数字或字符串。 */
 export type InputValue = number | string;
+/** 输入组件的排布方向。 */
 export type InputOrientation = "horizontal" | "vertical";
 
 /**

@@ -16,6 +16,7 @@ import { evaluatePredicate } from "../../predicates.js";
 /** 菜单节点种类；省略时按 `separator`/`children` 推导。 */
 export type MenuItemType = "command" | "menu" | "separator";
 
+/** 一个菜单节点：标签、命令引用、可见性 / 禁用谓词与子菜单。 */
 export type MenuItem = {
   /** 引用的命令 id；等于协议 `ToolReference.idname`，零转换。 */
   id?: string;
@@ -37,9 +38,12 @@ export type MenuItem = {
   [key: string]: unknown;
 };
 
+/** 已求值的菜单节点数组。 */
 export type MenuItemProvider = MenuItem[];
+/** 菜单节点数组，或返回它的惰性函数。 */
 export type MenuItemProviderInput = MenuItem[] | (() => MenuItem[]);
 
+/** 菜单内线性导航支持的按键。 */
 export type MenuNavigationKey = "ArrowDown" | "ArrowUp" | "Home" | "End";
 
 /** 求值一个菜单节点列表（数组或惰性 getter）。 */
@@ -48,6 +52,7 @@ export function resolveMenuItems(provider: MenuItemProviderInput | undefined): M
   return (typeof provider === "function" ? provider() : provider) ?? [];
 }
 
+/** 求值节点标签：函数取调用结果，缺省则回退到命令的 label。 */
 export function resolveMenuLabel(item: MenuItem): string {
   const label = item.label;
   if (typeof label === "function") return label();
@@ -99,6 +104,7 @@ export function resolveMenuChildren(item: MenuItem): MenuItem[] {
   return [];
 }
 
+/** 是否是分隔项（`separator: true` 或 `type: "separator"`）。 */
 export function isMenuSeparator(item: MenuItem): boolean {
   return item.separator === true || item.type === "separator";
 }

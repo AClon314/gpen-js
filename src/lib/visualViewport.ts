@@ -17,6 +17,7 @@ export interface ViewportSize {
   height: number;
 }
 
+/** 一个点（视觉视口坐标）。 */
 export interface ViewportPosition {
   x: number;
   y: number;

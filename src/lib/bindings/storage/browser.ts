@@ -8,11 +8,13 @@ import { createKvStorage } from "./kv.js";
 import { createOpfsTabBusBlobBackend } from "./opfs.js";
 import type { JsonValue, KvBackend, Storage } from "./types.js";
 
+/** WebExtension `storage.local` 的最小形状。 */
 export interface BrowserStorageApi {
   get(keys?: null | string | string[]): Promise<Record<string, JsonValue>>;
   set(items: Record<string, JsonValue>): Promise<void>;
 }
 
+/** 扩展存储选项（storageKey / 注入的 storage API）。 */
 export interface BrowserStorageOptions<
   T extends JsonValue = JsonValue,
 > extends WebsiteStorageOptions<T> {
@@ -26,6 +28,7 @@ interface BrowserExtensionApi {
   };
 }
 
+/** 取注入的 / 全局的扩展 storage API。 */
 export function getBrowserStorage(api?: BrowserStorageApi): BrowserStorageApi | undefined {
   if (api) return api;
   const globalObject = globalThis as typeof globalThis & {
@@ -35,6 +38,7 @@ export function getBrowserStorage(api?: BrowserStorageApi): BrowserStorageApi | 
   return globalObject.browser?.storage?.local ?? globalObject.chrome?.storage?.local;
 }
 
+/** 用扩展 storage.local 建 KV 后端。 */
 export function createBrowserKvBackend<T extends JsonValue>(
   area: BrowserStorageApi,
   storageKey: string,
@@ -51,6 +55,7 @@ export function createBrowserKvBackend<T extends JsonValue>(
   };
 }
 
+/** 用扩展 storage 组装 Storage。 */
 export function createBrowserStorage<T extends JsonValue = JsonValue>(
   options: BrowserStorageOptions<T> = {},
 ): Storage<T, HookedBlobBackend> {

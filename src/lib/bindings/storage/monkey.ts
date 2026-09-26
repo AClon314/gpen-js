@@ -9,6 +9,7 @@ import { createIndexedDbBlobBackend, openStorageDatabase } from "./website.js";
 import { createOpfsTabBusBlobBackend } from "./opfs.js";
 import type { JsonValue, Storage } from "./types.js";
 
+/** 油猴 `GM_*` 存储 API 的最小形状。 */
 export interface MonkeyStorageApi {
   getValue<T extends JsonValue>(key: string, defaultValue: T): T | PromiseLike<T>;
   setValue<T extends JsonValue>(key: string, value: T): void | PromiseLike<void>;
@@ -16,12 +17,14 @@ export interface MonkeyStorageApi {
   listValues?(): string[] | PromiseLike<string[]>;
 }
 
+/** 油猴存储选项（KV + Blob + storageKey / api）。 */
 export interface MonkeyStorageOptions<T extends JsonValue = JsonValue>
   extends KvStorageOptions<T>, BlobStorageOptions {
   storageKey?: string;
   monkey?: MonkeyStorageApi;
 }
 
+/** 取注入的 / 全局的 GM 存储 API。 */
 export function getMonkeyStorageApi(api?: MonkeyStorageApi): MonkeyStorageApi | undefined {
   if (api) return api;
 
@@ -84,6 +87,7 @@ export function getMonkeyStorageApi(api?: MonkeyStorageApi): MonkeyStorageApi | 
   return undefined;
 }
 
+/** 用油猴 GM 存储组装 Storage。 */
 export function createMonkeyStorage<T extends JsonValue = JsonValue>(
   options: MonkeyStorageOptions<T> = {},
 ): Storage<T, HookedBlobBackend> {

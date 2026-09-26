@@ -23,18 +23,26 @@ import { TOOL_IDS, type GpenToolId } from "./gpenWorkspaceState.js";
 /** KV key for this root (kept distinct from the workspace/document roots). */
 export const GPEN_PREFERENCES_KEY = "gpen.preferences";
 
+/** 主题偏好取值：跟随系统 / 亮色 / 暗色。 */
 export const THEME_PREFERENCES = ["system", "light", "dark"] as const;
+/** 主题偏好值。 */
 export type GpenThemePreference = (typeof THEME_PREFERENCES)[number];
 
+/** 语言偏好取值（跟随系统 / 英文 / 简体中文）。 */
 export const LOCALE_PREFERENCES = ["system", "en", "zh-cn"] as const;
+/** 语言偏好值。 */
 export type GpenLocalePreference = (typeof LOCALE_PREFERENCES)[number];
 
+/** 自动保存防抖下限（0 = 每次改动都写）。 */
 export const AUTO_SAVE_DEBOUNCE_MIN_MS = 0;
+/** 自动保存防抖上限。 */
 export const AUTO_SAVE_DEBOUNCE_MAX_MS = 10_000;
+/** 自动保存防抖默认值。 */
 export const AUTO_SAVE_DEBOUNCE_DEFAULT_MS = 250;
 
 /** 磨砂玻璃的可调范围（CSS px，模糊半径；0 = 关）。 */
 export const BLUR_MIN = 0;
+/** 磨砂玻璃模糊半径上限（CSS px）。 */
 export const BLUR_MAX = 16;
 /** 默认关：`backdrop-filter` 在移动端是 GPU 大头。 */
 export const BLUR_DEFAULT = 0;
@@ -65,18 +73,22 @@ export interface GpenPreferences {
   autoSaveDebounceMs: number;
 }
 
+/** 落盘用的偏好快照（与 `GpenPreferences` 同形）。 */
 export type GpenPreferencesSnapshot = GpenPreferences;
 
+/** 偏好存储适配器接口。 */
 export interface GpenPreferencesStorage {
   load(): Promise<GpenPreferences | undefined>;
   save(preferences: GpenPreferencesSnapshot): Promise<void>;
   close?(): void | Promise<void>;
 }
 
+/** KV 里存的偏好记录（`{ preferences }`）。 */
 export type GpenPreferencesStorageRecord = {
   preferences: GpenPreferencesSnapshot;
 };
 
+/** 默认偏好（跟随系统主题 / 语言，画笔工具，状态栏开，模糊关）。 */
 export function createDefaultGpenPreferences(): GpenPreferences {
   return {
     version: 1,
@@ -140,6 +152,7 @@ export function normalizeGpenPreferences(
   };
 }
 
+/** 写出前做一次归一化，保证落盘值合法。 */
 export function serializeGpenPreferences(preferences: GpenPreferences): GpenPreferencesSnapshot {
   return normalizeGpenPreferences(preferences);
 }

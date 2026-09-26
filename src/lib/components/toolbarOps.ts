@@ -40,10 +40,13 @@ import { DEFAULT_STROKE_OPACITY, DEFAULT_STROKE_RADIUS } from "../layers/strokeO
 
 /** Brush diameter in CSS pixels. `BrushSettings.size` is a **diameter**. */
 export const DEFAULT_BRUSH_SIZE = DEFAULT_STROKE_RADIUS * 2;
+/** 默认笔刷强度。 */
 export const DEFAULT_BRUSH_STRENGTH = 0.4;
+/** 默认笔刷采样间距。 */
 export const DEFAULT_BRUSH_SPACING = 0.25;
 /** Eraser diameter; Blender's default eraser is noticeably larger than the brush. */
 export const DEFAULT_ERASER_SIZE = 24;
+/** 默认橡皮强度。 */
 export const DEFAULT_ERASER_STRENGTH = 1;
 
 /**
@@ -126,6 +129,7 @@ function createEraserSettings(): EraserSettingsT {
   });
 }
 
+/** 一份全新的协议工具栏状态（画笔 / 橡皮 / 套索默认值）。 */
 export function defaultToolbarState(): ToolbarStateT {
   return Object.assign(new ToolbarStateT(), {
     tools: [],

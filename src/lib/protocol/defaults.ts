@@ -65,6 +65,7 @@ export function createDefaultGpen(url: string): GpenT {
   });
 }
 
+/** 该层是否是可绘制内容（非 HTML 网页层）。 */
 export function isDrawableLayer(layer: LayerT): boolean {
   return layer.mimeType !== MimeType.MIME_TYPE_TEXT_HTML_UNSPECIFIED;
 }

@@ -12,8 +12,10 @@ import type { UiLayerTree } from "../layers/types";
 import { open as openMenu } from "./contextMenu/contextMenu.svelte";
 import type { MenuItem } from "./contextMenu/menuModel";
 
+/** 工作区 tab 右键菜单的注册 id。 */
 export const WORKSPACE_TAB_MENU_ID = "gpen-workspace-tab";
 
+/** tab 菜单需要的宿主 getter（dockview、图层树、容器）。 */
 export interface WorkspaceTabMenuDeps {
   getDockview(): DockviewApi | undefined;
   /** timeline 占位面板的图层树（`layerTree` 是 `$derived`，所以用 getter）。 */
@@ -22,6 +24,7 @@ export interface WorkspaceTabMenuDeps {
   getContainer(): HTMLElement | undefined;
 }
 
+/** 工作区 tab 的右键菜单（节点、事件监听、图层列表）。 */
 export interface WorkspaceTabMenu {
   /** 注册表用的节点提供者。 */
   items(): MenuItem[];
@@ -31,6 +34,7 @@ export interface WorkspaceTabMenu {
   createLayerList(): HTMLUListElement;
 }
 
+/** 创建 tab 右键菜单。 */
 export function createWorkspaceTabMenu(deps: WorkspaceTabMenuDeps): WorkspaceTabMenu {
   /** 右键落在哪个 tab 上（`items()` 是同步取的，所以菜单打开期间要靠它）。 */
   let panelId: string | undefined;

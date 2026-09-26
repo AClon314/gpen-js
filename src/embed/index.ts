@@ -17,13 +17,16 @@ import ContextMenu from "#lib/components/contextMenu/ContextMenu.svelte";
 import { gpenEmbedCss } from "./css.js";
 import { initTheme } from "../lib/themes/theme.svelte.js";
 
+/** 嵌入宿主 div 的固定 id。 */
 export const GPEN_HOST_ID = "gpen-host";
 
+/** 嵌入选项（可自定义宿主元素）。 */
 export interface GpenEmbedOptions {
   /** 自定义宿主元素（默认自建并挂到 documentElement）。 */
   host?: HTMLElement;
 }
 
+/** 一次嵌入的 handle（宿主、shadow root、卸载）。 */
 export interface GpenHandle {
   host: HTMLElement;
   shadowRoot: ShadowRoot;

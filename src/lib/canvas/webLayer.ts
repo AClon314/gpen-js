@@ -1,3 +1,4 @@
+/** 网页层候选的度量（标签、面积、文本长度）。 */
 export type WebLayerMetrics = {
   tag: string;
   area: number;

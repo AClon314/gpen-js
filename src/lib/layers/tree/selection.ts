@@ -20,11 +20,13 @@
 import { rowIndex } from "./rows.js";
 import type { TreeKey, TreeRow } from "./types.js";
 
+/** 点击时按下的修饰键。 */
 export interface SelectionModifiers {
   shift: boolean;
   ctrl: boolean;
 }
 
+/** 计算点击后的选中集合（替换 / 切换 / 区间）。 */
 export function selectionAfter(
   rows: readonly TreeRow[],
   selected: ReadonlySet<TreeKey>,

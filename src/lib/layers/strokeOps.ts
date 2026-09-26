@@ -66,6 +66,7 @@ export interface StrokePointInput {
   timestamp?: number;
 }
 
+/** 新建笔画时的可选参数（id、材质、半径、透明度、端点等）。 */
 export interface CreateStrokeOptions {
   /** Stable stroke id; generated when omitted. */
   id?: string;
@@ -83,6 +84,7 @@ export interface CreateStrokeOptions {
   fillOpacity?: number;
 }
 
+/** 往笔画追加点时的时间轴帧号。 */
 export interface AppendStrokeOptions {
   /** Timeline frame to draw on; defaults to frame 0. */
   frameNumber?: number;

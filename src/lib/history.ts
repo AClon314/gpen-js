@@ -42,6 +42,7 @@ export interface EditHistoryOptions<T> {
   onEvict?: (state: T) => void;
 }
 
+/** `commit` 的可选行为：把本次状态并进最近一条 undo（连续手势用）。 */
 export interface CommitOptions<T> {
   /**
    * Merge into the newest undo entry instead of pushing a new one.
@@ -53,6 +54,7 @@ export interface CommitOptions<T> {
   coalesceWith?: (newest: T) => T;
 }
 
+/** 有界撤销 / 重做栈的对外接口（环形缓冲 + 可合并最近一条）。 */
 export interface EditHistory<T> {
   /** Record `state` as an undoable step (clears the redo stack). */
   commit(state: T, options?: CommitOptions<T>): void;
@@ -133,6 +135,7 @@ function normalizeLimit(value: number | undefined, fallback: number): number {
   return Math.max(0, Math.trunc(value));
 }
 
+/** 创建一条有界编辑历史：`limit` 是环容量，`maxEntries` 是硬上限。 */
 export function createEditHistory<T>(options: EditHistoryOptions<T> = {}): EditHistory<T> {
   const limit = normalizeLimit(options.limit, 50);
   const capacity = Math.min(limit, normalizeLimit(options.maxEntries, limit));

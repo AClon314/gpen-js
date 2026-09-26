@@ -14,4 +14,5 @@ const handleParaglide: Handle = ({ event, resolve }) =>
     });
   });
 
+/** 服务端挂上 paraglide 的请求处理与语言属性注入。 */
 export const handle: Handle = handleParaglide;

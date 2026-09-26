@@ -1,7 +1,9 @@
 import type { BlobBackend, BlobSetOptions } from "./types.js";
 
+/** OPFS broker iframe 的默认来源。 */
 export const DEFAULT_BLOB_TARGET_DOMAIN = "https://xxx.github.com";
 
+/** Blob 存储选项（目标域 + 与 KV 联动的钩子）。 */
 export interface BlobStorageOptions {
   /** Origin hosting the OPFS Blob broker iframe. */
   targetDomain?: string;
@@ -9,6 +11,7 @@ export interface BlobStorageOptions {
   blobHooks?: BlobStorageHooks;
 }
 
+/** Blob get 钩子上下文（id、路径、读到的值）。 */
 export interface BlobGetHookContext {
   readonly self: HookedBlobBackend;
   readonly id: string;
@@ -17,6 +20,7 @@ export interface BlobGetHookContext {
   readonly value: Blob | undefined;
 }
 
+/** Blob set 钩子上下文（id、路径、写入的值与选项）。 */
 export interface BlobSetHookContext {
   readonly self: HookedBlobBackend;
   readonly id: string;
@@ -26,6 +30,7 @@ export interface BlobSetHookContext {
   readonly options: BlobSetOptions | undefined;
 }
 
+/** Blob delete 钩子上下文（id、路径）。 */
 export interface BlobDeleteHookContext {
   readonly self: HookedBlobBackend;
   readonly id: string;
@@ -33,12 +38,16 @@ export interface BlobDeleteHookContext {
   readonly hookName: string;
 }
 
+/** Blob get 钩子：可改写读到的 Blob。 */
 export type BlobGetHook = (
   context: BlobGetHookContext,
 ) => Blob | undefined | PromiseLike<Blob | undefined>;
+/** Blob set 钩子：写入时联动 KV 之类的副作用。 */
 export type BlobSetHook = (context: BlobSetHookContext) => unknown | PromiseLike<unknown>;
+/** Blob delete 钩子：删除时联动 KV 之类的副作用。 */
 export type BlobDeleteHook = (context: BlobDeleteHookContext) => unknown | PromiseLike<unknown>;
 
+/** 可按名字注册的 get / set / delete Blob 钩子。 */
 export interface BlobStorageHooks {
   getters?: Record<string, BlobGetHook>;
   setters?: Record<string, BlobSetHook>;
@@ -52,18 +61,23 @@ export interface BlobStorageProxy {
   deleters: Record<string, BlobDeleteHook>;
 }
 
+/** 可继续下钻的读路径（PromiseLike 的 Blob）。 */
 export type BlobReadPath = PromiseLike<Blob | undefined> & {
   [key: string]: BlobReadPath;
 };
+/** 可继续下钻的写路径。 */
 export type BlobSetPath = ((value: Blob, options?: BlobSetOptions) => Promise<void>) & {
   [key: string]: BlobSetPath;
 };
+/** 可继续下钻的删除路径。 */
 export type BlobDeletePath = PromiseLike<void> & {
   [key: string]: BlobDeletePath;
 };
+/** 顶层 `get(id)` 访问器，同时可按路径下钻。 */
 export type BlobGetAccessor = ((id: string) => Promise<Blob | undefined>) & {
   [key: string]: BlobReadPath;
 };
+/** 顶层 `set(id, value)` 访问器，同时可按路径下钻。 */
 export type BlobSetAccessor = ((
   id: string,
   value: Blob,
@@ -71,10 +85,12 @@ export type BlobSetAccessor = ((
 ) => Promise<void>) & {
   [key: string]: BlobSetPath;
 };
+/** 顶层 `delete(id)` 访问器，同时可按路径下钻。 */
 export type BlobDeleteAccessor = ((id: string) => Promise<void>) & {
   [key: string]: BlobDeletePath;
 };
 
+/** 带钩子代理的 Blob 后端（get / set / delete / del + close）。 */
 export interface HookedBlobBackend extends BlobBackend {
   readonly proxy: BlobStorageProxy;
   close(): Promise<void>;
@@ -105,6 +121,7 @@ function createMemoryBlobBackend(): BlobBackend {
   };
 }
 
+/** 创建带钩子 Blob 后端的选项（后端 + 钩子）。 */
 export interface CreateBlobBackendOptions {
   backend?: BlobBackend;
   hooks?: BlobStorageHooks;
@@ -302,6 +319,7 @@ export function createBlobBackend(
   return result;
 }
 
+/** 把 Blob id 拆成路径段，拒绝空段与 `..` 穿越。 */
 export function splitBlobId(id: string): string[] {
   const parts = id.split("/");
   if (!id || parts.some((part) => !part || part === "." || part === ".." || part.includes("\\"))) {

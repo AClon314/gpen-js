@@ -19,6 +19,7 @@ export interface MapSize {
   height: number;
 }
 
+/** 小地图投影里的一块矩形：位置 + 尺寸（文档坐标）。 */
 export interface MapRect extends MapSize {
   x: number;
   y: number;
@@ -57,6 +58,7 @@ export function clampViewportOrigin(origin: { x: number; y: number }, input: Min
   };
 }
 
+/** 把当前可见区域投影成小地图的原点、覆盖范围与视图框（0..1 归一化）。 */
 export function projectMinimap(input: MinimapInput): MinimapProjection {
   const factor = input.factor ?? MINIMAP_SPAN_FACTOR;
   const { extent, viewport } = input;

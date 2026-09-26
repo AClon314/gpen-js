@@ -73,11 +73,13 @@ const GPEN_KV_KEY = "gpen-root";
 const UNDO_LIMIT = 50;
 const UNDO_BUDGET = 200;
 
+/** 状态栏用的撤销 / 重做深度。 */
 export interface GpenDocumentHistoryState {
   undoDepth: number;
   redoDepth: number;
 }
 
+/** 一份文档的会话：文档状态、存储、撤销历史与工具栏读写。 */
 export interface GpenDocumentSession {
   /** 当前文档（`$state.raw`，每次整体替换）。 */
   readonly document: GpenT | undefined;
@@ -152,6 +154,7 @@ function changedFields<T extends object>(patch: Partial<T>, current: T | undefin
   return result as Partial<T>;
 }
 
+/** 创建文档会话（挂载时 `start()`，卸载时 `dispose()`）。 */
 export function createGpenDocumentSession(): GpenDocumentSession {
   /// 撤销/重做存的是不可变文档引用，所以快照本身不复制数据。环形缓冲 + 预算，
   /// 丢弃最旧历史时只推进 head，不搬数组（见 lib/history.ts）。

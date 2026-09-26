@@ -17,6 +17,7 @@ export const DEBUG_FORMAT_DEFAULTS = {
   maxDepth: 8,
 } as const;
 
+/** 调试文本格式化的上限（长度 / 展开条数 / 递归深度）。 */
 export interface DebugFormatLimits {
   /** 输出文本的最大字符数，超出就截断并附一行说明。 */
   maxLength?: number;
@@ -26,6 +27,7 @@ export interface DebugFormatLimits {
   maxDepth?: number;
 }
 
+/** 格式化结果：文本、是否截断、完整长度、省略条数。 */
 export interface DebugFormatResult {
   /** 可以直接塞进 CodeEditor 的文本。 */
   text: string;

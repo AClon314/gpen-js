@@ -29,6 +29,7 @@ export interface MoveTreeOp {
 /** Every structural change the tree layer can ask the document layer for. */
 export type TreeOp = MoveTreeOp;
 
+/** 把放置目标与被拖键翻译成结构移动操作（不改文档）。 */
 export function applyDrop(
   tree: UiLayerTreeNode,
   keys: readonly TreeKey[],

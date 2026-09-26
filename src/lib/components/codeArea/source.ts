@@ -19,6 +19,7 @@
 /** 面板 id 前缀：`codearea:<sourceId>`（同源只开一个 tab）。 */
 export const CODE_AREA_PANEL_PREFIX = "codearea:";
 
+/** 一个 CodeArea 数据源：同步读、可选异步补充、可选可编辑。 */
 export interface CodeAreaSource {
   /** 稳定 id：既用于面板 id，也用于「同源再开一次 = 聚焦」判定。 */
   id: string;
@@ -42,6 +43,7 @@ export function registerCodeAreaSource(source: CodeAreaSource): () => void {
   };
 }
 
+/** 按 id 取已注册的数据源。 */
 export function getCodeAreaSource(id: string): CodeAreaSource | undefined {
   return registry.get(id);
 }
@@ -51,10 +53,12 @@ export function listCodeAreaSources(): CodeAreaSource[] {
   return [...registry.values()];
 }
 
+/** 数据源 id → 面板 id（`codearea:<id>`）。 */
 export function codeAreaPanelId(sourceId: string): string {
   return `${CODE_AREA_PANEL_PREFIX}${sourceId}`;
 }
 
+/** 面板 id 是否是 CodeArea 面板。 */
 export function isCodeAreaPanelId(panelId: string): boolean {
   return panelId.startsWith(CODE_AREA_PANEL_PREFIX);
 }

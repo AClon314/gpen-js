@@ -2,6 +2,7 @@ import { asError } from "../../error.js";
 import type { BlobBackend } from "./types.js";
 import type { ITabBus, TabBusSendOptions } from "../../crossTabBus/index.js";
 
+/** tab bus Blob 后端选项（名字 / 超时 / 客户端 id）。 */
 export interface TabBusBlobOptions {
   name?: string;
   timeoutMs?: number;
@@ -74,6 +75,7 @@ type PendingRequest = {
   timer: ReturnType<typeof setTimeout>;
 };
 
+/** 通过 tab bus 远程读写 Blob 的后端。 */
 export function createTabBusBlobBackend(
   bus: ITabBus,
   options: TabBusBlobOptions = {},
@@ -169,6 +171,7 @@ export function createTabBusBlobBackend(
   };
 }
 
+/** 在持有真实 Blob 的页面里跑 broker，响应其他 tab 的读 / 写 / 删。 */
 export function createTabBusBlobBroker(bus: ITabBus, backend: BlobBackend): { destroy(): void } {
   let destroyed = false;
 

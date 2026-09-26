@@ -17,6 +17,11 @@ import {
   isCodeAreaPanelId,
 } from "./source.js";
 
+export {
+  /** `codearea:gpen-kv` → `gpen-kv`；不是 CodeArea 面板时返回 undefined。 */
+  codeAreaSourceIdOf,
+};
+
 /** 打开 / 聚焦一个 CodeArea 面板；`sourceId` 已注册时 tab 标题取数据源标题。 */
 export function openCodeAreaPanel(instance: DockviewApi, sourceId: string): void {
   const panelId = codeAreaPanelId(sourceId);
@@ -39,5 +44,3 @@ export function dropRestoredCodeAreaPanels(instance: DockviewApi): void {
   const stale = instance.panels.filter((panel) => isCodeAreaPanelId(panel.id));
   for (const panel of stale) instance.removePanel(panel);
 }
-
-export { codeAreaSourceIdOf };

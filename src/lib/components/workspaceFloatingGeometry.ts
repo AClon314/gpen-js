@@ -19,6 +19,7 @@ export interface FloatingLocalBox {
   height: number;
 }
 
+/** 把数值夹进 `[min, max]`。 */
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }

@@ -34,8 +34,10 @@ export interface InternalStateReaders {
   gpenKv(): KvStorage<GpenKvRoot> | undefined;
 }
 
+/** 「内部 JSON 状态树」数据源的固定 id。 */
 export const INTERNAL_STATE_SOURCE_ID = "gpen-internal-state";
 
+/** 用一组读取器创建内置调试数据源。 */
 export function createInternalStateSource(readers: InternalStateReaders): CodeAreaSource {
   return {
     id: INTERNAL_STATE_SOURCE_ID,

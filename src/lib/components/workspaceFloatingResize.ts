@@ -96,10 +96,12 @@ function resizedBox(
   return { left, top, width, height };
 }
 
+/** 浮窗 resize 缩放修正器（卸载时 `dispose()`）。 */
 export interface FloatingResizeZoomCorrection {
   dispose(): void;
 }
 
+/** 缩放 ≠ 1 时接管浮窗 resize，把局部坐标换算回容器坐标。 */
 export function installFloatingResizeZoomCorrection(options: {
   container: HTMLElement;
   getZoom(): number;

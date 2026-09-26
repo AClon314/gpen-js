@@ -42,10 +42,13 @@ import {
   type ViewportPosition,
   type ViewportSize,
 } from "../visualViewport.js";
+export type {
+  /** 视觉视口尺寸（宽 + 高）。 */
+  ViewportSize,
+};
 
 /** 位置（这两个名字在拖拽 API 里更顺口，语义和 viewport 模块的一致）。 */
 export type DragPosition = ViewportPosition;
-export type { ViewportSize };
 
 /** Allowed top-left positions for the dragged element (already size-aware). */
 export interface DragBounds {
@@ -55,6 +58,7 @@ export interface DragBounds {
   maxY: number;
 }
 
+/** `draggable` action 的选项（阈值、边距、锚点、回调）。 */
 export interface DraggableOptions {
   /** Movement (CSS px) before a gesture counts as a drag instead of a tap. */
   threshold?: number;
@@ -85,6 +89,7 @@ export interface DraggableOptions {
   onPositionChange?: (position: DragPosition) => void;
 }
 
+/** 默认判定为拖动（而非点击）的像素阈值。 */
 export const DEFAULT_DRAG_THRESHOLD = 8;
 
 function clamp(value: number, min: number, max: number): number {
@@ -101,6 +106,7 @@ export function boundsFor(size: number, viewport: ViewportSize, margin = 0): Dra
   };
 }
 
+/** 把位置夹进给定边界。 */
 export function clampToBounds(position: DragPosition, bounds: DragBounds): DragPosition {
   return {
     x: clamp(position.x, bounds.minX, bounds.maxX),
@@ -108,6 +114,7 @@ export function clampToBounds(position: DragPosition, bounds: DragBounds): DragP
   };
 }
 
+/** 判定「贴边」的像素容差。 */
 export const EDGE_EPSILON = 1;
 
 /**
@@ -140,6 +147,7 @@ interface DragGesture {
   position: DragPosition;
 }
 
+/** 单元素指针拖动 action（含 tap 检测与边界夹取）。 */
 export const draggable: Action<HTMLElement, DraggableOptions | undefined> = (
   node,
   initialOptions,

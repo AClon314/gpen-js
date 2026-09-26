@@ -8,6 +8,7 @@ import { createKvStorage, type KvStorageOptions } from "./kv.js";
 import { createOpfsTabBusBlobBackend } from "./opfs.js";
 import type { BlobBackend, JsonValue, KvBackend, Storage } from "./types.js";
 
+/** 网页端 IndexedDB 存储选项（库名 / 两个 store 名 / KV key）。 */
 export interface WebsiteStorageOptions<T extends JsonValue = JsonValue>
   extends KvStorageOptions<T>, BlobStorageOptions {
   dbName?: string;
@@ -54,6 +55,7 @@ function completeTransaction(transaction: IDBTransaction): Promise<void> {
   });
 }
 
+/** 打开（必要时升级）IndexedDB，返回连接的 Promise。 */
 export function openStorageDatabase<T extends JsonValue = JsonValue>(
   options: WebsiteStorageOptions<T> = {},
 ): Promise<IDBDatabase> {
@@ -84,6 +86,7 @@ export function openStorageDatabase<T extends JsonValue = JsonValue>(
   });
 }
 
+/** 用已打开的 IndexedDB 连接建 KV 后端。 */
 export function createIndexedDbKvBackend<T extends JsonValue>(
   dbPromise: Promise<IDBDatabase>,
   options: WebsiteStorageOptions<T> = {},
@@ -108,6 +111,7 @@ export function createIndexedDbKvBackend<T extends JsonValue>(
   };
 }
 
+/** 用已打开的 IndexedDB 连接建 Blob 后端。 */
 export function createIndexedDbBlobBackend<T extends JsonValue = JsonValue>(
   dbPromise: Promise<IDBDatabase>,
   options: WebsiteStorageOptions<T> = {},
@@ -136,6 +140,7 @@ export function createIndexedDbBlobBackend<T extends JsonValue = JsonValue>(
   };
 }
 
+/** 组装网页端 Storage（KV + Blob，OPFS 不可用时回退）。 */
 export function createWebsiteStorage<T extends JsonValue = JsonValue>(
   options: WebsiteStorageOptions<T> = {},
 ): Storage<T, HookedBlobBackend> {
