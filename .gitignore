@@ -40,3 +40,6 @@ dist/
 
 # Coverage
 /coverage
+
+# Jelly 执行流可视化（体积大、可随时用 `bun run exec-flows` 重新生成）
+rules/exec-flows/*.html

@@ -1,0 +1,43 @@
+Ignoring module svelte@5.56.8:src/index-server.js
+Ignoring module @spectrum-web-components/icons-workflow@1.12.2:icons/sp-icon-brush.js
+Ignoring module @spectrum-web-components/icons-workflow@1.12.2:icons/sp-icon-close.js
+Ignoring module @spectrum-web-components/icons-workflow@1.12.2:icons/sp-icon-maximize.js
+Ignoring module @spectrum-web-components/icons-workflow@1.12.2:icons/sp-icon-layers.js
+Ignoring module @spectrum-web-components/icons-workflow@1.12.2:icons/sp-icon-color-fill.js
+Ignoring module @spectrum-web-components/icons-workflow@1.12.2:icons/sp-icon-erase.js
+Ignoring module @spectrum-web-components/icons-workflow@1.12.2:icons/sp-icon-settings.js
+Ignoring module @spectrum-web-components/icons-workflow@1.12.2:icons/sp-icon-chevron-down.js
+Ignoring module @spectrum-web-components/icons-workflow@1.12.2:icons/sp-icon-chevron-right.js
+Ignoring module @spectrum-web-components/icons-workflow@1.12.2:icons/sp-icon-more.js
+Ignoring module @spectrum-web-components/icons-workflow@1.12.2:icons/sp-icon-redo.js
+Ignoring module @spectrum-web-components/icons-workflow@1.12.2:icons/sp-icon-undo.js
+Ignoring module @spectrum-web-components/icons-workflow@1.12.2:icons/sp-icon-fast-forward.js
+Ignoring module @spectrum-web-components/icons-workflow@1.12.2:icons/sp-icon-play.js
+Ignoring module @spectrum-web-components/icons-workflow@1.12.2:icons/sp-icon-rewind.js
+Ignoring module @spectrum-web-components/icons-workflow@1.12.2:icons/sp-icon-cursor-click.js
+Ignoring module @spectrum-web-components/icons-workflow@1.12.2:icons/sp-icon-eyedropper.js
+Ignoring module @spectrum-web-components/icons-workflow@1.12.2:icons/sp-icon-lasso-select.js
+Ignoring module @spectrum-web-components/icons-workflow@1.12.2:icons/sp-icon-move.js
+Ignoring module @spectrum-web-components/icons-workflow@1.12.2:icons/sp-icon-selection.js
+Ignoring module @spectrum-web-components/icons-workflow@1.12.2:icons/sp-icon-minimize.js
+Ignoring module @spectrum-web-components/color-area@1.12.2:sp-color-area.js
+Ignoring module @spectrum-web-components/color-field@1.12.2:sp-color-field.js
+Ignoring module @spectrum-web-components/color-slider@1.12.2:sp-color-slider.js
+Ignoring module @spectrum-web-components/theme@1.12.2:sp-theme.js
+Ignoring module @spectrum-web-components/theme@1.12.2:scale-medium.js
+Ignoring module @spectrum-web-components/theme@1.12.2:theme-dark.js
+Ignoring module @spectrum-web-components/theme@1.12.2:theme-light.js
+Ignoring module @codemirror/commands@6.11.1:dist/index.js
+Ignoring module @codemirror/state@6.7.5:dist/index.js
+Ignoring module @codemirror/view@6.43.12:dist/index.js
+Ignoring module dockview@8.2.0:dist/package/main.esm.mjs
+Ignoring module penpal@8.0.1:dist/penpal.js
+Ignoring module flatbuffers@25.9.23:js/flatbuffers.js
+Analyzed packages: 13, modules: 162, functions: 1717, code size main: 989KB, dependencies: 0KB
+Call edges function->function: 2238, call->function: 2450
+Calls with zero or one callee: 3148/5038 (62.49%), multiple: 60/5038 (1.19%), native or external: 1830/5038 (36.32%)
+Functions with zero callers: 317/1717 (18.46%), reachable functions: 1395/1717 (81.25%)
+Analysis time: 1611ms, memory usage: 190MB (without --gc)
+Analysis errors: 0, warnings: 127 (show all with --warnings-unsupported)
+Call graph written to rules/exec-flows/callgraph.html
+Call graph written to rules/exec-flows/callgraph.json

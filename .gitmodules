@@ -1,0 +1,3 @@
+[submodule "rules/jelly"]
+	path = rules/jelly
+	url = https://github.com/AClon314/jelly

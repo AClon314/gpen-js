@@ -33,6 +33,7 @@
     "test:coverage": "bun test tests/*.test.ts --coverage --coverage-reporter=lcov && bun scripts/filter-lcov.ts",
     "health": "repowise health --format md --scope production --counts code_shape",
     "health:gate": "bun scripts/health-gate.ts",
+    "exec-flows": "node rules/exec-flows.mjs",
     "test:e2e": "set -a; . .env 2>/dev/null || true; set +a; playwright test --project=e2e",
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
