@@ -1,4 +1,5 @@
 # 第三方 / 子模块代码不参与本仓库格式化
 # rules/jelly 是 git submodule（AClon314/jelly fork），由上游工具链负责格式
 rules/jelly
-rules/exec-flows
+# 静态分析产物（含被提交的 func.json / module.dot 基线，不是手写代码）
+rules/out

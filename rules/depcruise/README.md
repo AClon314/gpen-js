@@ -1,23 +1,26 @@
 # rules/depcruise —— 模块级依赖图
 
 用 [dependency-cruiser](https://github.com/sverweij/dependency-cruiser) 出**模块级**依赖图，
-与 `rules/exec-flows/`（jelly 的**函数级**调用图）互补：这里回答「谁 import 了谁 / 改动会波及哪些模块」，
+与 `rules/out/func.json`（jelly 的**函数级**调用图）互补：这里回答「谁 import 了谁 / 改动会波及哪些模块」，
 jelly 回答「谁调用了谁」。
 
 ## 命令
 
-四种视图都是同一个 `rules/depcruise/graph.mjs`，每次输出 `out/<name>.{mmd,json,dot,svg}`：
+四种视图都是同一个 `rules/depcruise/graph.mjs`，产物统一写到 `rules/out/`：
 
 ```sh
-bun run graph:deps                              # 全量（218 模块 / 490 边）
-bun run graph:deps -- --no-svg                  # 跳过 dot/svg（全量 svg 约 2.6s）
-bun run graph:deps:focus -- <regex> --depth 1   # 子图：focus 模块 ± N 跳
-bun run graph:deps:overview                     # 目录级折叠总览（默认 -S '^src/[^/]+/'）
-bun run graph:deps:affected                     # 相对 origin/main 的变更影响面
-bun run graph:deps:affected -- --base main~4    # 自定义基线 ref
+bun run graph:module:deps                            # 全量 → module.{json,mmd,dot,svg}（218 模块 / 490 边）
+bun run graph:module:deps -- --no-svg                # 跳过 dot/svg（全量 svg 约 2.6s）
+bun run graph:module:focus -- <regex> --depth 1      # 子图 → module-focus-<slug>.*
+bun run graph:module:overview                        # 目录级折叠总览 → module-overview-<slug>.*
+bun run graph:module:affected                        # 相对 origin/main → module-affected-<slug>.*
+bun run graph:module:affected -- --base main~4       # 自定义基线 ref
 ```
 
-- `.mmd`（mermaid）适合进 PR / GitHub 渲染与 git diff；`.svg`（graphviz `dot`）适合本地放大看
+`<slug>` 由对应参数派生（`slug("^src/lib/bindings/")` → `src-lib-bindings`；`slug("origin/main")` →
+`origin-main`），所以不同焦点/不同基线 ref 的产物**不会互相覆盖**。
+
+- `.mmd`（mermaid）适合进 PR / GitHub 渲染；`.svg`（graphviz `dot`）适合本地放大看
   —— 浏览器直接打开，Ctrl/⌘ + 滚轮缩放。`.json` 是机器可读明细（数模块/边/unresolved）。
 - `--no-svg` 用于没有 graphviz 的环境；`svg` 模式需要本机有 `dot`。
 
@@ -60,6 +63,11 @@ reporterOptions: {
 
 ## 产物
 
-`out/` **未入库**（已 gitignore）：`.mmd` / `.json` / `.dot` / `.svg` 每次改动都会 churn，且 `affected`
-依赖基线 ref 的当前状态，不适合当稳定基线。要看就现场 `bun run graph:deps[:<视图>]` 生成。
-（对比：jelly 的 `exec-flows/callgraph.json` 是刻意提交的**函数级**基线，二者定位不同。）
+全部写在 `rules/out/`（与函数级调用图共用一个目录）：
+
+- **入库**：只有全量视图的 `module.json` 与 `module.dot`（`.gitignore` 用白名单取反放行）。
+- **不入库**：`module.mmd` / `module.svg`、以及全部 `module-<mode>-<slug>.*` 子图视图——
+  它们每次改动都会 churn，且 `affected` 依赖基线 ref 的当前状态，不适合当稳定基线。
+  要看就现场 `bun run graph:module:<视图>` 生成。
+
+（对比：`rules/out/func.json` + `func.log` 是刻意提交的**函数级**基线，且已做幂等归一化，二者定位不同。）

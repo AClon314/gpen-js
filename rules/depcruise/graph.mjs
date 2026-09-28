@@ -2,14 +2,17 @@
 /**
  * rules/depcruise/graph.mjs —— 统一出口，避免 package.json 里堆一长串命令行。
  *
- * 用法（等价于 `bun run graph:deps[:<mode>]`）：
+ * 产物一律写到 `rules/out/`（与 `rules/graph-func.mjs` 的函数级调用图共用一个目录）：
  *
- *   bun rules/depcruise/graph.mjs deps                    全量：mmd + json + svg
- *   bun rules/depcruise/graph.mjs focus <regex> [--depth] 子图：focus ± N 跳（默认 1）
- *   bun rules/depcruise/graph.mjs overview [--collapse]   目录级总览（默认折叠到 src/<dir>/）
- *   bun rules/depcruise/graph.mjs affected [--base <ref>] 变更影响面（默认 origin/main）
+ *   bun run graph:module:deps                    全量：module.{json,mmd,dot,svg}
+ *   bun run graph:module:focus -- <regex> [--depth]  子图：module-focus-<slug>.*
+ *   bun run graph:module:overview [--collapse]   目录级总览：module-overview-<slug>.*
+ *   bun run graph:module:affected [--base <ref>] 变更影响面：module-affected-<slug>.*
  *
- * 通用 flag：`--no-svg` 跳过 dot/svg（全量图 svg 要 ~2.6s）。
+ * 等价于 `bun rules/depcruise/graph.mjs <mode>`；通用 flag：`--no-svg` 跳过 dot/svg（全量 svg 要 ~2.6s）。
+ *
+ * **只提交全量视图的 `module.json` 与 `module.dot`**（见 .gitignore）；其余（`module.mmd`、
+ * `module.svg`、以及全部 `module-*` 子图视图）都是 churn，现场生成。
  *
  * 为什么要有 `focus` / `overview`：全量图（218 模块 / 490 边）无论 mmd 还是 svg 都是
  * 几十个屏幕的量级，人眼读不了；SVG 只解决「能缩放查看」，可读性靠切子图。
@@ -21,7 +24,7 @@ import { mkdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const ROOT = resolve(import.meta.dirname, "../..");
-const OUT = join(ROOT, "rules/depcruise/out");
+const OUT = join(ROOT, "rules/out");
 const CONFIG = join(ROOT, "rules/depcruise/config.mjs");
 const DEPCRUISE = join(ROOT, "node_modules/.bin/depcruise");
 
@@ -85,32 +88,48 @@ function summarize(jsonFile) {
   }
 }
 
-/** 各模式：sources 是传给 depcruise 的路径，extra 是额外 flag。 */
+/** 把任意字符串（focus 的 regex、overview 的折叠前缀、affected 的 base ref）压成文件名安全的 slug。 */
+function slug(s) {
+  const t = String(s)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40)
+    .replace(/-+$/g, "");
+  return t || "all";
+}
+
+/** 各模式：name 是产物文件名前缀（全量视图是 `module`，其余都带 `module-` 前缀）。 */
+const MODES = {
+  deps: () => ({ name: "module", sources: ["src"], extra: [] }),
+  focus: ({ focus, depth }) => ({
+    name: `module-focus-${slug(focus)}`,
+    sources: ["src"],
+    extra: ["-F", focus, "--focus-depth", depth],
+  }),
+  overview: ({ collapse }) => ({
+    name: `module-overview-${slug(collapse)}`,
+    sources: ["src"],
+    extra: ["-S", collapse],
+  }),
+  affected: ({ base }) => ({
+    name: `module-affected-${slug(base)}`,
+    sources: ["src", "scripts", "rules"],
+    extra: ["--affected", base],
+  }),
+};
+
 function plan({ mode, positional, flags }) {
-  const depth = flags.depth ?? "1";
-  switch (mode) {
-    case "deps":
-      return { name: "deps", sources: ["src"], extra: [] };
-    case "focus": {
-      const focus = positional[0];
-      if (!focus) throw new Error("用法：graph.mjs focus <regex> [--depth 1]");
-      return { name: "focus", sources: ["src"], extra: ["-F", focus, "--focus-depth", depth] };
-    }
-    case "overview":
-      return {
-        name: "overview",
-        sources: ["src"],
-        extra: ["-S", flags.collapse ?? "^src/[^/]+/"],
-      };
-    case "affected":
-      return {
-        name: "affected",
-        sources: ["src", "scripts", "rules"],
-        extra: ["--affected", flags.base ?? "origin/main"],
-      };
-    default:
-      throw new Error(`未知模式 ${mode}（可选：deps / focus / overview / affected）`);
-  }
+  if (!(mode in MODES))
+    throw new Error(`未知模式 ${mode}（可选：${Object.keys(MODES).join(" / ")}）`);
+  const focus = positional[0];
+  if (mode === "focus" && !focus) throw new Error("用法：graph.mjs focus <regex> [--depth 1]");
+  return MODES[mode]({
+    focus,
+    depth: flags.depth ?? "1",
+    collapse: flags.collapse ?? "^src/[^/]+/",
+    base: flags.base ?? "origin/main",
+  });
 }
 
 const options = parseArgs(process.argv.slice(2));
@@ -126,7 +145,7 @@ if (options.flags["no-svg"] !== undefined && options.flags["no-svg"] !== "false"
 }
 
 const summary = summarize(join(OUT, `${name}.json`));
-console.log(`depcruise ${options.mode} → ${summary ?? "(no json)"}`);
+console.log(`depcruise ${options.mode} → ${name}  ${summary ?? "(no json)"}`);
 for (const file of written) {
   const { size } = statSync(file);
   console.log(`  ${file.replace(`${ROOT}/`, "")}  ${(size / 1024).toFixed(1)} KB`);

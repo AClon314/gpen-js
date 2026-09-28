@@ -1,11 +1,11 @@
 /**
- * dependency-cruiser —— 模块级依赖图（与 `rules/exec-flows/` 的函数级调用图互补）。
+ * dependency-cruiser —— 模块级依赖图（与 `rules/out/func.json` 的函数级调用图互补）。
  *
  * 关键点：`reporterOptions.mermaid.minify = false`。
  * depcruise 默认对节点名做压缩（节点 id 变成 `1W` 这类位置序号），插一个模块就会
  * 让后面所有 id 重编号，整张 `.mmd` 无法 git diff。关掉后节点 id 由模块路径派生
  * （`src_lib_components_workspace_GpenWorkspace_svelte`），新增模块只多两行。
- * 详见 `rules/depcruise/README.md`。
+ * 详见 `rules/depcruise/README.md`。产物写在 `rules/out/module.*`（只提交全量的 json/dot）。
  */
 export default {
   options: {

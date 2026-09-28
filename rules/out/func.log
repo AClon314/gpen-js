@@ -33,11 +33,10 @@ Ignoring module @codemirror/view@6.43.12:dist/index.js
 Ignoring module dockview@8.2.0:dist/package/main.esm.mjs
 Ignoring module penpal@8.0.1:dist/penpal.js
 Ignoring module flatbuffers@25.9.23:js/flatbuffers.js
-Analyzed packages: 13, modules: 162, functions: 1717, code size main: 989KB, dependencies: 0KB
-Call edges function->function: 2238, call->function: 2450
-Calls with zero or one callee: 3148/5038 (62.49%), multiple: 60/5038 (1.19%), native or external: 1830/5038 (36.32%)
-Functions with zero callers: 317/1717 (18.46%), reachable functions: 1395/1717 (81.25%)
-Analysis time: 1611ms, memory usage: 190MB (without --gc)
-Analysis errors: 0, warnings: 127 (show all with --warnings-unsupported)
-Call graph written to rules/exec-flows/callgraph.html
-Call graph written to rules/exec-flows/callgraph.json
+Analyzed packages: 13, modules: 162, functions: 1722, code size main: 991KB, dependencies: 0KB
+Call edges function->function: 2248, call->function: 2460
+Calls with zero or one callee: 3157/4841 (65.21%), multiple: 61/4841 (1.26%), native or external: 1623/4841 (33.53%)
+Functions with zero callers: 314/1722 (18.23%), reachable functions: 1421/1722 (82.52%)
+Analysis errors: 0, warnings: 129 (show all with --warnings-unsupported)
+Call graph written to ./rules/out/func.html
+Call graph written to ./rules/out/func.json

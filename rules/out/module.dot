@@ -1,0 +1,714 @@
+strict digraph "dependency-cruiser output"{
+    rankdir="LR" splines="true" overlap="false" nodesep="0.16" ranksep="0.18" fontname="Helvetica-bold" fontsize="9" style="rounded,bold,filled" fillcolor="#ffffff" compound="true"
+    node [shape="box" style="rounded, filled" height="0.2" color="black" fillcolor="#ffffcc" fontcolor="black" fontname="Helvetica" fontsize="9"]
+    edge [arrowhead="normal" arrowsize="0.6" penwidth="2.0" color="#00000033" fontname="Helvetica" fontsize="9"]
+
+    subgraph "cluster_$app" {label="$app" "$app/paths" [label=<paths> tooltip="paths" ] }
+    subgraph "cluster_$app" {label="$app" "$app/state" [label=<state> tooltip="state" ] }
+    "async_hooks" [label=<async_hooks> tooltip="async_hooks" URL="https://nodejs.org/api/async_hooks.html" color="grey" fontcolor="grey"]
+    subgraph "cluster_gpen-protocol" {label="gpen-protocol" "gpen-protocol/flatbuffers" [label=<flatbuffers> tooltip="flatbuffers" ] }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/@codemirror" {label="@codemirror" subgraph "cluster_node_modules/@codemirror/commands" {label="commands" subgraph "cluster_node_modules/@codemirror/commands/dist" {label="dist" "node_modules/@codemirror/commands/dist/index.cjs" [label=<index.cjs> tooltip="index.cjs" URL="https://www.npmjs.com/package/@codemirror/commands" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/@codemirror" {label="@codemirror" subgraph "cluster_node_modules/@codemirror/state" {label="state" subgraph "cluster_node_modules/@codemirror/state/dist" {label="dist" "node_modules/@codemirror/state/dist/index.cjs" [label=<index.cjs> tooltip="index.cjs" URL="https://www.npmjs.com/package/@codemirror/state" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/@codemirror" {label="@codemirror" subgraph "cluster_node_modules/@codemirror/view" {label="view" subgraph "cluster_node_modules/@codemirror/view/dist" {label="dist" "node_modules/@codemirror/view/dist/index.cjs" [label=<index.cjs> tooltip="index.cjs" URL="https://www.npmjs.com/package/@codemirror/view" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/@spectrum-web-components" {label="@spectrum-web-components" subgraph "cluster_node_modules/@spectrum-web-components/color-area" {label="color-area" "node_modules/@spectrum-web-components/color-area/sp-color-area.js" [label=<sp-color-area.js> tooltip="sp-color-area.js" URL="https://www.npmjs.com/package/@spectrum-web-components/color-area" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/@spectrum-web-components" {label="@spectrum-web-components" subgraph "cluster_node_modules/@spectrum-web-components/color-field" {label="color-field" "node_modules/@spectrum-web-components/color-field/sp-color-field.js" [label=<sp-color-field.js> tooltip="sp-color-field.js" URL="https://www.npmjs.com/package/@spectrum-web-components/color-field" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/@spectrum-web-components" {label="@spectrum-web-components" subgraph "cluster_node_modules/@spectrum-web-components/color-slider" {label="color-slider" "node_modules/@spectrum-web-components/color-slider/sp-color-slider.js" [label=<sp-color-slider.js> tooltip="sp-color-slider.js" URL="https://www.npmjs.com/package/@spectrum-web-components/color-slider" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/@spectrum-web-components" {label="@spectrum-web-components" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow" {label="icons-workflow" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow/icons" {label="icons" "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-brush.js" [label=<sp-icon-brush.js> tooltip="sp-icon-brush.js" URL="https://www.npmjs.com/package/@spectrum-web-components/icons-workflow" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/@spectrum-web-components" {label="@spectrum-web-components" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow" {label="icons-workflow" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow/icons" {label="icons" "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-chevron-down.js" [label=<sp-icon-chevron-down.js> tooltip="sp-icon-chevron-down.js" URL="https://www.npmjs.com/package/@spectrum-web-components/icons-workflow" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/@spectrum-web-components" {label="@spectrum-web-components" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow" {label="icons-workflow" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow/icons" {label="icons" "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-chevron-right.js" [label=<sp-icon-chevron-right.js> tooltip="sp-icon-chevron-right.js" URL="https://www.npmjs.com/package/@spectrum-web-components/icons-workflow" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/@spectrum-web-components" {label="@spectrum-web-components" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow" {label="icons-workflow" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow/icons" {label="icons" "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-close.js" [label=<sp-icon-close.js> tooltip="sp-icon-close.js" URL="https://www.npmjs.com/package/@spectrum-web-components/icons-workflow" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/@spectrum-web-components" {label="@spectrum-web-components" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow" {label="icons-workflow" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow/icons" {label="icons" "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-color-fill.js" [label=<sp-icon-color-fill.js> tooltip="sp-icon-color-fill.js" URL="https://www.npmjs.com/package/@spectrum-web-components/icons-workflow" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/@spectrum-web-components" {label="@spectrum-web-components" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow" {label="icons-workflow" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow/icons" {label="icons" "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-cursor-click.js" [label=<sp-icon-cursor-click.js> tooltip="sp-icon-cursor-click.js" URL="https://www.npmjs.com/package/@spectrum-web-components/icons-workflow" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/@spectrum-web-components" {label="@spectrum-web-components" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow" {label="icons-workflow" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow/icons" {label="icons" "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-erase.js" [label=<sp-icon-erase.js> tooltip="sp-icon-erase.js" URL="https://www.npmjs.com/package/@spectrum-web-components/icons-workflow" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/@spectrum-web-components" {label="@spectrum-web-components" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow" {label="icons-workflow" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow/icons" {label="icons" "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-eyedropper.js" [label=<sp-icon-eyedropper.js> tooltip="sp-icon-eyedropper.js" URL="https://www.npmjs.com/package/@spectrum-web-components/icons-workflow" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/@spectrum-web-components" {label="@spectrum-web-components" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow" {label="icons-workflow" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow/icons" {label="icons" "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-fast-forward.js" [label=<sp-icon-fast-forward.js> tooltip="sp-icon-fast-forward.js" URL="https://www.npmjs.com/package/@spectrum-web-components/icons-workflow" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/@spectrum-web-components" {label="@spectrum-web-components" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow" {label="icons-workflow" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow/icons" {label="icons" "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-lasso-select.js" [label=<sp-icon-lasso-select.js> tooltip="sp-icon-lasso-select.js" URL="https://www.npmjs.com/package/@spectrum-web-components/icons-workflow" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/@spectrum-web-components" {label="@spectrum-web-components" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow" {label="icons-workflow" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow/icons" {label="icons" "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-layers.js" [label=<sp-icon-layers.js> tooltip="sp-icon-layers.js" URL="https://www.npmjs.com/package/@spectrum-web-components/icons-workflow" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/@spectrum-web-components" {label="@spectrum-web-components" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow" {label="icons-workflow" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow/icons" {label="icons" "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-maximize.js" [label=<sp-icon-maximize.js> tooltip="sp-icon-maximize.js" URL="https://www.npmjs.com/package/@spectrum-web-components/icons-workflow" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/@spectrum-web-components" {label="@spectrum-web-components" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow" {label="icons-workflow" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow/icons" {label="icons" "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-minimize.js" [label=<sp-icon-minimize.js> tooltip="sp-icon-minimize.js" URL="https://www.npmjs.com/package/@spectrum-web-components/icons-workflow" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/@spectrum-web-components" {label="@spectrum-web-components" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow" {label="icons-workflow" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow/icons" {label="icons" "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-more.js" [label=<sp-icon-more.js> tooltip="sp-icon-more.js" URL="https://www.npmjs.com/package/@spectrum-web-components/icons-workflow" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/@spectrum-web-components" {label="@spectrum-web-components" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow" {label="icons-workflow" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow/icons" {label="icons" "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-move.js" [label=<sp-icon-move.js> tooltip="sp-icon-move.js" URL="https://www.npmjs.com/package/@spectrum-web-components/icons-workflow" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/@spectrum-web-components" {label="@spectrum-web-components" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow" {label="icons-workflow" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow/icons" {label="icons" "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-play.js" [label=<sp-icon-play.js> tooltip="sp-icon-play.js" URL="https://www.npmjs.com/package/@spectrum-web-components/icons-workflow" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/@spectrum-web-components" {label="@spectrum-web-components" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow" {label="icons-workflow" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow/icons" {label="icons" "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-redo.js" [label=<sp-icon-redo.js> tooltip="sp-icon-redo.js" URL="https://www.npmjs.com/package/@spectrum-web-components/icons-workflow" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/@spectrum-web-components" {label="@spectrum-web-components" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow" {label="icons-workflow" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow/icons" {label="icons" "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-rewind.js" [label=<sp-icon-rewind.js> tooltip="sp-icon-rewind.js" URL="https://www.npmjs.com/package/@spectrum-web-components/icons-workflow" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/@spectrum-web-components" {label="@spectrum-web-components" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow" {label="icons-workflow" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow/icons" {label="icons" "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-selection.js" [label=<sp-icon-selection.js> tooltip="sp-icon-selection.js" URL="https://www.npmjs.com/package/@spectrum-web-components/icons-workflow" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/@spectrum-web-components" {label="@spectrum-web-components" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow" {label="icons-workflow" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow/icons" {label="icons" "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-settings.js" [label=<sp-icon-settings.js> tooltip="sp-icon-settings.js" URL="https://www.npmjs.com/package/@spectrum-web-components/icons-workflow" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/@spectrum-web-components" {label="@spectrum-web-components" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow" {label="icons-workflow" subgraph "cluster_node_modules/@spectrum-web-components/icons-workflow/icons" {label="icons" "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-undo.js" [label=<sp-icon-undo.js> tooltip="sp-icon-undo.js" URL="https://www.npmjs.com/package/@spectrum-web-components/icons-workflow" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/@spectrum-web-components" {label="@spectrum-web-components" subgraph "cluster_node_modules/@spectrum-web-components/theme" {label="theme" "node_modules/@spectrum-web-components/theme/scale-medium.js" [label=<scale-medium.js> tooltip="scale-medium.js" URL="https://www.npmjs.com/package/@spectrum-web-components/theme" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/@spectrum-web-components" {label="@spectrum-web-components" subgraph "cluster_node_modules/@spectrum-web-components/theme" {label="theme" "node_modules/@spectrum-web-components/theme/sp-theme.js" [label=<sp-theme.js> tooltip="sp-theme.js" URL="https://www.npmjs.com/package/@spectrum-web-components/theme" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/@spectrum-web-components" {label="@spectrum-web-components" subgraph "cluster_node_modules/@spectrum-web-components/theme" {label="theme" "node_modules/@spectrum-web-components/theme/theme-dark.js" [label=<theme-dark.js> tooltip="theme-dark.js" URL="https://www.npmjs.com/package/@spectrum-web-components/theme" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/@spectrum-web-components" {label="@spectrum-web-components" subgraph "cluster_node_modules/@spectrum-web-components/theme" {label="theme" "node_modules/@spectrum-web-components/theme/theme-light.js" [label=<theme-light.js> tooltip="theme-light.js" URL="https://www.npmjs.com/package/@spectrum-web-components/theme" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/dockview" {label="dockview" subgraph "cluster_node_modules/dockview/dist" {label="dist" subgraph "cluster_node_modules/dockview/dist/package" {label="package" "node_modules/dockview/dist/package/main.cjs.js" [label=<main.cjs.js> tooltip="main.cjs.js" URL="https://www.npmjs.com/package/dockview" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/dockview" {label="dockview" subgraph "cluster_node_modules/dockview/dist" {label="dist" subgraph "cluster_node_modules/dockview/dist/styles" {label="styles" "node_modules/dockview/dist/styles/dockview.css" [label=<dockview.css> tooltip="dockview.css" URL="https://www.npmjs.com/package/dockview" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/flatbuffers" {label="flatbuffers" subgraph "cluster_node_modules/flatbuffers/js" {label="js" "node_modules/flatbuffers/js/flatbuffers.js" [label=<flatbuffers.js> tooltip="flatbuffers.js" URL="https://www.npmjs.com/package/flatbuffers" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } }
+    subgraph "cluster_node_modules" {label="node_modules" subgraph "cluster_node_modules/svelte" {label="svelte" subgraph "cluster_node_modules/svelte/src" {label="src" "node_modules/svelte/src/index-client.js" [label=<index-client.js> tooltip="index-client.js" URL="https://www.npmjs.com/package/svelte" shape="folder" fillcolor="#c40b0a1a" fontcolor="#c40b0a"] } } }
+    "penpal" [label=<penpal> tooltip="penpal" ]
+    subgraph "cluster_src" {label="src" "src/app.css" [label=<app.css> tooltip="app.css" URL="src/app.css" ] }
+    subgraph "cluster_src" {label="src" "src/app.d.ts" [label=<app.d.ts> tooltip="app.d.ts" URL="src/app.d.ts" fillcolor="#ccffcc"] }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/embed" {label="embed" "src/embed/index.ts" [label=<index.ts> tooltip="index.ts" URL="src/embed/index.ts" fillcolor="#ddfeff"] } }
+    "src/embed/index.ts" -> "src/app.css"
+    "src/embed/index.ts" -> "src/lib/themes/theme.svelte.ts"
+    "src/embed/index.ts" -> "src/lib/components/contextMenu/ContextMenu.svelte"
+    "src/embed/index.ts" -> "src/lib/components/GpenOverlay.svelte"
+    "src/embed/index.ts" -> "node_modules/svelte/src/index-client.js" [penwidth="1.0"]
+    subgraph "cluster_src" {label="src" "src/hooks.client.ts" [label=<hooks.client.ts> tooltip="hooks.client.ts" URL="src/hooks.client.ts" fillcolor="#ddfeff"] }
+    "src/hooks.client.ts" -> "src/lib/components/GpenPanel.web.svelte"
+    subgraph "cluster_src" {label="src" "src/hooks.server.ts" [label=<hooks.server.ts> tooltip="hooks.server.ts" URL="src/hooks.server.ts" fillcolor="#ddfeff"] }
+    "src/hooks.server.ts" -> "src/lib/paraglide/runtime.js"
+    "src/hooks.server.ts" -> "src/lib/paraglide/server.js"
+    subgraph "cluster_src" {label="src" "src/hooks.ts" [label=<hooks.ts> tooltip="hooks.ts" URL="src/hooks.ts" fillcolor="#ddfeff"] }
+    "src/hooks.ts" -> "src/lib/paraglide/runtime.js"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/assets" {label="assets" "src/lib/assets/favicon.svg" [label=<favicon.svg> tooltip="favicon.svg" URL="src/lib/assets/favicon.svg" ] } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/bindings" {label="bindings" subgraph "cluster_src/lib/bindings/shell" {label="shell" "src/lib/bindings/shell/symlink.ts" [label=<symlink.ts> tooltip="symlink.ts" URL="src/lib/bindings/shell/symlink.ts" fillcolor="#ddfeff"] } } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/bindings" {label="bindings" subgraph "cluster_src/lib/bindings/storage" {label="storage" "src/lib/bindings/storage/index.ts" [label=<index.ts> tooltip="index.ts" URL="src/lib/bindings/storage/index.ts" fillcolor="#ddfeff"] } } } }
+    "src/lib/bindings/storage/index.ts" -> "src/lib/bindings/storage/objects/blob.ts"
+    "src/lib/bindings/storage/index.ts" -> "src/lib/bindings/storage/objects/gpenBinary.ts" [arrowhead="inv"]
+    "src/lib/bindings/storage/index.ts" -> "src/lib/bindings/storage/objects/kv.ts"
+    "src/lib/bindings/storage/index.ts" -> "src/lib/bindings/storage/objects/kvJson.ts" [arrowhead="inv"]
+    "src/lib/bindings/storage/index.ts" -> "src/lib/bindings/storage/objects/opfs.ts" [arrowhead="inv"]
+    "src/lib/bindings/storage/index.ts" -> "src/lib/bindings/storage/objects/sync.ts" [arrowhead="inv"]
+    "src/lib/bindings/storage/index.ts" -> "src/lib/bindings/storage/objects/tabBusBlob.ts" [arrowhead="inv"]
+    "src/lib/bindings/storage/index.ts" -> "src/lib/bindings/storage/targets/browser.ts"
+    "src/lib/bindings/storage/index.ts" -> "src/lib/bindings/storage/targets/monkey.ts"
+    "src/lib/bindings/storage/index.ts" -> "src/lib/bindings/storage/targets/vscode.ts"
+    "src/lib/bindings/storage/index.ts" -> "src/lib/bindings/storage/targets/website.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/bindings" {label="bindings" subgraph "cluster_src/lib/bindings/storage" {label="storage" subgraph "cluster_src/lib/bindings/storage/objects" {label="objects" "src/lib/bindings/storage/objects/blob.ts" [label=<blob.ts> tooltip="blob.ts" URL="src/lib/bindings/storage/objects/blob.ts" fillcolor="#ddfeff"] } } } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/bindings" {label="bindings" subgraph "cluster_src/lib/bindings/storage" {label="storage" subgraph "cluster_src/lib/bindings/storage/objects" {label="objects" "src/lib/bindings/storage/objects/gpenBinary.ts" [label=<gpenBinary.ts> tooltip="gpenBinary.ts" URL="src/lib/bindings/storage/objects/gpenBinary.ts" fillcolor="#ddfeff"] } } } } }
+    "src/lib/bindings/storage/objects/gpenBinary.ts" -> "src/lib/protocol/codec.ts"
+    "src/lib/bindings/storage/objects/gpenBinary.ts" -> "src/lib/bindings/storage/objects/blob.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/bindings" {label="bindings" subgraph "cluster_src/lib/bindings/storage" {label="storage" subgraph "cluster_src/lib/bindings/storage/objects" {label="objects" "src/lib/bindings/storage/objects/kv.ts" [label=<kv.ts> tooltip="kv.ts" URL="src/lib/bindings/storage/objects/kv.ts" fillcolor="#ddfeff"] } } } } }
+    "src/lib/bindings/storage/objects/kv.ts" -> "src/lib/bindings/storage/objects/kvJson.ts"
+    "src/lib/bindings/storage/objects/kv.ts" -> "src/lib/bindings/storage/objects/kvRuntime.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/bindings" {label="bindings" subgraph "cluster_src/lib/bindings/storage" {label="storage" subgraph "cluster_src/lib/bindings/storage/objects" {label="objects" "src/lib/bindings/storage/objects/kvJson.ts" [label=<kvJson.ts> tooltip="kvJson.ts" URL="src/lib/bindings/storage/objects/kvJson.ts" fillcolor="#ddfeff"] } } } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/bindings" {label="bindings" subgraph "cluster_src/lib/bindings/storage" {label="storage" subgraph "cluster_src/lib/bindings/storage/objects" {label="objects" "src/lib/bindings/storage/objects/kvRuntime.ts" [label=<kvRuntime.ts> tooltip="kvRuntime.ts" URL="src/lib/bindings/storage/objects/kvRuntime.ts" fillcolor="#ddfeff"] } } } } }
+    "src/lib/bindings/storage/objects/kvRuntime.ts" -> "src/lib/bindings/storage/objects/kvJson.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/bindings" {label="bindings" subgraph "cluster_src/lib/bindings/storage" {label="storage" subgraph "cluster_src/lib/bindings/storage/objects" {label="objects" "src/lib/bindings/storage/objects/opfs.ts" [label=<opfs.ts> tooltip="opfs.ts" URL="src/lib/bindings/storage/objects/opfs.ts" fillcolor="#ddfeff"] } } } } }
+    "src/lib/bindings/storage/objects/opfs.ts" -> "src/lib/crossTabBus/index.ts"
+    "src/lib/bindings/storage/objects/opfs.ts" -> "src/lib/error.ts"
+    "src/lib/bindings/storage/objects/opfs.ts" -> "src/lib/bindings/storage/objects/blob.ts"
+    "src/lib/bindings/storage/objects/opfs.ts" -> "src/lib/bindings/storage/objects/tabBusBlob.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/bindings" {label="bindings" subgraph "cluster_src/lib/bindings/storage" {label="storage" subgraph "cluster_src/lib/bindings/storage/objects" {label="objects" "src/lib/bindings/storage/objects/sync.ts" [label=<sync.ts> tooltip="sync.ts" URL="src/lib/bindings/storage/objects/sync.ts" fillcolor="#ddfeff"] } } } } }
+    "src/lib/bindings/storage/objects/sync.ts" -> "src/lib/bindings/storage/objects/blob.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/bindings" {label="bindings" subgraph "cluster_src/lib/bindings/storage" {label="storage" subgraph "cluster_src/lib/bindings/storage/objects" {label="objects" "src/lib/bindings/storage/objects/tabBusBlob.ts" [label=<tabBusBlob.ts> tooltip="tabBusBlob.ts" URL="src/lib/bindings/storage/objects/tabBusBlob.ts" fillcolor="#ddfeff"] } } } } }
+    "src/lib/bindings/storage/objects/tabBusBlob.ts" -> "src/lib/error.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/bindings" {label="bindings" subgraph "cluster_src/lib/bindings/storage" {label="storage" subgraph "cluster_src/lib/bindings/storage/targets" {label="targets" "src/lib/bindings/storage/targets/browser.ts" [label=<browser.ts> tooltip="browser.ts" URL="src/lib/bindings/storage/targets/browser.ts" fillcolor="#ddfeff"] } } } } }
+    "src/lib/bindings/storage/targets/browser.ts" -> "src/lib/bindings/storage/objects/blob.ts"
+    "src/lib/bindings/storage/targets/browser.ts" -> "src/lib/bindings/storage/objects/kv.ts"
+    "src/lib/bindings/storage/targets/browser.ts" -> "src/lib/bindings/storage/objects/opfs.ts"
+    "src/lib/bindings/storage/targets/browser.ts" -> "src/lib/bindings/storage/targets/website.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/bindings" {label="bindings" subgraph "cluster_src/lib/bindings/storage" {label="storage" subgraph "cluster_src/lib/bindings/storage/targets" {label="targets" "src/lib/bindings/storage/targets/monkey.ts" [label=<monkey.ts> tooltip="monkey.ts" URL="src/lib/bindings/storage/targets/monkey.ts" fillcolor="#ddfeff"] } } } } }
+    "src/lib/bindings/storage/targets/monkey.ts" -> "src/lib/bindings/storage/objects/blob.ts"
+    "src/lib/bindings/storage/targets/monkey.ts" -> "src/lib/bindings/storage/objects/kv.ts"
+    "src/lib/bindings/storage/targets/monkey.ts" -> "src/lib/bindings/storage/objects/opfs.ts"
+    "src/lib/bindings/storage/targets/monkey.ts" -> "src/lib/bindings/storage/targets/website.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/bindings" {label="bindings" subgraph "cluster_src/lib/bindings/storage" {label="storage" subgraph "cluster_src/lib/bindings/storage/targets" {label="targets" "src/lib/bindings/storage/targets/vscode.ts" [label=<vscode.ts> tooltip="vscode.ts" URL="src/lib/bindings/storage/targets/vscode.ts" fillcolor="#ddfeff"] } } } } }
+    "src/lib/bindings/storage/targets/vscode.ts" -> "src/lib/bindings/storage/objects/blob.ts"
+    "src/lib/bindings/storage/targets/vscode.ts" -> "src/lib/bindings/storage/objects/kv.ts"
+    "src/lib/bindings/storage/targets/vscode.ts" -> "src/lib/bindings/storage/targets/vscodeBridge.ts"
+    "src/lib/bindings/storage/targets/vscode.ts" -> "src/lib/bindings/storage/targets/vscodeFs.ts"
+    "src/lib/bindings/storage/targets/vscode.ts" -> "src/lib/bindings/storage/targets/vscodeTypes.ts" [arrowhead="inv"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/bindings" {label="bindings" subgraph "cluster_src/lib/bindings/storage" {label="storage" subgraph "cluster_src/lib/bindings/storage/targets" {label="targets" "src/lib/bindings/storage/targets/vscodeBridge.ts" [label=<vscodeBridge.ts> tooltip="vscodeBridge.ts" URL="src/lib/bindings/storage/targets/vscodeBridge.ts" fillcolor="#ddfeff"] } } } } }
+    "src/lib/bindings/storage/targets/vscodeBridge.ts" -> "src/lib/bindings/storage/targets/vscodeTypes.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/bindings" {label="bindings" subgraph "cluster_src/lib/bindings/storage" {label="storage" subgraph "cluster_src/lib/bindings/storage/targets" {label="targets" "src/lib/bindings/storage/targets/vscodeFs.ts" [label=<vscodeFs.ts> tooltip="vscodeFs.ts" URL="src/lib/bindings/storage/targets/vscodeFs.ts" fillcolor="#ddfeff"] } } } } }
+    "src/lib/bindings/storage/targets/vscodeFs.ts" -> "src/lib/bindings/storage/objects/blob.ts"
+    "src/lib/bindings/storage/targets/vscodeFs.ts" -> "src/lib/bindings/storage/targets/vscodeJson.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/bindings" {label="bindings" subgraph "cluster_src/lib/bindings/storage" {label="storage" subgraph "cluster_src/lib/bindings/storage/targets" {label="targets" "src/lib/bindings/storage/targets/vscodeJson.ts" [label=<vscodeJson.ts> tooltip="vscodeJson.ts" URL="src/lib/bindings/storage/targets/vscodeJson.ts" fillcolor="#ddfeff"] } } } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/bindings" {label="bindings" subgraph "cluster_src/lib/bindings/storage" {label="storage" subgraph "cluster_src/lib/bindings/storage/targets" {label="targets" "src/lib/bindings/storage/targets/vscodeTypes.ts" [label=<vscodeTypes.ts> tooltip="vscodeTypes.ts" URL="src/lib/bindings/storage/targets/vscodeTypes.ts" fillcolor="#ddfeff"] } } } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/bindings" {label="bindings" subgraph "cluster_src/lib/bindings/storage" {label="storage" subgraph "cluster_src/lib/bindings/storage/targets" {label="targets" "src/lib/bindings/storage/targets/website.ts" [label=<website.ts> tooltip="website.ts" URL="src/lib/bindings/storage/targets/website.ts" fillcolor="#ddfeff"] } } } } }
+    "src/lib/bindings/storage/targets/website.ts" -> "src/lib/bindings/storage/objects/blob.ts"
+    "src/lib/bindings/storage/targets/website.ts" -> "src/lib/bindings/storage/objects/kv.ts"
+    "src/lib/bindings/storage/targets/website.ts" -> "src/lib/bindings/storage/objects/opfs.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/bindings" {label="bindings" subgraph "cluster_src/lib/bindings/storage" {label="storage" "src/lib/bindings/storage/types.ts" [label=<types.ts> tooltip="types.ts" URL="src/lib/bindings/storage/types.ts" fillcolor="#ccffcc"] } } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/bindings" {label="bindings" subgraph "cluster_src/lib/bindings/upDownloader" {label="upDownloader" "src/lib/bindings/upDownloader/index.ts" [label=<index.ts> tooltip="index.ts" URL="src/lib/bindings/upDownloader/index.ts" fillcolor="#ddfeff"] } } } }
+    "src/lib/bindings/upDownloader/index.ts" -> "src/lib/bindings/upDownloader/vscode.ts" [arrowhead="inv"]
+    "src/lib/bindings/upDownloader/index.ts" -> "src/lib/bindings/upDownloader/web.ts" [arrowhead="inv"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/bindings" {label="bindings" subgraph "cluster_src/lib/bindings/upDownloader" {label="upDownloader" "src/lib/bindings/upDownloader/vscode.ts" [label=<vscode.ts> tooltip="vscode.ts" URL="src/lib/bindings/upDownloader/vscode.ts" fillcolor="#ddfeff"] } } } }
+    "src/lib/bindings/upDownloader/vscode.ts" -> "src/lib/bindings/shell/symlink.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/bindings" {label="bindings" subgraph "cluster_src/lib/bindings/upDownloader" {label="upDownloader" "src/lib/bindings/upDownloader/web.ts" [label=<web.ts> tooltip="web.ts" URL="src/lib/bindings/upDownloader/web.ts" fillcolor="#ddfeff"] } } } }
+    "src/lib/bindings/upDownloader/web.ts" -> "src/lib/error.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/commands" {label="commands" "src/lib/commands/chord.ts" [label=<chord.ts> tooltip="chord.ts" URL="src/lib/commands/chord.ts" fillcolor="#ddfeff"] } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/commands" {label="commands" "src/lib/commands/commands.ts" [label=<commands.ts> tooltip="commands.ts" URL="src/lib/commands/commands.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/commands/commands.ts" -> "src/lib/predicates.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/commands" {label="commands" "src/lib/commands/keymap.ts" [label=<keymap.ts> tooltip="keymap.ts" URL="src/lib/commands/keymap.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/commands/keymap.ts" -> "src/lib/predicates.ts"
+    "src/lib/commands/keymap.ts" -> "src/lib/commands/chord.ts"
+    "src/lib/commands/keymap.ts" -> "src/lib/commands/commands.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" "src/lib/components/GpenOverlay.svelte" [label=<GpenOverlay.svelte> tooltip="GpenOverlay.svelte" URL="src/lib/components/GpenOverlay.svelte" fillcolor="#febbff"] } } }
+    "src/lib/components/GpenOverlay.svelte" -> "src/lib/components/gpenViewport.ts"
+    "src/lib/components/GpenOverlay.svelte" -> "src/lib/components/gpenWorkspaceState.ts"
+    "src/lib/components/GpenOverlay.svelte" -> "src/lib/components/workspace/GpenWorkspace.svelte"
+    "src/lib/components/GpenOverlay.svelte" -> "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-brush.js" [penwidth="1.0"]
+    "src/lib/components/GpenOverlay.svelte" -> "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-close.js" [penwidth="1.0"]
+    "src/lib/components/GpenOverlay.svelte" -> "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-maximize.js" [penwidth="1.0"]
+    "src/lib/components/GpenOverlay.svelte" -> "src/lib/gestures/index.ts"
+    "src/lib/components/GpenOverlay.svelte" -> "src/lib/instanceId.ts"
+    "src/lib/components/GpenOverlay.svelte" -> "src/lib/visualViewport.ts"
+    "src/lib/components/GpenOverlay.svelte" -> "node_modules/svelte/src/index-client.js" [penwidth="1.0"]
+    "src/lib/components/GpenOverlay.svelte" -> "svelte/internal/client"
+    "src/lib/components/GpenOverlay.svelte" -> "svelte/internal/disclose-version"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" "src/lib/components/GpenPanel.web.svelte" [label=<GpenPanel.web.svelte> tooltip="GpenPanel.web.svelte" URL="src/lib/components/GpenPanel.web.svelte" fillcolor="#febbff"] } } }
+    "src/lib/components/GpenPanel.web.svelte" -> "svelte/internal/client"
+    "src/lib/components/GpenPanel.web.svelte" -> "svelte/internal/disclose-version"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" "src/lib/components/MiniMap.svelte" [label=<MiniMap.svelte> tooltip="MiniMap.svelte" URL="src/lib/components/MiniMap.svelte" fillcolor="#febbff"] } } }
+    "src/lib/components/MiniMap.svelte" -> "src/lib/viewportMap.ts"
+    "src/lib/components/MiniMap.svelte" -> "svelte/internal/client"
+    "src/lib/components/MiniMap.svelte" -> "svelte/internal/disclose-version"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/areas" {label="areas" "src/lib/components/areas/CodeArea.svelte" [label=<CodeArea.svelte> tooltip="CodeArea.svelte" URL="src/lib/components/areas/CodeArea.svelte" fillcolor="#febbff"] } } } }
+    "src/lib/components/areas/CodeArea.svelte" -> "src/lib/components/codeArea/format.ts"
+    "src/lib/components/areas/CodeArea.svelte" -> "src/lib/components/codeArea/source.ts"
+    "src/lib/components/areas/CodeArea.svelte" -> "src/lib/components/widgets/inputs/CodeEditor.svelte"
+    "src/lib/components/areas/CodeArea.svelte" -> "node_modules/svelte/src/index-client.js" [penwidth="1.0"]
+    "src/lib/components/areas/CodeArea.svelte" -> "svelte/internal/client"
+    "src/lib/components/areas/CodeArea.svelte" -> "svelte/internal/disclose-version"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/areas" {label="areas" "src/lib/components/areas/Outliner.svelte" [label=<Outliner.svelte> tooltip="Outliner.svelte" URL="src/lib/components/areas/Outliner.svelte" fillcolor="#febbff"] } } } }
+    "src/lib/components/areas/Outliner.svelte" -> "src/lib/components/areas/outlinerRows.ts"
+    "src/lib/components/areas/Outliner.svelte" -> "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-layers.js" [penwidth="1.0"]
+    "src/lib/components/areas/Outliner.svelte" -> "src/lib/layers/tree/index.ts"
+    "src/lib/components/areas/Outliner.svelte" -> "src/lib/layers/types.ts"
+    "src/lib/components/areas/Outliner.svelte" -> "node_modules/svelte/src/index-client.js" [penwidth="1.0"]
+    "src/lib/components/areas/Outliner.svelte" -> "svelte/internal/client"
+    "src/lib/components/areas/Outliner.svelte" -> "svelte/internal/disclose-version"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/areas" {label="areas" "src/lib/components/areas/PreferenceCard.svelte" [label=<PreferenceCard.svelte> tooltip="PreferenceCard.svelte" URL="src/lib/components/areas/PreferenceCard.svelte" fillcolor="#febbff"] } } } }
+    "src/lib/components/areas/PreferenceCard.svelte" -> "svelte/internal/client"
+    "src/lib/components/areas/PreferenceCard.svelte" -> "svelte/internal/disclose-version"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/areas" {label="areas" "src/lib/components/areas/PreferenceRow.svelte" [label=<PreferenceRow.svelte> tooltip="PreferenceRow.svelte" URL="src/lib/components/areas/PreferenceRow.svelte" fillcolor="#febbff"] } } } }
+    "src/lib/components/areas/PreferenceRow.svelte" -> "svelte/internal/client"
+    "src/lib/components/areas/PreferenceRow.svelte" -> "svelte/internal/disclose-version"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/areas" {label="areas" "src/lib/components/areas/PreferenceSlider.svelte" [label=<PreferenceSlider.svelte> tooltip="PreferenceSlider.svelte" URL="src/lib/components/areas/PreferenceSlider.svelte" fillcolor="#febbff"] } } } }
+    "src/lib/components/areas/PreferenceSlider.svelte" -> "src/lib/components/areas/PreferenceRow.svelte"
+    "src/lib/components/areas/PreferenceSlider.svelte" -> "src/lib/components/widgets/inputs/InputSlider.svelte"
+    "src/lib/components/areas/PreferenceSlider.svelte" -> "svelte/internal/client"
+    "src/lib/components/areas/PreferenceSlider.svelte" -> "svelte/internal/disclose-version"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/areas" {label="areas" "src/lib/components/areas/Preferences.svelte" [label=<Preferences.svelte> tooltip="Preferences.svelte" URL="src/lib/components/areas/Preferences.svelte" fillcolor="#febbff"] } } } }
+    "src/lib/components/areas/Preferences.svelte" -> "src/lib/components/toolbarOps.ts"
+    "src/lib/components/areas/Preferences.svelte" -> "src/lib/components/areas/PreferenceCard.svelte"
+    "src/lib/components/areas/Preferences.svelte" -> "src/lib/components/areas/PreferenceRow.svelte"
+    "src/lib/components/areas/Preferences.svelte" -> "src/lib/components/areas/PreferenceSlider.svelte"
+    "src/lib/components/areas/Preferences.svelte" -> "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-brush.js" [penwidth="1.0"]
+    "src/lib/components/areas/Preferences.svelte" -> "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-color-fill.js" [penwidth="1.0"]
+    "src/lib/components/areas/Preferences.svelte" -> "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-erase.js" [penwidth="1.0"]
+    "src/lib/components/areas/Preferences.svelte" -> "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-settings.js" [penwidth="1.0"]
+    "src/lib/components/areas/Preferences.svelte" -> "src/lib/components/widgets/colors/ColorPicker.svelte"
+    "src/lib/components/areas/Preferences.svelte" -> "src/lib/components/widgets/inputs/SelectRow.svelte"
+    "src/lib/components/areas/Preferences.svelte" -> "gpen-protocol/flatbuffers"
+    "src/lib/components/areas/Preferences.svelte" -> "svelte/internal/client"
+    "src/lib/components/areas/Preferences.svelte" -> "svelte/internal/disclose-version"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/areas" {label="areas" "src/lib/components/areas/Properties.svelte" [label=<Properties.svelte> tooltip="Properties.svelte" URL="src/lib/components/areas/Properties.svelte" fillcolor="#febbff"] } } } }
+    "src/lib/components/areas/Properties.svelte" -> "src/lib/components/toolbarOps.ts"
+    "src/lib/components/areas/Properties.svelte" -> "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-brush.js" [penwidth="1.0"]
+    "src/lib/components/areas/Properties.svelte" -> "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-chevron-down.js" [penwidth="1.0"]
+    "src/lib/components/areas/Properties.svelte" -> "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-chevron-right.js" [penwidth="1.0"]
+    "src/lib/components/areas/Properties.svelte" -> "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-color-fill.js" [penwidth="1.0"]
+    "src/lib/components/areas/Properties.svelte" -> "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-erase.js" [penwidth="1.0"]
+    "src/lib/components/areas/Properties.svelte" -> "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-more.js" [penwidth="1.0"]
+    "src/lib/components/areas/Properties.svelte" -> "src/lib/components/widgets/colors/ColorPicker.svelte"
+    "src/lib/components/areas/Properties.svelte" -> "src/lib/components/widgets/inputs/InputSlider.svelte"
+    "src/lib/components/areas/Properties.svelte" -> "gpen-protocol/flatbuffers"
+    "src/lib/components/areas/Properties.svelte" -> "svelte/internal/client"
+    "src/lib/components/areas/Properties.svelte" -> "svelte/internal/disclose-version"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/areas" {label="areas" "src/lib/components/areas/StatusBar.svelte" [label=<StatusBar.svelte> tooltip="StatusBar.svelte" URL="src/lib/components/areas/StatusBar.svelte" fillcolor="#febbff"] } } } }
+    "src/lib/components/areas/StatusBar.svelte" -> "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-redo.js" [penwidth="1.0"]
+    "src/lib/components/areas/StatusBar.svelte" -> "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-undo.js" [penwidth="1.0"]
+    "src/lib/components/areas/StatusBar.svelte" -> "svelte/internal/client"
+    "src/lib/components/areas/StatusBar.svelte" -> "svelte/internal/disclose-version"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/areas" {label="areas" "src/lib/components/areas/Timeline.svelte" [label=<Timeline.svelte> tooltip="Timeline.svelte" URL="src/lib/components/areas/Timeline.svelte" fillcolor="#febbff"] } } } }
+    "src/lib/components/areas/Timeline.svelte" -> "src/lib/components/areas/timelineTicks.ts"
+    "src/lib/components/areas/Timeline.svelte" -> "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-fast-forward.js" [penwidth="1.0"]
+    "src/lib/components/areas/Timeline.svelte" -> "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-play.js" [penwidth="1.0"]
+    "src/lib/components/areas/Timeline.svelte" -> "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-rewind.js" [penwidth="1.0"]
+    "src/lib/components/areas/Timeline.svelte" -> "svelte/internal/client"
+    "src/lib/components/areas/Timeline.svelte" -> "svelte/internal/disclose-version"
+    "src/lib/components/areas/Timeline.svelte" -> "svelte/internal/flags/legacy"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/areas" {label="areas" "src/lib/components/areas/ToolStrip.svelte" [label=<ToolStrip.svelte> tooltip="ToolStrip.svelte" URL="src/lib/components/areas/ToolStrip.svelte" fillcolor="#febbff"] } } } }
+    "src/lib/components/areas/ToolStrip.svelte" -> "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-brush.js" [penwidth="1.0"]
+    "src/lib/components/areas/ToolStrip.svelte" -> "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-color-fill.js" [penwidth="1.0"]
+    "src/lib/components/areas/ToolStrip.svelte" -> "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-cursor-click.js" [penwidth="1.0"]
+    "src/lib/components/areas/ToolStrip.svelte" -> "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-erase.js" [penwidth="1.0"]
+    "src/lib/components/areas/ToolStrip.svelte" -> "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-eyedropper.js" [penwidth="1.0"]
+    "src/lib/components/areas/ToolStrip.svelte" -> "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-lasso-select.js" [penwidth="1.0"]
+    "src/lib/components/areas/ToolStrip.svelte" -> "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-more.js" [penwidth="1.0"]
+    "src/lib/components/areas/ToolStrip.svelte" -> "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-move.js" [penwidth="1.0"]
+    "src/lib/components/areas/ToolStrip.svelte" -> "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-selection.js" [penwidth="1.0"]
+    "src/lib/components/areas/ToolStrip.svelte" -> "svelte/internal/client"
+    "src/lib/components/areas/ToolStrip.svelte" -> "svelte/internal/disclose-version"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/areas" {label="areas" "src/lib/components/areas/TopBar.svelte" [label=<TopBar.svelte> tooltip="TopBar.svelte" URL="src/lib/components/areas/TopBar.svelte" fillcolor="#febbff"] } } } }
+    "src/lib/components/areas/TopBar.svelte" -> "src/lib/components/contextMenu/contextMenu.svelte.ts"
+    "src/lib/components/areas/TopBar.svelte" -> "src/lib/components/gpenWorkspaceState.ts"
+    "src/lib/components/areas/TopBar.svelte" -> "src/lib/components/menuBar.ts"
+    "src/lib/components/areas/TopBar.svelte" -> "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-brush.js" [penwidth="1.0"]
+    "src/lib/components/areas/TopBar.svelte" -> "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-chevron-down.js" [penwidth="1.0"]
+    "src/lib/components/areas/TopBar.svelte" -> "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-close.js" [penwidth="1.0"]
+    "src/lib/components/areas/TopBar.svelte" -> "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-minimize.js" [penwidth="1.0"]
+    "src/lib/components/areas/TopBar.svelte" -> "node_modules/@spectrum-web-components/icons-workflow/icons/sp-icon-settings.js" [penwidth="1.0"]
+    "src/lib/components/areas/TopBar.svelte" -> "node_modules/svelte/src/index-client.js" [penwidth="1.0"]
+    "src/lib/components/areas/TopBar.svelte" -> "svelte/internal/client"
+    "src/lib/components/areas/TopBar.svelte" -> "svelte/internal/disclose-version"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/areas" {label="areas" "src/lib/components/areas/Viewport.svelte" [label=<Viewport.svelte> tooltip="Viewport.svelte" URL="src/lib/components/areas/Viewport.svelte" fillcolor="#febbff"] } } } }
+    "src/lib/components/areas/Viewport.svelte" -> "src/lib/components/MiniMap.svelte"
+    "src/lib/components/areas/Viewport.svelte" -> "src/lib/components/toolbarOps.ts"
+    "src/lib/components/areas/Viewport.svelte" -> "src/lib/layers/strokeOps.ts"
+    "src/lib/components/areas/Viewport.svelte" -> "src/lib/scenel/strokeCanvas.ts"
+    "src/lib/components/areas/Viewport.svelte" -> "src/lib/visualViewport.ts"
+    "src/lib/components/areas/Viewport.svelte" -> "node_modules/svelte/src/index-client.js" [penwidth="1.0"]
+    "src/lib/components/areas/Viewport.svelte" -> "svelte/internal/client"
+    "src/lib/components/areas/Viewport.svelte" -> "svelte/internal/disclose-version"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/areas" {label="areas" "src/lib/components/areas/outlinerRows.ts" [label=<outlinerRows.ts> tooltip="outlinerRows.ts" URL="src/lib/components/areas/outlinerRows.ts" fillcolor="#ddfeff"] } } } }
+    "src/lib/components/areas/outlinerRows.ts" -> "src/lib/layers/tree/index.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/areas" {label="areas" "src/lib/components/areas/panel.css" [label=<panel.css> tooltip="panel.css" URL="src/lib/components/areas/panel.css" ] } } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/areas" {label="areas" "src/lib/components/areas/timelineTicks.ts" [label=<timelineTicks.ts> tooltip="timelineTicks.ts" URL="src/lib/components/areas/timelineTicks.ts" fillcolor="#ddfeff"] } } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/codeArea" {label="codeArea" "src/lib/components/codeArea/format.ts" [label=<format.ts> tooltip="format.ts" URL="src/lib/components/codeArea/format.ts" fillcolor="#ddfeff"] } } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/codeArea" {label="codeArea" "src/lib/components/codeArea/internalState.ts" [label=<internalState.ts> tooltip="internalState.ts" URL="src/lib/components/codeArea/internalState.ts" fillcolor="#ddfeff"] } } } }
+    "src/lib/components/codeArea/internalState.ts" -> "src/lib/components/contextMenu/contextMenu.svelte.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/codeArea" {label="codeArea" "src/lib/components/codeArea/panels.ts" [label=<panels.ts> tooltip="panels.ts" URL="src/lib/components/codeArea/panels.ts" fillcolor="#ddfeff"] } } } }
+    "src/lib/components/codeArea/panels.ts" -> "src/lib/components/codeArea/source.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/codeArea" {label="codeArea" "src/lib/components/codeArea/source.ts" [label=<source.ts> tooltip="source.ts" URL="src/lib/components/codeArea/source.ts" fillcolor="#ddfeff"] } } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/contextMenu" {label="contextMenu" "src/lib/components/contextMenu/ContextMenu.svelte" [label=<ContextMenu.svelte> tooltip="ContextMenu.svelte" URL="src/lib/components/contextMenu/ContextMenu.svelte" fillcolor="#febbff"] } } } }
+    "src/lib/components/contextMenu/ContextMenu.svelte" -> "src/lib/components/gpenPreferencesState.svelte.ts"
+    "src/lib/components/contextMenu/ContextMenu.svelte" -> "src/lib/components/contextMenu/contextMenu.svelte.ts"
+    "src/lib/components/contextMenu/ContextMenu.svelte" -> "src/lib/components/contextMenu/menuKeyboard.ts"
+    "src/lib/components/contextMenu/ContextMenu.svelte" -> "src/lib/components/contextMenu/menuModel.ts"
+    "src/lib/components/contextMenu/ContextMenu.svelte" -> "src/lib/components/contextMenu/menuPosition.ts"
+    "src/lib/components/contextMenu/ContextMenu.svelte" -> "src/lib/commands/commands.ts"
+    "src/lib/components/contextMenu/ContextMenu.svelte" -> "node_modules/svelte/src/index-client.js" [penwidth="1.0"]
+    "src/lib/components/contextMenu/ContextMenu.svelte" -> "svelte/internal/client"
+    "src/lib/components/contextMenu/ContextMenu.svelte" -> "svelte/internal/disclose-version"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/contextMenu" {label="contextMenu" "src/lib/components/contextMenu/contextMenu.svelte.ts" [label=<contextMenu.svelte.ts> tooltip="contextMenu.svelte.ts" URL="src/lib/components/contextMenu/contextMenu.svelte.ts" fillcolor="#ddfeff"] } } } }
+    "src/lib/components/contextMenu/contextMenu.svelte.ts" -> "src/lib/visualViewport.ts"
+    "src/lib/components/contextMenu/contextMenu.svelte.ts" -> "src/lib/components/workspaceZoom.ts"
+    "src/lib/components/contextMenu/contextMenu.svelte.ts" -> "src/lib/components/contextMenu/menuPosition.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/contextMenu" {label="contextMenu" "src/lib/components/contextMenu/menuKeyboard.ts" [label=<menuKeyboard.ts> tooltip="menuKeyboard.ts" URL="src/lib/components/contextMenu/menuKeyboard.ts" fillcolor="#ddfeff"] } } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/contextMenu" {label="contextMenu" "src/lib/components/contextMenu/menuModel.ts" [label=<menuModel.ts> tooltip="menuModel.ts" URL="src/lib/components/contextMenu/menuModel.ts" fillcolor="#ddfeff"] } } } }
+    "src/lib/components/contextMenu/menuModel.ts" -> "src/lib/commands/commands.ts"
+    "src/lib/components/contextMenu/menuModel.ts" -> "src/lib/predicates.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/contextMenu" {label="contextMenu" "src/lib/components/contextMenu/menuPosition.ts" [label=<menuPosition.ts> tooltip="menuPosition.ts" URL="src/lib/components/contextMenu/menuPosition.ts" fillcolor="#ddfeff"] } } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" "src/lib/components/gpenDocumentSession.svelte.ts" [label=<gpenDocumentSession.svelte.ts> tooltip="gpenDocumentSession.svelte.ts" URL="src/lib/components/gpenDocumentSession.svelte.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/components/gpenDocumentSession.svelte.ts" -> "src/lib/bindings/storage/index.ts"
+    "src/lib/components/gpenDocumentSession.svelte.ts" -> "src/lib/history.ts"
+    "src/lib/components/gpenDocumentSession.svelte.ts" -> "src/lib/layers/layerOps.ts"
+    "src/lib/components/gpenDocumentSession.svelte.ts" -> "src/lib/layers/strokeOps.ts"
+    "src/lib/components/gpenDocumentSession.svelte.ts" -> "src/lib/protocol/defaults.ts"
+    "src/lib/components/gpenDocumentSession.svelte.ts" -> "src/lib/components/gpenPreferencesState.svelte.ts"
+    "src/lib/components/gpenDocumentSession.svelte.ts" -> "src/lib/components/toolbarOps.ts"
+    "src/lib/components/gpenDocumentSession.svelte.ts" -> "gpen-protocol/flatbuffers"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" "src/lib/components/gpenPreferences.ts" [label=<gpenPreferences.ts> tooltip="gpenPreferences.ts" URL="src/lib/components/gpenPreferences.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/components/gpenPreferences.ts" -> "src/lib/bindings/storage/index.ts"
+    "src/lib/components/gpenPreferences.ts" -> "src/lib/components/gpenWorkspaceState.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" "src/lib/components/gpenPreferencesState.svelte.ts" [label=<gpenPreferencesState.svelte.ts> tooltip="gpenPreferencesState.svelte.ts" URL="src/lib/components/gpenPreferencesState.svelte.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/components/gpenPreferencesState.svelte.ts" -> "src/lib/components/gpenPreferences.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" "src/lib/components/gpenViewport.ts" [label=<gpenViewport.ts> tooltip="gpenViewport.ts" URL="src/lib/components/gpenViewport.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/components/gpenViewport.ts" -> "src/lib/visualViewport.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" "src/lib/components/gpenWorkspaceState.ts" [label=<gpenWorkspaceState.ts> tooltip="gpenWorkspaceState.ts" URL="src/lib/components/gpenWorkspaceState.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/components/gpenWorkspaceState.ts" -> "src/lib/bindings/storage/index.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" "src/lib/components/menuBar.ts" [label=<menuBar.ts> tooltip="menuBar.ts" URL="src/lib/components/menuBar.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/components/menuBar.ts" -> "src/lib/components/workspaceCommands.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" "src/lib/components/toolbarOps.ts" [label=<toolbarOps.ts> tooltip="toolbarOps.ts" URL="src/lib/components/toolbarOps.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/components/toolbarOps.ts" -> "src/lib/layers/strokeOps.ts"
+    "src/lib/components/toolbarOps.ts" -> "gpen-protocol/flatbuffers"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/widgets" {label="widgets" "src/lib/components/widgets/Prop.svelte" [label=<Prop.svelte> tooltip="Prop.svelte" URL="src/lib/components/widgets/Prop.svelte" fillcolor="#febbff"] } } } }
+    "src/lib/components/widgets/Prop.svelte" -> "svelte/internal/client"
+    "src/lib/components/widgets/Prop.svelte" -> "svelte/internal/disclose-version"
+    "src/lib/components/widgets/Prop.svelte" -> "svelte/internal/flags/legacy"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/widgets" {label="widgets" subgraph "cluster_src/lib/components/widgets/colors" {label="colors" "src/lib/components/widgets/colors/ColorPicker.svelte" [label=<ColorPicker.svelte> tooltip="ColorPicker.svelte" URL="src/lib/components/widgets/colors/ColorPicker.svelte" fillcolor="#febbff"] } } } } }
+    "src/lib/components/widgets/colors/ColorPicker.svelte" -> "node_modules/@spectrum-web-components/color-area/sp-color-area.js" [penwidth="1.0"]
+    "src/lib/components/widgets/colors/ColorPicker.svelte" -> "node_modules/@spectrum-web-components/color-field/sp-color-field.js" [penwidth="1.0"]
+    "src/lib/components/widgets/colors/ColorPicker.svelte" -> "node_modules/@spectrum-web-components/color-slider/sp-color-slider.js" [penwidth="1.0"]
+    "src/lib/components/widgets/colors/ColorPicker.svelte" -> "src/lib/components/widgets/colors/SpectrumTheme.svelte"
+    "src/lib/components/widgets/colors/ColorPicker.svelte" -> "svelte/internal/client"
+    "src/lib/components/widgets/colors/ColorPicker.svelte" -> "svelte/internal/disclose-version"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/widgets" {label="widgets" subgraph "cluster_src/lib/components/widgets/colors" {label="colors" "src/lib/components/widgets/colors/SpectrumTheme.svelte" [label=<SpectrumTheme.svelte> tooltip="SpectrumTheme.svelte" URL="src/lib/components/widgets/colors/SpectrumTheme.svelte" fillcolor="#febbff"] } } } } }
+    "src/lib/components/widgets/colors/SpectrumTheme.svelte" -> "node_modules/@spectrum-web-components/theme/scale-medium.js" [penwidth="1.0"]
+    "src/lib/components/widgets/colors/SpectrumTheme.svelte" -> "node_modules/@spectrum-web-components/theme/sp-theme.js" [penwidth="1.0"]
+    "src/lib/components/widgets/colors/SpectrumTheme.svelte" -> "node_modules/@spectrum-web-components/theme/theme-dark.js" [penwidth="1.0"]
+    "src/lib/components/widgets/colors/SpectrumTheme.svelte" -> "node_modules/@spectrum-web-components/theme/theme-light.js" [penwidth="1.0"]
+    "src/lib/components/widgets/colors/SpectrumTheme.svelte" -> "svelte/internal/client"
+    "src/lib/components/widgets/colors/SpectrumTheme.svelte" -> "svelte/internal/disclose-version"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/widgets" {label="widgets" subgraph "cluster_src/lib/components/widgets/inputs" {label="inputs" "src/lib/components/widgets/inputs/CodeEditor.svelte" [label=<CodeEditor.svelte> tooltip="CodeEditor.svelte" URL="src/lib/components/widgets/inputs/CodeEditor.svelte" fillcolor="#febbff"] } } } } }
+    "src/lib/components/widgets/inputs/CodeEditor.svelte" -> "src/lib/components/widgets/inputs/codeEditorView.ts"
+    "src/lib/components/widgets/inputs/CodeEditor.svelte" -> "node_modules/@codemirror/commands/dist/index.cjs" [penwidth="1.0"]
+    "src/lib/components/widgets/inputs/CodeEditor.svelte" -> "node_modules/@codemirror/state/dist/index.cjs" [penwidth="1.0"]
+    "src/lib/components/widgets/inputs/CodeEditor.svelte" -> "node_modules/@codemirror/view/dist/index.cjs" [penwidth="1.0"]
+    "src/lib/components/widgets/inputs/CodeEditor.svelte" -> "node_modules/svelte/src/index-client.js" [penwidth="1.0"]
+    "src/lib/components/widgets/inputs/CodeEditor.svelte" -> "svelte/internal/client"
+    "src/lib/components/widgets/inputs/CodeEditor.svelte" -> "svelte/internal/disclose-version"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/widgets" {label="widgets" subgraph "cluster_src/lib/components/widgets/inputs" {label="inputs" "src/lib/components/widgets/inputs/Input.svelte" [label=<Input.svelte> tooltip="Input.svelte" URL="src/lib/components/widgets/inputs/Input.svelte" fillcolor="#febbff"] } } } } }
+    "src/lib/components/widgets/inputs/Input.svelte" -> "src/lib/components/widgets/inputs/InputSlider.svelte"
+    "src/lib/components/widgets/inputs/Input.svelte" -> "svelte/internal/client"
+    "src/lib/components/widgets/inputs/Input.svelte" -> "svelte/internal/disclose-version"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/widgets" {label="widgets" subgraph "cluster_src/lib/components/widgets/inputs" {label="inputs" "src/lib/components/widgets/inputs/InputNumber.svelte" [label=<InputNumber.svelte> tooltip="InputNumber.svelte" URL="src/lib/components/widgets/inputs/InputNumber.svelte" fillcolor="#febbff"] } } } } }
+    "src/lib/components/widgets/inputs/InputNumber.svelte" -> "src/lib/components/contextMenu/contextMenu.svelte.ts"
+    "src/lib/components/widgets/inputs/InputNumber.svelte" -> "src/lib/inputs/numericCaret.ts"
+    "src/lib/components/widgets/inputs/InputNumber.svelte" -> "src/lib/inputs/units.ts"
+    "src/lib/components/widgets/inputs/InputNumber.svelte" -> "node_modules/svelte/src/index-client.js" [penwidth="1.0"]
+    "src/lib/components/widgets/inputs/InputNumber.svelte" -> "svelte/internal/client"
+    "src/lib/components/widgets/inputs/InputNumber.svelte" -> "svelte/internal/disclose-version"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/widgets" {label="widgets" subgraph "cluster_src/lib/components/widgets/inputs" {label="inputs" "src/lib/components/widgets/inputs/InputSlider.svelte" [label=<InputSlider.svelte> tooltip="InputSlider.svelte" URL="src/lib/components/widgets/inputs/InputSlider.svelte" fillcolor="#febbff"] } } } } }
+    "src/lib/components/widgets/inputs/InputSlider.svelte" -> "src/lib/components/widgets/inputs/InputNumber.svelte"
+    "src/lib/components/widgets/inputs/InputSlider.svelte" -> "src/lib/inputs/numericCaret.ts"
+    "src/lib/components/widgets/inputs/InputSlider.svelte" -> "src/lib/inputs/numericScrub.ts"
+    "src/lib/components/widgets/inputs/InputSlider.svelte" -> "node_modules/svelte/src/index-client.js" [penwidth="1.0"]
+    "src/lib/components/widgets/inputs/InputSlider.svelte" -> "svelte/internal/client"
+    "src/lib/components/widgets/inputs/InputSlider.svelte" -> "svelte/internal/disclose-version"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/widgets" {label="widgets" subgraph "cluster_src/lib/components/widgets/inputs" {label="inputs" "src/lib/components/widgets/inputs/SelectRow.svelte" [label=<SelectRow.svelte> tooltip="SelectRow.svelte" URL="src/lib/components/widgets/inputs/SelectRow.svelte" fillcolor="#febbff"] } } } } }
+    "src/lib/components/widgets/inputs/SelectRow.svelte" -> "svelte/internal/client"
+    "src/lib/components/widgets/inputs/SelectRow.svelte" -> "svelte/internal/disclose-version"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/widgets" {label="widgets" subgraph "cluster_src/lib/components/widgets/inputs" {label="inputs" "src/lib/components/widgets/inputs/codeEditorView.ts" [label=<codeEditorView.ts> tooltip="codeEditorView.ts" URL="src/lib/components/widgets/inputs/codeEditorView.ts" fillcolor="#ddfeff"] } } } } }
+    "src/lib/components/widgets/inputs/codeEditorView.ts" -> "node_modules/@codemirror/state/dist/index.cjs" [penwidth="1.0"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/widgets" {label="widgets" subgraph "cluster_src/lib/components/widgets/inputs" {label="inputs" "src/lib/components/widgets/inputs/types.ts" [label=<types.ts> tooltip="types.ts" URL="src/lib/components/widgets/inputs/types.ts" fillcolor="#ccffcc"] } } } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/workspace" {label="workspace" "src/lib/components/workspace/GpenWorkspace.svelte" [label=<GpenWorkspace.svelte> tooltip="GpenWorkspace.svelte" URL="src/lib/components/workspace/GpenWorkspace.svelte" fillcolor="#febbff"] } } } }
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "src/lib/layers/layerAdapter.ts"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "src/lib/layers/layerOps.ts"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "src/lib/layers/layerView.ts"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "src/lib/layers/web.ts"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "src/lib/scenel/index.ts"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "src/lib/components/areas/CodeArea.svelte"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "src/lib/components/areas/Outliner.svelte"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "src/lib/components/areas/panel.css"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "src/lib/components/areas/Preferences.svelte"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "src/lib/components/areas/Properties.svelte"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "src/lib/components/areas/StatusBar.svelte"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "src/lib/components/areas/Timeline.svelte"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "src/lib/components/areas/ToolStrip.svelte"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "src/lib/components/areas/TopBar.svelte"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "src/lib/components/areas/Viewport.svelte"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "src/lib/components/codeArea/internalState.ts"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "src/lib/components/codeArea/panels.ts"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "src/lib/components/codeArea/source.ts"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "src/lib/components/contextMenu/contextMenu.svelte.ts"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "src/lib/components/gpenDocumentSession.svelte.ts"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "src/lib/components/gpenPreferencesState.svelte.ts"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "src/lib/components/gpenViewport.ts"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "src/lib/components/gpenWorkspaceState.ts"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "src/lib/components/workspaceCommands.ts"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "src/lib/components/workspaceZoom.ts"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "src/lib/components/workspace/workspace.css"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "src/lib/components/workspace/workspaceDebug.ts"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "src/lib/components/workspace/workspaceEffects.ts"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "src/lib/components/workspace/workspaceLayout.ts"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "src/lib/components/workspace/workspacePanelLayout.ts"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "src/lib/components/workspace/workspaceProps.svelte.ts"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "src/lib/components/workspace/workspaceTabMenu.ts"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "src/lib/commands/keymap.ts"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "src/lib/themes/dockview.css"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "node_modules/dockview/dist/package/main.cjs.js" [penwidth="1.0"]
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "node_modules/dockview/dist/styles/dockview.css" [penwidth="1.0"]
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "node_modules/svelte/src/index-client.js" [penwidth="1.0"]
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "svelte/internal/client"
+    "src/lib/components/workspace/GpenWorkspace.svelte" -> "svelte/internal/disclose-version"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/workspace" {label="workspace" "src/lib/components/workspace/workspace.css" [label=<workspace.css> tooltip="workspace.css" URL="src/lib/components/workspace/workspace.css" ] } } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/workspace" {label="workspace" "src/lib/components/workspace/workspaceDebug.ts" [label=<workspaceDebug.ts> tooltip="workspaceDebug.ts" URL="src/lib/components/workspace/workspaceDebug.ts" fillcolor="#ddfeff"] } } } }
+    "src/lib/components/workspace/workspaceDebug.ts" -> "src/lib/layers/strokeOps.ts"
+    "src/lib/components/workspace/workspaceDebug.ts" -> "src/lib/components/codeArea/internalState.ts"
+    "src/lib/components/workspace/workspaceDebug.ts" -> "src/lib/components/contextMenu/contextMenu.svelte.ts"
+    "src/lib/components/workspace/workspaceDebug.ts" -> "src/lib/components/gpenDocumentSession.svelte.ts"
+    "src/lib/components/workspace/workspaceDebug.ts" -> "src/lib/components/gpenPreferences.ts"
+    "src/lib/components/workspace/workspaceDebug.ts" -> "src/lib/components/gpenPreferencesState.svelte.ts"
+    "src/lib/components/workspace/workspaceDebug.ts" -> "src/lib/components/gpenWorkspaceState.ts"
+    "src/lib/components/workspace/workspaceDebug.ts" -> "src/lib/visualViewport.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/workspace" {label="workspace" "src/lib/components/workspace/workspaceEffects.ts" [label=<workspaceEffects.ts> tooltip="workspaceEffects.ts" URL="src/lib/components/workspace/workspaceEffects.ts" fillcolor="#ddfeff"] } } } }
+    "src/lib/components/workspace/workspaceEffects.ts" -> "src/lib/components/contextMenu/contextMenu.svelte.ts"
+    "src/lib/components/workspace/workspaceEffects.ts" -> "src/lib/components/workspace/workspaceFloatingDrag.ts"
+    "src/lib/components/workspace/workspaceEffects.ts" -> "src/lib/components/workspace/workspaceFloatingResize.ts"
+    "src/lib/components/workspace/workspaceEffects.ts" -> "src/lib/components/workspace/workspaceSashZoom.ts"
+    "src/lib/components/workspace/workspaceEffects.ts" -> "src/lib/components/workspace/workspaceTabMenu.ts"
+    "src/lib/components/workspace/workspaceEffects.ts" -> "src/lib/visualViewport.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/workspace" {label="workspace" "src/lib/components/workspace/workspaceFloatingDrag.ts" [label=<workspaceFloatingDrag.ts> tooltip="workspaceFloatingDrag.ts" URL="src/lib/components/workspace/workspaceFloatingDrag.ts" fillcolor="#ddfeff"] } } } }
+    "src/lib/components/workspace/workspaceFloatingDrag.ts" -> "src/lib/components/workspace/workspaceFloatingGeometry.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/workspace" {label="workspace" "src/lib/components/workspace/workspaceFloatingGeometry.ts" [label=<workspaceFloatingGeometry.ts> tooltip="workspaceFloatingGeometry.ts" URL="src/lib/components/workspace/workspaceFloatingGeometry.ts" fillcolor="#ddfeff"] } } } }
+    "src/lib/components/workspace/workspaceFloatingGeometry.ts" -> "src/lib/components/workspace/workspaceLayout.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/workspace" {label="workspace" "src/lib/components/workspace/workspaceFloatingResize.ts" [label=<workspaceFloatingResize.ts> tooltip="workspaceFloatingResize.ts" URL="src/lib/components/workspace/workspaceFloatingResize.ts" fillcolor="#ddfeff"] } } } }
+    "src/lib/components/workspace/workspaceFloatingResize.ts" -> "src/lib/components/workspace/workspaceFloatingGeometry.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/workspace" {label="workspace" "src/lib/components/workspace/workspaceLayout.ts" [label=<workspaceLayout.ts> tooltip="workspaceLayout.ts" URL="src/lib/components/workspace/workspaceLayout.ts" fillcolor="#ddfeff"] } } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/workspace" {label="workspace" "src/lib/components/workspace/workspacePanelLayout.ts" [label=<workspacePanelLayout.ts> tooltip="workspacePanelLayout.ts" URL="src/lib/components/workspace/workspacePanelLayout.ts" fillcolor="#ddfeff"] } } } }
+    "src/lib/components/workspace/workspacePanelLayout.ts" -> "src/lib/components/codeArea/panels.ts"
+    "src/lib/components/workspace/workspacePanelLayout.ts" -> "src/lib/components/gpenWorkspaceState.ts"
+    "src/lib/components/workspace/workspacePanelLayout.ts" -> "src/lib/components/workspace/workspaceFloatingGeometry.ts"
+    "src/lib/components/workspace/workspacePanelLayout.ts" -> "src/lib/components/workspace/workspaceLayout.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/workspace" {label="workspace" "src/lib/components/workspace/workspaceProps.svelte.ts" [label=<workspaceProps.svelte.ts> tooltip="workspaceProps.svelte.ts" URL="src/lib/components/workspace/workspaceProps.svelte.ts" fillcolor="#ddfeff"] } } } }
+    "src/lib/components/workspace/workspaceProps.svelte.ts" -> "src/lib/components/codeArea/source.ts"
+    "src/lib/components/workspace/workspaceProps.svelte.ts" -> "src/lib/components/gpenDocumentSession.svelte.ts"
+    "src/lib/components/workspace/workspaceProps.svelte.ts" -> "src/lib/components/gpenPreferencesState.svelte.ts"
+    "src/lib/components/workspace/workspaceProps.svelte.ts" -> "src/lib/components/gpenWorkspaceState.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/workspace" {label="workspace" "src/lib/components/workspace/workspaceSashZoom.ts" [label=<workspaceSashZoom.ts> tooltip="workspaceSashZoom.ts" URL="src/lib/components/workspace/workspaceSashZoom.ts" fillcolor="#ddfeff"] } } } }
+    "src/lib/components/workspace/workspaceSashZoom.ts" -> "src/lib/components/workspace/workspaceFloatingGeometry.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" subgraph "cluster_src/lib/components/workspace" {label="workspace" "src/lib/components/workspace/workspaceTabMenu.ts" [label=<workspaceTabMenu.ts> tooltip="workspaceTabMenu.ts" URL="src/lib/components/workspace/workspaceTabMenu.ts" fillcolor="#ddfeff"] } } } }
+    "src/lib/components/workspace/workspaceTabMenu.ts" -> "src/lib/components/contextMenu/contextMenu.svelte.ts"
+    "src/lib/components/workspace/workspaceTabMenu.ts" -> "gpen-protocol/flatbuffers"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" "src/lib/components/workspaceCommands.ts" [label=<workspaceCommands.ts> tooltip="workspaceCommands.ts" URL="src/lib/components/workspaceCommands.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/components/workspaceCommands.ts" -> "src/lib/commands/commands.ts"
+    "src/lib/components/workspaceCommands.ts" -> "src/lib/commands/keymap.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/components" {label="components" "src/lib/components/workspaceZoom.ts" [label=<workspaceZoom.ts> tooltip="workspaceZoom.ts" URL="src/lib/components/workspaceZoom.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/components/workspaceZoom.ts" -> "src/lib/themes/theme.svelte.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/crossTabBus" {label="crossTabBus" "src/lib/crossTabBus/base.ts" [label=<base.ts> tooltip="base.ts" URL="src/lib/crossTabBus/base.ts" fillcolor="#ddfeff"] } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/crossTabBus" {label="crossTabBus" "src/lib/crossTabBus/createTabBus.ts" [label=<createTabBus.ts> tooltip="createTabBus.ts" URL="src/lib/crossTabBus/createTabBus.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/crossTabBus/createTabBus.ts" -> "src/lib/crossTabBus/crossOriginBus.ts"
+    "src/lib/crossTabBus/createTabBus.ts" -> "src/lib/crossTabBus/sameOriginBus.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/crossTabBus" {label="crossTabBus" "src/lib/crossTabBus/crossOriginBus.ts" [label=<crossOriginBus.ts> tooltip="crossOriginBus.ts" URL="src/lib/crossTabBus/crossOriginBus.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/crossTabBus/crossOriginBus.ts" -> "src/lib/crossTabBus/base.ts"
+    "src/lib/crossTabBus/crossOriginBus.ts" -> "src/lib/crossTabBus/sameOriginBus.ts"
+    "src/lib/crossTabBus/crossOriginBus.ts" -> "penpal"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/crossTabBus" {label="crossTabBus" "src/lib/crossTabBus/index.ts" [label=<index.ts> tooltip="index.ts" URL="src/lib/crossTabBus/index.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/crossTabBus/index.ts" -> "src/lib/crossTabBus/base.ts" [arrowhead="inv"]
+    "src/lib/crossTabBus/index.ts" -> "src/lib/crossTabBus/createTabBus.ts" [arrowhead="inv"]
+    "src/lib/crossTabBus/index.ts" -> "src/lib/crossTabBus/crossOriginBus.ts" [arrowhead="inv"]
+    "src/lib/crossTabBus/index.ts" -> "src/lib/crossTabBus/sameOriginBus.ts" [arrowhead="inv"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/crossTabBus" {label="crossTabBus" "src/lib/crossTabBus/sameOriginBus.ts" [label=<sameOriginBus.ts> tooltip="sameOriginBus.ts" URL="src/lib/crossTabBus/sameOriginBus.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/crossTabBus/sameOriginBus.ts" -> "src/lib/crossTabBus/base.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" "src/lib/error.ts" [label=<error.ts> tooltip="error.ts" URL="src/lib/error.ts" fillcolor="#ddfeff"] } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/gestures" {label="gestures" "src/lib/gestures/draggable.ts" [label=<draggable.ts> tooltip="draggable.ts" URL="src/lib/gestures/draggable.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/gestures/draggable.ts" -> "src/lib/visualViewport.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/gestures" {label="gestures" "src/lib/gestures/index.ts" [label=<index.ts> tooltip="index.ts" URL="src/lib/gestures/index.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/gestures/index.ts" -> "src/lib/gestures/draggable.ts" [arrowhead="inv"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" "src/lib/history.ts" [label=<history.ts> tooltip="history.ts" URL="src/lib/history.ts" fillcolor="#ddfeff"] } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" "src/lib/index.ts" [label=<index.ts> tooltip="index.ts" URL="src/lib/index.ts" fillcolor="#ddfeff"] } }
+    "src/lib/index.ts" -> "src/lib/bindings/shell/symlink.ts" [arrowhead="inv"]
+    "src/lib/index.ts" -> "src/lib/bindings/storage/index.ts" [arrowhead="inv"]
+    "src/lib/index.ts" -> "src/lib/bindings/upDownloader/index.ts" [arrowhead="inv"]
+    "src/lib/index.ts" -> "src/lib/commands/chord.ts" [arrowhead="inv"]
+    "src/lib/index.ts" -> "src/lib/commands/commands.ts" [arrowhead="inv"]
+    "src/lib/index.ts" -> "src/lib/commands/keymap.ts" [arrowhead="inv"]
+    "src/lib/index.ts" -> "src/lib/components/contextMenu/contextMenu.svelte.ts" [arrowhead="inv"]
+    "src/lib/index.ts" -> "src/lib/components/gpenWorkspaceState.ts" [arrowhead="inv"]
+    "src/lib/index.ts" -> "src/lib/crossTabBus/index.ts" [arrowhead="inv"]
+    "src/lib/index.ts" -> "src/lib/error.ts" [arrowhead="inv"]
+    "src/lib/index.ts" -> "src/lib/gestures/index.ts" [arrowhead="inv"]
+    "src/lib/index.ts" -> "src/lib/history.ts" [arrowhead="inv"]
+    "src/lib/index.ts" -> "src/lib/inputs/codemirror/index.ts" [arrowhead="inv"]
+    "src/lib/index.ts" -> "src/lib/inputs/numericCaret.ts" [arrowhead="inv"]
+    "src/lib/index.ts" -> "src/lib/inputs/numericScrub.ts" [arrowhead="inv"]
+    "src/lib/index.ts" -> "src/lib/inputs/units.ts" [arrowhead="inv"]
+    "src/lib/index.ts" -> "src/lib/instanceId.ts" [arrowhead="inv"]
+    "src/lib/index.ts" -> "src/lib/layers/index.ts" [arrowhead="inv"]
+    "src/lib/index.ts" -> "src/lib/predicates.ts" [arrowhead="inv"]
+    "src/lib/index.ts" -> "src/lib/protocol/index.ts" [arrowhead="inv"]
+    "src/lib/index.ts" -> "src/lib/scenel/index.ts" [arrowhead="inv"]
+    "src/lib/index.ts" -> "src/lib/themes/theme.ts" [arrowhead="inv"]
+    "src/lib/index.ts" -> "src/lib/viewportMap.ts" [arrowhead="inv"]
+    "src/lib/index.ts" -> "src/lib/visualViewport.ts" [arrowhead="inv"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/inputs" {label="inputs" "src/lib/inputs/caretDigits.ts" [label=<caretDigits.ts> tooltip="caretDigits.ts" URL="src/lib/inputs/caretDigits.ts" fillcolor="#ddfeff"] } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/inputs" {label="inputs" "src/lib/inputs/caretFormat.ts" [label=<caretFormat.ts> tooltip="caretFormat.ts" URL="src/lib/inputs/caretFormat.ts" fillcolor="#ddfeff"] } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/inputs" {label="inputs" "src/lib/inputs/caretSign.ts" [label=<caretSign.ts> tooltip="caretSign.ts" URL="src/lib/inputs/caretSign.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/inputs/caretSign.ts" -> "src/lib/inputs/caretDigits.ts"
+    "src/lib/inputs/caretSign.ts" -> "src/lib/inputs/caretFormat.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/inputs" {label="inputs" "src/lib/inputs/caretStep.ts" [label=<caretStep.ts> tooltip="caretStep.ts" URL="src/lib/inputs/caretStep.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/inputs/caretStep.ts" -> "src/lib/inputs/caretDigits.ts"
+    "src/lib/inputs/caretStep.ts" -> "src/lib/inputs/caretFormat.ts"
+    "src/lib/inputs/caretStep.ts" -> "src/lib/inputs/caretSign.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/inputs" {label="inputs" subgraph "cluster_src/lib/inputs/codemirror" {label="codemirror" "src/lib/inputs/codemirror/index.ts" [label=<index.ts> tooltip="index.ts" URL="src/lib/inputs/codemirror/index.ts" fillcolor="#ddfeff"] } } } }
+    "src/lib/inputs/codemirror/index.ts" -> "src/lib/inputs/codemirror/numberScrubber.ts" [arrowhead="inv"]
+    "src/lib/inputs/codemirror/index.ts" -> "src/lib/inputs/codemirror/numberStepper.ts" [arrowhead="inv"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/inputs" {label="inputs" subgraph "cluster_src/lib/inputs/codemirror" {label="codemirror" "src/lib/inputs/codemirror/numberScrubber.ts" [label=<numberScrubber.ts> tooltip="numberScrubber.ts" URL="src/lib/inputs/codemirror/numberScrubber.ts" fillcolor="#ddfeff"] } } } }
+    "src/lib/inputs/codemirror/numberScrubber.ts" -> "src/lib/inputs/numericCaret.ts"
+    "src/lib/inputs/codemirror/numberScrubber.ts" -> "src/lib/inputs/numericScrub.ts"
+    "src/lib/inputs/codemirror/numberScrubber.ts" -> "node_modules/@codemirror/view/dist/index.cjs" [penwidth="1.0"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/inputs" {label="inputs" subgraph "cluster_src/lib/inputs/codemirror" {label="codemirror" "src/lib/inputs/codemirror/numberStepper.ts" [label=<numberStepper.ts> tooltip="numberStepper.ts" URL="src/lib/inputs/codemirror/numberStepper.ts" fillcolor="#ddfeff"] } } } }
+    "src/lib/inputs/codemirror/numberStepper.ts" -> "src/lib/inputs/numericCaret.ts"
+    "src/lib/inputs/codemirror/numberStepper.ts" -> "node_modules/@codemirror/state/dist/index.cjs" [penwidth="1.0"]
+    "src/lib/inputs/codemirror/numberStepper.ts" -> "node_modules/@codemirror/view/dist/index.cjs" [penwidth="1.0"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/inputs" {label="inputs" "src/lib/inputs/numericCaret.ts" [label=<numericCaret.ts> tooltip="numericCaret.ts" URL="src/lib/inputs/numericCaret.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/inputs/numericCaret.ts" -> "src/lib/inputs/caretDigits.ts"
+    "src/lib/inputs/numericCaret.ts" -> "src/lib/inputs/caretFormat.ts" [arrowhead="inv"]
+    "src/lib/inputs/numericCaret.ts" -> "src/lib/inputs/caretSign.ts"
+    "src/lib/inputs/numericCaret.ts" -> "src/lib/inputs/caretStep.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/inputs" {label="inputs" "src/lib/inputs/numericScrub.ts" [label=<numericScrub.ts> tooltip="numericScrub.ts" URL="src/lib/inputs/numericScrub.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/inputs/numericScrub.ts" -> "src/lib/inputs/numericCaret.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/inputs" {label="inputs" "src/lib/inputs/units.ts" [label=<units.ts> tooltip="units.ts" URL="src/lib/inputs/units.ts" fillcolor="#ddfeff"] } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" "src/lib/instanceId.ts" [label=<instanceId.ts> tooltip="instanceId.ts" URL="src/lib/instanceId.ts" fillcolor="#ddfeff"] } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/layers" {label="layers" "src/lib/layers/index.ts" [label=<index.ts> tooltip="index.ts" URL="src/lib/layers/index.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/layers/index.ts" -> "src/lib/layers/layerAdapter.ts" [arrowhead="inv"]
+    "src/lib/layers/index.ts" -> "src/lib/layers/layerOps.ts" [arrowhead="inv"]
+    "src/lib/layers/index.ts" -> "src/lib/layers/layerView.ts" [arrowhead="inv"]
+    "src/lib/layers/index.ts" -> "src/lib/layers/strokeOps.ts" [arrowhead="inv"]
+    "src/lib/layers/index.ts" -> "src/lib/layers/tree/index.ts" [arrowhead="inv"]
+    "src/lib/layers/index.ts" -> "src/lib/layers/types.ts" [arrowhead="inv"]
+    "src/lib/layers/index.ts" -> "src/lib/layers/web.ts" [arrowhead="inv"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/layers" {label="layers" "src/lib/layers/layerAdapter.ts" [label=<layerAdapter.ts> tooltip="layerAdapter.ts" URL="src/lib/layers/layerAdapter.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/layers/layerAdapter.ts" -> "src/lib/protocol/codec.ts"
+    "src/lib/layers/layerAdapter.ts" -> "src/lib/protocol/constants.ts"
+    "src/lib/layers/layerAdapter.ts" -> "src/lib/layers/types.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/layers" {label="layers" "src/lib/layers/layerOps.ts" [label=<layerOps.ts> tooltip="layerOps.ts" URL="src/lib/layers/layerOps.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/layers/layerOps.ts" -> "src/lib/protocol/constants.ts"
+    "src/lib/layers/layerOps.ts" -> "src/lib/protocol/defaults.ts"
+    "src/lib/layers/layerOps.ts" -> "gpen-protocol/flatbuffers"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/layers" {label="layers" "src/lib/layers/layerView.ts" [label=<layerView.ts> tooltip="layerView.ts" URL="src/lib/layers/layerView.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/layers/layerView.ts" -> "src/lib/visualViewport.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/layers" {label="layers" "src/lib/layers/strokeCreate.ts" [label=<strokeCreate.ts> tooltip="strokeCreate.ts" URL="src/lib/layers/strokeCreate.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/layers/strokeCreate.ts" -> "gpen-protocol/flatbuffers"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/layers" {label="layers" "src/lib/layers/strokeEdit.ts" [label=<strokeEdit.ts> tooltip="strokeEdit.ts" URL="src/lib/layers/strokeEdit.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/layers/strokeEdit.ts" -> "src/lib/protocol/defaults.ts"
+    "src/lib/layers/strokeEdit.ts" -> "src/lib/layers/strokeCreate.ts"
+    "src/lib/layers/strokeEdit.ts" -> "src/lib/layers/strokeGeometry.ts"
+    "src/lib/layers/strokeEdit.ts" -> "src/lib/layers/strokeQuery.ts"
+    "src/lib/layers/strokeEdit.ts" -> "gpen-protocol/flatbuffers"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/layers" {label="layers" "src/lib/layers/strokeGeometry.ts" [label=<strokeGeometry.ts> tooltip="strokeGeometry.ts" URL="src/lib/layers/strokeGeometry.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/layers/strokeGeometry.ts" -> "gpen-protocol/flatbuffers"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/layers" {label="layers" "src/lib/layers/strokeOps.ts" [label=<strokeOps.ts> tooltip="strokeOps.ts" URL="src/lib/layers/strokeOps.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/layers/strokeOps.ts" -> "src/lib/layers/strokeCreate.ts" [arrowhead="inv"]
+    "src/lib/layers/strokeOps.ts" -> "src/lib/layers/strokeEdit.ts" [arrowhead="inv"]
+    "src/lib/layers/strokeOps.ts" -> "src/lib/layers/strokeGeometry.ts" [arrowhead="inv"]
+    "src/lib/layers/strokeOps.ts" -> "src/lib/layers/strokeQuery.ts" [arrowhead="inv"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/layers" {label="layers" "src/lib/layers/strokeQuery.ts" [label=<strokeQuery.ts> tooltip="strokeQuery.ts" URL="src/lib/layers/strokeQuery.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/layers/strokeQuery.ts" -> "src/lib/protocol/defaults.ts"
+    "src/lib/layers/strokeQuery.ts" -> "gpen-protocol/flatbuffers"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/layers" {label="layers" subgraph "cluster_src/lib/layers/tree" {label="tree" "src/lib/layers/tree/drop.ts" [label=<drop.ts> tooltip="drop.ts" URL="src/lib/layers/tree/drop.ts" fillcolor="#ddfeff"] } } } }
+    "src/lib/layers/tree/drop.ts" -> "src/lib/layers/tree/rows.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/layers" {label="layers" subgraph "cluster_src/lib/layers/tree" {label="tree" "src/lib/layers/tree/dropTarget.ts" [label=<dropTarget.ts> tooltip="dropTarget.ts" URL="src/lib/layers/tree/dropTarget.ts" fillcolor="#ddfeff"] } } } }
+    "src/lib/layers/tree/dropTarget.ts" -> "src/lib/layers/tree/rows.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/layers" {label="layers" subgraph "cluster_src/lib/layers/tree" {label="tree" "src/lib/layers/tree/index.ts" [label=<index.ts> tooltip="index.ts" URL="src/lib/layers/tree/index.ts" fillcolor="#ddfeff"] } } } }
+    "src/lib/layers/tree/index.ts" -> "src/lib/layers/tree/drop.ts" [arrowhead="inv"]
+    "src/lib/layers/tree/index.ts" -> "src/lib/layers/tree/dropTarget.ts" [arrowhead="inv"]
+    "src/lib/layers/tree/index.ts" -> "src/lib/layers/tree/keyboard.ts" [arrowhead="inv"]
+    "src/lib/layers/tree/index.ts" -> "src/lib/layers/tree/rows.ts" [arrowhead="inv"]
+    "src/lib/layers/tree/index.ts" -> "src/lib/layers/tree/search.ts" [arrowhead="inv"]
+    "src/lib/layers/tree/index.ts" -> "src/lib/layers/tree/selection.ts" [arrowhead="inv"]
+    "src/lib/layers/tree/index.ts" -> "src/lib/layers/tree/typeahead.ts" [arrowhead="inv"]
+    "src/lib/layers/tree/index.ts" -> "src/lib/layers/tree/types.ts" [arrowhead="inv"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/layers" {label="layers" subgraph "cluster_src/lib/layers/tree" {label="tree" "src/lib/layers/tree/keyboard.ts" [label=<keyboard.ts> tooltip="keyboard.ts" URL="src/lib/layers/tree/keyboard.ts" fillcolor="#ddfeff"] } } } }
+    "src/lib/layers/tree/keyboard.ts" -> "src/lib/layers/tree/rows.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/layers" {label="layers" subgraph "cluster_src/lib/layers/tree" {label="tree" "src/lib/layers/tree/rows.ts" [label=<rows.ts> tooltip="rows.ts" URL="src/lib/layers/tree/rows.ts" fillcolor="#ddfeff"] } } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/layers" {label="layers" subgraph "cluster_src/lib/layers/tree" {label="tree" "src/lib/layers/tree/search.ts" [label=<search.ts> tooltip="search.ts" URL="src/lib/layers/tree/search.ts" fillcolor="#ddfeff"] } } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/layers" {label="layers" subgraph "cluster_src/lib/layers/tree" {label="tree" "src/lib/layers/tree/selection.ts" [label=<selection.ts> tooltip="selection.ts" URL="src/lib/layers/tree/selection.ts" fillcolor="#ddfeff"] } } } }
+    "src/lib/layers/tree/selection.ts" -> "src/lib/layers/tree/rows.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/layers" {label="layers" subgraph "cluster_src/lib/layers/tree" {label="tree" "src/lib/layers/tree/typeahead.ts" [label=<typeahead.ts> tooltip="typeahead.ts" URL="src/lib/layers/tree/typeahead.ts" fillcolor="#ddfeff"] } } } }
+    "src/lib/layers/tree/typeahead.ts" -> "src/lib/layers/tree/rows.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/layers" {label="layers" subgraph "cluster_src/lib/layers/tree" {label="tree" "src/lib/layers/tree/types.ts" [label=<types.ts> tooltip="types.ts" URL="src/lib/layers/tree/types.ts" fillcolor="#ddfeff"] } } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/layers" {label="layers" "src/lib/layers/types.ts" [label=<types.ts> tooltip="types.ts" URL="src/lib/layers/types.ts" fillcolor="#ddfeff"] } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/layers" {label="layers" "src/lib/layers/web.ts" [label=<web.ts> tooltip="web.ts" URL="src/lib/layers/web.ts" fillcolor="#ddfeff"] } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/paraglide" {label="paraglide" "src/lib/paraglide/messages.d.ts" [label=<messages.d.ts> tooltip="messages.d.ts" URL="src/lib/paraglide/messages.d.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/paraglide/messages.d.ts" -> "src/lib/paraglide/messages/_index.js" [arrowhead="inv"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/paraglide" {label="paraglide" "src/lib/paraglide/messages.js" [label=<messages.js> tooltip="messages.js" URL="src/lib/paraglide/messages.js" ] } } }
+    "src/lib/paraglide/messages.js" -> "src/lib/paraglide/messages/_index.js" [arrowhead="inv"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/paraglide" {label="paraglide" subgraph "cluster_src/lib/paraglide/messages" {label="messages" "src/lib/paraglide/messages/_index.d.ts" [label=<_index.d.ts> tooltip="_index.d.ts" URL="src/lib/paraglide/messages/_index.d.ts" fillcolor="#ccffcc"] } } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/paraglide" {label="paraglide" subgraph "cluster_src/lib/paraglide/messages" {label="messages" "src/lib/paraglide/messages/_index.js" [label=<_index.js> tooltip="_index.js" URL="src/lib/paraglide/messages/_index.js" ] } } } }
+    "src/lib/paraglide/messages/_index.js" -> "src/lib/paraglide/runtime.js"
+    "src/lib/paraglide/messages/_index.js" -> "src/lib/paraglide/messages/en.js"
+    "src/lib/paraglide/messages/_index.js" -> "src/lib/paraglide/messages/zh-cn.js"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/paraglide" {label="paraglide" subgraph "cluster_src/lib/paraglide/messages" {label="messages" "src/lib/paraglide/messages/en.d.ts" [label=<en.d.ts> tooltip="en.d.ts" URL="src/lib/paraglide/messages/en.d.ts" fillcolor="#ccffcc"] } } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/paraglide" {label="paraglide" subgraph "cluster_src/lib/paraglide/messages" {label="messages" "src/lib/paraglide/messages/en.js" [label=<en.js> tooltip="en.js" URL="src/lib/paraglide/messages/en.js" ] } } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/paraglide" {label="paraglide" subgraph "cluster_src/lib/paraglide/messages" {label="messages" "src/lib/paraglide/messages/zh-cn.d.ts" [label=<zh-cn.d.ts> tooltip="zh-cn.d.ts" URL="src/lib/paraglide/messages/zh-cn.d.ts" fillcolor="#ccffcc"] } } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/paraglide" {label="paraglide" subgraph "cluster_src/lib/paraglide/messages" {label="messages" "src/lib/paraglide/messages/zh-cn.js" [label=<zh-cn.js> tooltip="zh-cn.js" URL="src/lib/paraglide/messages/zh-cn.js" ] } } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/paraglide" {label="paraglide" "src/lib/paraglide/registry.d.ts" [label=<registry.d.ts> tooltip="registry.d.ts" URL="src/lib/paraglide/registry.d.ts" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/paraglide" {label="paraglide" "src/lib/paraglide/registry.js" [label=<registry.js> tooltip="registry.js" URL="src/lib/paraglide/registry.js" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/paraglide" {label="paraglide" "src/lib/paraglide/runtime.d.ts" [label=<runtime.d.ts> tooltip="runtime.d.ts" URL="src/lib/paraglide/runtime.d.ts" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/paraglide" {label="paraglide" "src/lib/paraglide/runtime.js" [label=<runtime.js> tooltip="runtime.js" URL="src/lib/paraglide/runtime.js" ] } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/paraglide" {label="paraglide" "src/lib/paraglide/server.d.ts" [label=<server.d.ts> tooltip="server.d.ts" URL="src/lib/paraglide/server.d.ts" fillcolor="#ccffcc"] } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/paraglide" {label="paraglide" "src/lib/paraglide/server.js" [label=<server.js> tooltip="server.js" URL="src/lib/paraglide/server.js" ] } } }
+    "src/lib/paraglide/server.js" -> "src/lib/paraglide/runtime.js"
+    "src/lib/paraglide/server.js" -> "async_hooks" [style="dashed" penwidth="1.0"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" "src/lib/predicates.ts" [label=<predicates.ts> tooltip="predicates.ts" URL="src/lib/predicates.ts" fillcolor="#ddfeff"] } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/protocol" {label="protocol" "src/lib/protocol/codec.ts" [label=<codec.ts> tooltip="codec.ts" URL="src/lib/protocol/codec.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/protocol/codec.ts" -> "node_modules/flatbuffers/js/flatbuffers.js" [penwidth="1.0"]
+    "src/lib/protocol/codec.ts" -> "gpen-protocol/flatbuffers"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/protocol" {label="protocol" "src/lib/protocol/constants.ts" [label=<constants.ts> tooltip="constants.ts" URL="src/lib/protocol/constants.ts" fillcolor="#ddfeff"] } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/protocol" {label="protocol" "src/lib/protocol/defaults.ts" [label=<defaults.ts> tooltip="defaults.ts" URL="src/lib/protocol/defaults.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/protocol/defaults.ts" -> "src/lib/protocol/constants.ts"
+    "src/lib/protocol/defaults.ts" -> "gpen-protocol/flatbuffers"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/protocol" {label="protocol" "src/lib/protocol/index.ts" [label=<index.ts> tooltip="index.ts" URL="src/lib/protocol/index.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/protocol/index.ts" -> "src/lib/protocol/codec.ts" [arrowhead="inv"]
+    "src/lib/protocol/index.ts" -> "src/lib/protocol/constants.ts" [arrowhead="inv"]
+    "src/lib/protocol/index.ts" -> "src/lib/protocol/defaults.ts" [arrowhead="inv"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/scenel" {label="scenel" "src/lib/scenel/index.ts" [label=<index.ts> tooltip="index.ts" URL="src/lib/scenel/index.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/scenel/index.ts" -> "src/lib/scenel/infiniteCanvas.ts" [arrowhead="inv"]
+    "src/lib/scenel/index.ts" -> "src/lib/scenel/strokeCanvas.ts" [arrowhead="inv"]
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/scenel" {label="scenel" "src/lib/scenel/infiniteCanvas.ts" [label=<infiniteCanvas.ts> tooltip="infiniteCanvas.ts" URL="src/lib/scenel/infiniteCanvas.ts" fillcolor="#ddfeff"] } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/scenel" {label="scenel" "src/lib/scenel/strokeCanvas.ts" [label=<strokeCanvas.ts> tooltip="strokeCanvas.ts" URL="src/lib/scenel/strokeCanvas.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/scenel/strokeCanvas.ts" -> "src/lib/visualViewport.ts"
+    "src/lib/scenel/strokeCanvas.ts" -> "gpen-protocol/flatbuffers"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/themes" {label="themes" "src/lib/themes/dockview.css" [label=<dockview.css> tooltip="dockview.css" URL="src/lib/themes/dockview.css" ] } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/themes" {label="themes" "src/lib/themes/theme.svelte.ts" [label=<theme.svelte.ts> tooltip="theme.svelte.ts" URL="src/lib/themes/theme.svelte.ts" fillcolor="#ddfeff"] } } }
+    "src/lib/themes/theme.svelte.ts" -> "src/lib/themes/theme.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" subgraph "cluster_src/lib/themes" {label="themes" "src/lib/themes/theme.ts" [label=<theme.ts> tooltip="theme.ts" URL="src/lib/themes/theme.ts" fillcolor="#ddfeff"] } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" "src/lib/viewportMap.ts" [label=<viewportMap.ts> tooltip="viewportMap.ts" URL="src/lib/viewportMap.ts" fillcolor="#ddfeff"] } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/lib" {label="lib" "src/lib/visualViewport.ts" [label=<visualViewport.ts> tooltip="visualViewport.ts" URL="src/lib/visualViewport.ts" fillcolor="#ddfeff"] } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/routes" {label="routes" "src/routes/+layout.svelte" [label=<+layout.svelte> tooltip="+layout.svelte" URL="src/routes/+layout.svelte" fillcolor="#febbff"] } }
+    "src/routes/+layout.svelte" -> "src/app.css"
+    "src/routes/+layout.svelte" -> "src/lib/assets/favicon.svg"
+    "src/routes/+layout.svelte" -> "src/lib/components/contextMenu/contextMenu.svelte.ts"
+    "src/routes/+layout.svelte" -> "src/lib/components/contextMenu/ContextMenu.svelte"
+    "src/routes/+layout.svelte" -> "src/lib/components/GpenOverlay.svelte"
+    "src/routes/+layout.svelte" -> "src/lib/components/gpenPreferencesState.svelte.ts"
+    "src/routes/+layout.svelte" -> "src/lib/paraglide/runtime.js"
+    "src/routes/+layout.svelte" -> "src/lib/themes/theme.ts"
+    "src/routes/+layout.svelte" -> "src/lib/themes/theme.svelte.ts"
+    "src/routes/+layout.svelte" -> "$app/paths"
+    "src/routes/+layout.svelte" -> "$app/state"
+    "src/routes/+layout.svelte" -> "node_modules/svelte/src/index-client.js" [penwidth="1.0"]
+    "src/routes/+layout.svelte" -> "svelte/internal/client"
+    "src/routes/+layout.svelte" -> "svelte/internal/disclose-version"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/routes" {label="routes" "src/routes/+layout.ts" [label=<+layout.ts> tooltip="+layout.ts" URL="src/routes/+layout.ts" fillcolor="#ccffcc"] } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/routes" {label="routes" "src/routes/+page.svelte" [label=<+page.svelte> tooltip="+page.svelte" URL="src/routes/+page.svelte" fillcolor="#febbff"] } }
+    "src/routes/+page.svelte" -> "$app/paths"
+    "src/routes/+page.svelte" -> "svelte/internal/client"
+    "src/routes/+page.svelte" -> "svelte/internal/disclose-version"
+    "src/routes/+page.svelte" -> "svelte/internal/flags/legacy"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/routes" {label="routes" subgraph "cluster_src/routes/demo" {label="demo" subgraph "cluster_src/routes/demo/_components" {label="_components" "src/routes/demo/_components/DemoBackLink.svelte" [label=<DemoBackLink.svelte> tooltip="DemoBackLink.svelte" URL="src/routes/demo/_components/DemoBackLink.svelte" fillcolor="#febbff"] } } } }
+    "src/routes/demo/_components/DemoBackLink.svelte" -> "$app/paths"
+    "src/routes/demo/_components/DemoBackLink.svelte" -> "svelte/internal/client"
+    "src/routes/demo/_components/DemoBackLink.svelte" -> "svelte/internal/disclose-version"
+    "src/routes/demo/_components/DemoBackLink.svelte" -> "svelte/internal/flags/legacy"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/routes" {label="routes" subgraph "cluster_src/routes/demo" {label="demo" subgraph "cluster_src/routes/demo/_components" {label="_components" "src/routes/demo/_components/DemoStatus.svelte" [label=<DemoStatus.svelte> tooltip="DemoStatus.svelte" URL="src/routes/demo/_components/DemoStatus.svelte" fillcolor="#febbff"] } } } }
+    "src/routes/demo/_components/DemoStatus.svelte" -> "svelte/internal/client"
+    "src/routes/demo/_components/DemoStatus.svelte" -> "svelte/internal/disclose-version"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/routes" {label="routes" subgraph "cluster_src/routes/demo" {label="demo" subgraph "cluster_src/routes/demo/_components" {label="_components" "src/routes/demo/_components/causeMessage.ts" [label=<causeMessage.ts> tooltip="causeMessage.ts" URL="src/routes/demo/_components/causeMessage.ts" fillcolor="#ddfeff"] } } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/routes" {label="routes" subgraph "cluster_src/routes/demo" {label="demo" subgraph "cluster_src/routes/demo/code" {label="code" "src/routes/demo/code/+page.svelte" [label=<+page.svelte> tooltip="+page.svelte" URL="src/routes/demo/code/+page.svelte" fillcolor="#febbff"] } } } }
+    "src/routes/demo/code/+page.svelte" -> "src/routes/demo/code/editors.ts"
+    "src/routes/demo/code/+page.svelte" -> "src/lib/components/widgets/inputs/CodeEditor.svelte"
+    "src/routes/demo/code/+page.svelte" -> "node_modules/svelte/src/index-client.js" [penwidth="1.0"]
+    "src/routes/demo/code/+page.svelte" -> "svelte/internal/client"
+    "src/routes/demo/code/+page.svelte" -> "svelte/internal/disclose-version"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/routes" {label="routes" subgraph "cluster_src/routes/demo" {label="demo" subgraph "cluster_src/routes/demo/code" {label="code" "src/routes/demo/code/editors.ts" [label=<editors.ts> tooltip="editors.ts" URL="src/routes/demo/code/editors.ts" fillcolor="#ddfeff"] } } } }
+    "src/routes/demo/code/editors.ts" -> "node_modules/@codemirror/commands/dist/index.cjs" [penwidth="1.0"]
+    "src/routes/demo/code/editors.ts" -> "node_modules/@codemirror/state/dist/index.cjs" [penwidth="1.0"]
+    "src/routes/demo/code/editors.ts" -> "node_modules/@codemirror/view/dist/index.cjs" [penwidth="1.0"]
+    "src/routes/demo/code/editors.ts" -> "src/lib/inputs/codemirror/numberScrubber.ts"
+    "src/routes/demo/code/editors.ts" -> "src/lib/inputs/codemirror/numberStepper.ts"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/routes" {label="routes" subgraph "cluster_src/routes/demo" {label="demo" subgraph "cluster_src/routes/demo/colors" {label="colors" "src/routes/demo/colors/+page.svelte" [label=<+page.svelte> tooltip="+page.svelte" URL="src/routes/demo/colors/+page.svelte" fillcolor="#febbff"] } } } }
+    "src/routes/demo/colors/+page.svelte" -> "src/lib/components/widgets/colors/ColorPicker.svelte"
+    "src/routes/demo/colors/+page.svelte" -> "svelte/internal/client"
+    "src/routes/demo/colors/+page.svelte" -> "svelte/internal/disclose-version"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/routes" {label="routes" subgraph "cluster_src/routes/demo" {label="demo" subgraph "cluster_src/routes/demo/cross-tab-bus" {label="cross-tab-bus" "src/routes/demo/cross-tab-bus/+page.svelte" [label=<+page.svelte> tooltip="+page.svelte" URL="src/routes/demo/cross-tab-bus/+page.svelte" fillcolor="#febbff"] } } } }
+    "src/routes/demo/cross-tab-bus/+page.svelte" -> "src/routes/demo/_components/causeMessage.ts"
+    "src/routes/demo/cross-tab-bus/+page.svelte" -> "src/routes/demo/_components/DemoBackLink.svelte"
+    "src/routes/demo/cross-tab-bus/+page.svelte" -> "src/routes/demo/_components/DemoStatus.svelte"
+    "src/routes/demo/cross-tab-bus/+page.svelte" -> "src/lib/crossTabBus/index.ts"
+    "src/routes/demo/cross-tab-bus/+page.svelte" -> "node_modules/svelte/src/index-client.js" [penwidth="1.0"]
+    "src/routes/demo/cross-tab-bus/+page.svelte" -> "svelte/internal/client"
+    "src/routes/demo/cross-tab-bus/+page.svelte" -> "svelte/internal/disclose-version"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/routes" {label="routes" subgraph "cluster_src/routes/demo" {label="demo" subgraph "cluster_src/routes/demo/menu" {label="menu" "src/routes/demo/menu/+page.svelte" [label=<+page.svelte> tooltip="+page.svelte" URL="src/routes/demo/menu/+page.svelte" fillcolor="#febbff"] } } } }
+    "src/routes/demo/menu/+page.svelte" -> "src/lib/components/contextMenu/contextMenu.svelte.ts"
+    "src/routes/demo/menu/+page.svelte" -> "node_modules/svelte/src/index-client.js" [penwidth="1.0"]
+    "src/routes/demo/menu/+page.svelte" -> "svelte/internal/client"
+    "src/routes/demo/menu/+page.svelte" -> "svelte/internal/disclose-version"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/routes" {label="routes" subgraph "cluster_src/routes/demo" {label="demo" subgraph "cluster_src/routes/demo/rotate" {label="rotate" "src/routes/demo/rotate/+page.svelte" [label=<+page.svelte> tooltip="+page.svelte" URL="src/routes/demo/rotate/+page.svelte" fillcolor="#febbff"] } } } }
+    "src/routes/demo/rotate/+page.svelte" -> "src/routes/demo/_components/DemoBackLink.svelte"
+    "src/routes/demo/rotate/+page.svelte" -> "src/routes/demo/rotate/gestureAngles.ts"
+    "src/routes/demo/rotate/+page.svelte" -> "svelte/internal/client"
+    "src/routes/demo/rotate/+page.svelte" -> "svelte/internal/disclose-version"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/routes" {label="routes" subgraph "cluster_src/routes/demo" {label="demo" subgraph "cluster_src/routes/demo/rotate" {label="rotate" "src/routes/demo/rotate/gestureAngles.ts" [label=<gestureAngles.ts> tooltip="gestureAngles.ts" URL="src/routes/demo/rotate/gestureAngles.ts" fillcolor="#ddfeff"] } } } }
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/routes" {label="routes" subgraph "cluster_src/routes/demo" {label="demo" subgraph "cluster_src/routes/demo/storage" {label="storage" "src/routes/demo/storage/+page.svelte" [label=<+page.svelte> tooltip="+page.svelte" URL="src/routes/demo/storage/+page.svelte" fillcolor="#febbff"] } } } }
+    "src/routes/demo/storage/+page.svelte" -> "src/routes/demo/_components/causeMessage.ts"
+    "src/routes/demo/storage/+page.svelte" -> "src/routes/demo/_components/DemoBackLink.svelte"
+    "src/routes/demo/storage/+page.svelte" -> "src/routes/demo/_components/DemoStatus.svelte"
+    "src/routes/demo/storage/+page.svelte" -> "src/lib/bindings/storage/index.ts"
+    "src/routes/demo/storage/+page.svelte" -> "src/lib/bindings/upDownloader/index.ts"
+    "src/routes/demo/storage/+page.svelte" -> "node_modules/svelte/src/index-client.js" [penwidth="1.0"]
+    "src/routes/demo/storage/+page.svelte" -> "svelte/internal/client"
+    "src/routes/demo/storage/+page.svelte" -> "svelte/internal/disclose-version"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/routes" {label="routes" subgraph "cluster_src/routes/demo" {label="demo" subgraph "cluster_src/routes/demo/widgets" {label="widgets" "src/routes/demo/widgets/+page.svelte" [label=<+page.svelte> tooltip="+page.svelte" URL="src/routes/demo/widgets/+page.svelte" fillcolor="#febbff"] } } } }
+    "src/routes/demo/widgets/+page.svelte" -> "src/lib/components/widgets/inputs/Input.svelte"
+    "src/routes/demo/widgets/+page.svelte" -> "src/lib/inputs/units.ts"
+    "src/routes/demo/widgets/+page.svelte" -> "svelte/internal/client"
+    "src/routes/demo/widgets/+page.svelte" -> "svelte/internal/disclose-version"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/routes" {label="routes" subgraph "cluster_src/routes/demo" {label="demo" subgraph "cluster_src/routes/demo/zoom" {label="zoom" "src/routes/demo/zoom/+page.svelte" [label=<+page.svelte> tooltip="+page.svelte" URL="src/routes/demo/zoom/+page.svelte" fillcolor="#febbff"] } } } }
+    "src/routes/demo/zoom/+page.svelte" -> "src/routes/demo/_components/DemoBackLink.svelte"
+    "src/routes/demo/zoom/+page.svelte" -> "svelte/internal/client"
+    "src/routes/demo/zoom/+page.svelte" -> "svelte/internal/disclose-version"
+    subgraph "cluster_src" {label="src" subgraph "cluster_src/routes" {label="routes" subgraph "cluster_src/routes/storage-broker" {label="storage-broker" "src/routes/storage-broker/+page.svelte" [label=<+page.svelte> tooltip="+page.svelte" URL="src/routes/storage-broker/+page.svelte" fillcolor="#febbff"] } } }
+    "src/routes/storage-broker/+page.svelte" -> "src/lib/bindings/storage/index.ts"
+    "src/routes/storage-broker/+page.svelte" -> "src/lib/crossTabBus/index.ts"
+    "src/routes/storage-broker/+page.svelte" -> "node_modules/svelte/src/index-client.js" [penwidth="1.0"]
+    "src/routes/storage-broker/+page.svelte" -> "svelte/internal/client"
+    "src/routes/storage-broker/+page.svelte" -> "svelte/internal/disclose-version"
+    subgraph "cluster_svelte" {label="svelte" subgraph "cluster_svelte/internal" {label="internal" "svelte/internal/client" [label=<client> tooltip="client" ] } }
+    subgraph "cluster_svelte" {label="svelte" subgraph "cluster_svelte/internal" {label="internal" "svelte/internal/disclose-version" [label=<disclose-version> tooltip="disclose-version" ] } }
+    subgraph "cluster_svelte" {label="svelte" subgraph "cluster_svelte/internal" {label="internal" subgraph "cluster_svelte/internal/flags" {label="flags" "svelte/internal/flags/legacy" [label=<legacy> tooltip="legacy" ] } } }
+}

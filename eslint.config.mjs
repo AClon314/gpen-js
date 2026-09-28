@@ -23,7 +23,7 @@ export default [
       "**/*.svelte", // Svelte 文件由 svelte-check 负责，@typescript-eslint 无法解析
       "**/*.css",
       "rules/jelly/**", // git submodule：第三方分析器，由上游工具链负责
-      "rules/exec-flows/**", // Jelly 生成物（调用图）
+      "rules/out/**", // 静态分析产物（调用图 / 模块图）
       "tmp/**", // 本地实验/生成物，已被 .gitignore 忽略
     ],
   },
