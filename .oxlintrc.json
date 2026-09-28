@@ -6,7 +6,8 @@
   "plugins": [
     "typescript",
     "unicorn",
-    "oxc"
+    "oxc",
+    "import"
   ],
   "jsPlugins": [
     "./rules/catch-must-return-or-throw.mts"
@@ -22,7 +23,9 @@
     "max-lines-per-function": [
       "warn",
       { "max": 60, "skipBlankLines": true, "skipComments": true }
-    ]
+    ],
+    "import/no-cycle": "error",
+    "import/no-self-import": "error"
   },
   "overrides": [
     {
