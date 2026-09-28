@@ -12,6 +12,7 @@
 | `jelly/` | **git submodule**：Jelly 静态分析器（fork）。 |
 | `exec-flows.mjs` | 运行 Jelly，产出调用图基线的脚本（`bun run exec-flows`）。 |
 | `exec-flows/` | 生成物：`callgraph.json`（提交为基线）、`callgraph.html` 与 `vendor/`（未跟踪）。 |
+| `depcruise/` | dependency-cruiser 配置 + 模块级依赖图脚本（`bun run graph:deps`）；产物 `out/` 未跟踪。详见 `rules/depcruise/README.md`。 |
 
 ## rules/jelly（git submodule）
 
