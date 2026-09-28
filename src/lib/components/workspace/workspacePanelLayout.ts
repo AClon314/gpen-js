@@ -16,7 +16,7 @@
  *    用户拖过的面板宽度根本不会被持久化。
  * 3. **还原要等第一趟 layout**：容器尺寸来自 `visualViewport`，`onMount` 时还没算出来。
  */
-import type { DockviewApi, SerializedDockview } from "dockview";
+import type { DockviewApi, DockviewGroupPanel, SerializedDockview } from "dockview";
 
 import { dropRestoredCodeAreaPanels } from "../codeArea/panels.js";
 import {
@@ -29,7 +29,7 @@ import {
   COLUMN_MINIMUM_WIDTHS,
   minimumColumnWidths,
 } from "./workspaceLayout.js";
-import { floatingLocalBox } from "./workspaceFloatingGeometry.js";
+import { floatingLocalBox, type FloatingLocalBox } from "./workspaceFloatingGeometry.js";
 
 /** 状态栏面板的固定 id。 */
 export const STATUS_BAR_PANEL_ID = "statusbar";
@@ -46,6 +46,32 @@ export const MIN_LAYOUT_DIMENSION = 120;
  */
 export const CHROME_MINIMUM_HEIGHTS = { menu: 28, timeline: 48, statusbar: 22 } as const;
 
+/** 容器可用尺寸（两个方向都 > 0）。 */
+function hasUsableSize(box: { width: number; height: number }): boolean {
+  return box.width > 0 && box.height > 0;
+}
+
+/** 与上次检查的容器尺寸相同（只在这才早退，避免每帧重落位）。 */
+function isSameSize(
+  previous: { width: number; height: number } | undefined,
+  box: { width: number; height: number },
+): boolean {
+  return previous !== undefined && previous.width === box.width && previous.height === box.height;
+}
+
+/** 局部盒是否完整落在容器内（+1 容差）。 */
+function isInsideContainer(
+  local: FloatingLocalBox,
+  box: { width: number; height: number },
+): boolean {
+  return (
+    local.left >= 0 &&
+    local.top >= 0 &&
+    local.left + local.width <= box.width + 1 &&
+    local.top + local.height <= box.height + 1
+  );
+}
+
 /** 面板布局控制器需要的宿主 getter（dockview、工作区状态、容器尺寸、浮窗参数）。 */
 export interface PanelLayoutDeps {
   getDockview(): DockviewApi | undefined;
@@ -60,6 +86,35 @@ export interface PanelLayoutDeps {
   getFloatingPreferred(panelId: string): { width: number; height: number } | undefined;
   /** 浮窗与容器边缘的最小间距（与首次打开时同一个值）。 */
   getFloatingMargin(): number;
+}
+
+/** 浮窗首选尺寸：优先宿主给定，否则退回当前局部尺寸。 */
+function resolvePreferredSize(
+  local: FloatingLocalBox,
+  panelId: string,
+  deps: PanelLayoutDeps,
+): { width: number; height: number } {
+  return deps.getFloatingPreferred(panelId) ?? { width: local.width, height: local.height };
+}
+
+/**
+ * 若该浮窗组装不下容器，返回重算后的 bounds；否则 null
+ * （非浮动 / 无 resize 容器 / 已在容器内都返回 null）。
+ */
+function overflowingFloatingBounds(
+  group: DockviewGroupPanel,
+  container: HTMLElement,
+  box: { width: number; height: number },
+  deps: PanelLayoutDeps,
+): ReturnType<typeof centeredFloatingBounds> | null {
+  if (group.api.location.type !== "floating") return null;
+  const element = group.element.closest<HTMLElement>(".dv-resize-container");
+  if (!element) return null;
+  const local = floatingLocalBox(element, container);
+  if (isInsideContainer(local, box)) return null;
+  const panelId = group.activePanel?.id ?? group.id;
+  const preferred = resolvePreferredSize(local, panelId, deps);
+  return centeredFloatingBounds(box, preferred, deps.getFloatingMargin());
 }
 
 /** 面板布局控制器：默认布局、尺寸约束、快照与浮窗夹取。 */
@@ -311,28 +366,12 @@ export function createPanelLayoutController(deps: PanelLayoutDeps): PanelLayoutC
     const container = deps.getContainer();
     if (!dockview || !container) return;
     const box = { width: container.clientWidth, height: container.clientHeight };
-    if (box.width <= 0 || box.height <= 0) return;
-    const previous = lastReclampSize;
-    if (previous && previous.width === box.width && previous.height === box.height) return;
+    if (!hasUsableSize(box)) return;
+    if (isSameSize(lastReclampSize, box)) return;
     lastReclampSize = { width: box.width, height: box.height };
     for (const group of dockview.groups) {
-      if (group.api.location.type !== "floating") continue;
-      const element = group.element.closest<HTMLElement>(".dv-resize-container");
-      if (!element) continue;
-      const local = floatingLocalBox(element, container);
-      const inside =
-        local.left >= 0 &&
-        local.top >= 0 &&
-        local.left + local.width <= box.width + 1 &&
-        local.top + local.height <= box.height + 1;
-      if (inside) continue;
-      const panelId = group.activePanel?.id ?? group.id;
-      const preferred = deps.getFloatingPreferred(panelId) ?? {
-        width: local.width,
-        height: local.height,
-      };
-      const bounds = centeredFloatingBounds(box, preferred, deps.getFloatingMargin());
-      dockview.addFloatingGroup(group, bounds);
+      const bounds = overflowingFloatingBounds(group, container, box, deps);
+      if (bounds) dockview.addFloatingGroup(group, bounds);
     }
   }
 

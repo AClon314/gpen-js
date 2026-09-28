@@ -46,43 +46,56 @@ function isSettlerCall(n) {
  * 遍历一块代码块（BlockStatement），跳过 AST 元数据字段（parent / range / loc /
  * start / end / type / value / raw）与嵌套函数体。返回是否命中 visitor。
  */
-function walkBlock(node, visitor) {
-  let hit = null;
+/** AST 元数据字段：遍历时跳过，不当作子节点。 */
+const AST_META_KEYS = new Set(["parent", "loc", "range", "start", "end", "type", "value", "raw"]);
 
-  function walk(n) {
-    if (!n || hit) return;
-    if (n !== node && isFunctionNode(n)) {
-      // 嵌套函数：不深入，子函数内的语句不算数
-      return;
-    }
-    if (visitor(n)) {
-      hit = n;
-      return;
-    }
-    for (const key of Object.keys(n)) {
-      if (
-        key === "parent" ||
-        key === "loc" ||
-        key === "range" ||
-        key === "start" ||
-        key === "end" ||
-        key === "type" ||
-        key === "value" ||
-        key === "raw"
-      ) {
-        continue;
-      }
-      const child = n[key];
-      if (Array.isArray(child)) {
-        for (const item of child) walk(item);
-      } else if (child && typeof child === "object" && child.type) {
-        walk(child);
-      }
+/** 一个值的形状像 AST 节点（有 type 字段的对象）。 */
+function isNodeLike(value) {
+  return Boolean(value) && typeof value === "object" && Boolean(value.type);
+}
+
+/** 一个节点的可遍历子值（数组项与对象节点），已剔除元数据字段。 */
+function childValues(node) {
+  const values = [];
+  for (const key of Object.keys(node)) {
+    if (AST_META_KEYS.has(key)) continue;
+    values.push(node[key]);
+  }
+  return values;
+}
+
+/** 把子节点按原 DFS 顺序（逆序入栈）压入栈。 */
+function pushChildNodes(stack, node) {
+  const values = childValues(node);
+  for (let index = values.length - 1; index >= 0; index -= 1) {
+    const child = values[index];
+    if (Array.isArray(child)) {
+      for (let item = child.length - 1; item >= 0; item -= 1) stack.push(child[item]);
+    } else if (isNodeLike(child)) {
+      stack.push(child);
     }
   }
+}
 
-  walk(node);
-  return hit;
+/** 嵌套函数（非根）不深入，子函数内的语句不算数。 */
+function isNestedFunction(root, node) {
+  return node !== root && isFunctionNode(node);
+}
+
+/**
+ * 遍历一块代码块（BlockStatement），跳过 AST 元数据字段（parent / range / loc /
+ * start / end / type / value / raw）与嵌套函数体。返回是否命中 visitor。
+ */
+function walkBlock(node, visitor) {
+  const stack = [node];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (!current) continue;
+    if (isNestedFunction(node, current)) continue;
+    if (visitor(current)) return current;
+    pushChildNodes(stack, current);
+  }
+  return null;
 }
 
 function hasReturnOrThrow(node) {
