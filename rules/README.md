@@ -11,6 +11,7 @@
 | `no-void-catch-return.mjs`       | ESLint type-aware 规则（`.catch()` 回调不得返回 void）。                                                       |
 | `jelly/`                         | **git submodule**：Jelly 静态分析器（fork）。                                                                  |
 | `graph-func.mjs`                 | 跑 Jelly，产出**函数级**调用图（`bun run graph:func:call`）。                                                  |
+| `graph-func-classify.mjs`        | 离线分类**未解析调用点**（`bun run graph:func:classify`）；`graph:func:call` 会链式跑它 → `func-boundaries.json`。 |
 | `graph-func-query.mjs`           | 只读基线 json 的影响面查询（`bun run graph:func:{impact,callers,callees}`）。详见「命令」一节。                |
 | `depcruise/`                     | dependency-cruiser 配置 + **模块级**依赖图脚本（`bun run graph:module:*`）。详见 `rules/depcruise/README.md`。 |
 | `out/`                           | **全部产物**（见下）。                                                                                         |
@@ -21,7 +22,8 @@
 | ---------------------------- | ------------------------------------------------------------------------------- | ----------- |
 | `func.json`                  | **图**：模块、函数、调用/import 边（可视化、影响面查询）                        | ✅ **基线** |
 | `func-calls.json`            | **调用点索引**：调用点位置与 call→function 边（漏洞调用栈、可达性、未解析边界） | ✅ **基线** |
-| `func.log`                   | 与上面两份同一次运行的日志                                                      | ✅ **基线** |
+| `func-boundaries.json`       | **未解析调用点分类**：2185 个无 callee 的调用点 → A/B/C1/C2/D/I/U/9（位置 id 索引） | ✅ **基线** |
+| `func.log`                   | 与上面几份同一次运行的日志（含类别计数）                                        | ✅ **基线** |
 | `module.json` / `module.dot` | 模块级依赖图全量视图（depcruise）                                               | ✅ **基线** |
 | `module.mmd` / `module.svg`  | 同一张图的 mermaid / graphviz 渲染                                              | ❌ churn    |
 | `module-focus-<slug>.*`      | focus 子图（`<slug>` 由 focus regex 派生）                                      | ❌ churn    |
@@ -29,7 +31,7 @@
 | `module-affected-<slug>.*`   | 相对基线 ref 的变更影响面                                                       | ❌ churn    |
 | `func.html` / `func-vendor/` | 调用图可视化（**不内联数据**，运行时 fetch `./func.json`）+ 本地化的前端依赖    | ❌ churn    |
 
-`.gitignore` 用「白名单取反」只放行上面 5 个基线文件（不用 `func-*` 通配——`func.html`
+`.gitignore` 用「白名单取反」只放行上面 6 个基线文件（不用 `func-*` 通配——`func.html`
 并不匹配 `func-*`）。
 
 ### 为什么把调用图拆成两份
@@ -74,8 +76,9 @@ jelly 写的 `time` 字段、`func.log` 里的绝对路径与 `Analysis time:` �
 ## 命令
 
 ```bash
-bun run graph:func:call                            # 函数级调用图 → rules/out/func.json + func-calls.json + func.log + func.html
+bun run graph:func:call                            # 函数级调用图 → rules/out/func.json + func-calls.json + func-boundaries.json + func.log + func.html
 bun run graph:func:call -- --warnings-unsupported  # 额外参数透传给 jelly
+bun run graph:func:classify                        # 只重跑「未解析调用点分类」→ rules/out/func-boundaries.json
 bun run graph:module:deps                          # 模块级全量 → rules/out/module.{json,mmd,dot,svg}
 bun run graph:module:focus -- <regex> [--depth 1]  # 子图：focus 模块 ± N 跳
 bun run graph:module:overview [--collapse <re>]    # 目录级折叠总览（默认 -S '^src/[^/]+/'）
@@ -153,6 +156,35 @@ bun run graph:func:impact -- createEditHistory --depth 3 --json
   它的 `import` 行 / 顶层 `Math.max` 就出现在 `boundaries` 里），所以模块节点被拉进结果集时，
   其顶层调用点同样计入。只有**沿 call 边走不到的模块**（以及不选模块节点时的起点）才确实不在口径内；
 - **同一行有多个调用点会出多条记录**（按调用点计数，不去重）。
+
+### 未解析边界分类（`func-boundaries.json`）
+
+上面查询层的 `boundaries[].kind` 一律是 `"unresolved"`，只能告诉你「这里有个口子」。
+`rules/graph-func-classify.mjs` 用官方 TypeScript checker 在每个调用点的**源码位置**解析
+callee 符号，按符号**声明所在文件**把 2185 个匿名边界逐条归入下表类别，产出
+`rules/out/func-boundaries.json`（提交为基线）——**把匿名边界变成可行动的清单**。
+`graph:func:call` 会链式跑它；只想重算分类（不改调用图）用 `bun run graph:func:classify`。
+
+| 类别 | 含义 | 是否真丢 |
+| --- | --- | --- |
+| `A` | native：JS/DOM 内建（`Math.max` / `push` / `document.createElement` / `console.*` / `Error`），声明在 `node_modules/typescript/lib/*.d.ts` | **不丢**。jelly 面向 Node，DOM 完全没建模——浏览器项目的主要盲区 |
+| `B` | external：第三方依赖（`dockview.getPanel` / CodeMirror 等），声明在其它 `node_modules` | 不丢。`--ignore-dependencies` 是**故意**排除的 |
+| `C1` | 注入 / 回调：声明是 `Parameter` / `PropertySignature` / `MethodSignature` / `BindingElement`（DI 注入点、`Promise` 回调、props） | **语义上静态不可定**，要顺着注入点看 |
+| `C2` | 本仓库函数**真漏**（声明是 `FunctionDeclaration` 等） | ⚠ **单独盯住**——这是分类器存在的意义；当前仅 2 处，都是注入回调的变量（`history.ts` 的 `onEvict?.()`、`menuModel.ts` 的 `label`） |
+| `D` | 仓库外（如 `../gpen-protocol/generated/**`） | 跨仓库生成物，不关心 |
+| `I` | `import` / `require`（模块加载边，不是函数调用） | 不是调用 |
+| `U` | **TS 归类不了**：`.svelte`（TS 不解析）或被 tsconfig 排除的生成物（`src/lib/paraglide/*.js`） | **诚实标 U，不猜**；当前 U=617，其中 438 来自 `.svelte`、179 来自生成物 |
+| `9` | 无符号：`super()`、`x!()`、`(x as F)()` 等动态 / 宏 | 少数动态 |
+
+> 分类器只覆盖**未解析**的调用点（`calls` 减去 `call2fun`，当前 2185 个）；能连出边的
+> 调用点不在其中。别把这张表和 jelly 自报的 `33.53%` native/external 混用（口径不同，
+> 见上一节）。
+
+**它是位置 id 索引、会 churn**：`kinds` 每项是 `[callId, 类别, 符号名]`，`callId` 指
+`func-calls.json` 的调用点索引空间——**源码增删一行就会让后续所有 id 位移**，所以正常改代码
+后它会有较大 diff（不像调用图的边那样局部）。它的定位是「基线快照 + 类别分布回归」：`func.log`
+里记了各 kind 计数，配合基线 diff 能看出「哪类边界在变多」（**C2 变多尤其要警觉**），
+而不是逐条读它。改动分析器 / 依赖后请连跑两次 `graph:func:call` 确认幂等。
 
 ## rules/jelly（git submodule）
 

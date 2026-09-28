@@ -34,6 +34,7 @@
     "health": "bun run health:gate",
     "health:gate": "bun scripts/health-gate.ts",
     "graph:func:call": "node rules/graph-func.mjs",
+    "graph:func:classify": "bun rules/graph-func-classify.mjs && oxfmt --ignore-path=/dev/null --write rules/out/func-boundaries.json",
     "graph:func:impact": "bun rules/graph-func-query.mjs impact",
     "graph:func:callers": "bun rules/graph-func-query.mjs callers",
     "graph:func:callees": "bun rules/graph-func-query.mjs callees",

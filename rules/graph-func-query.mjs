@@ -1,6 +1,6 @@
 /**
  * `graph-func-query` —— 函数级调用图的**选择器解析 + 邻接表 + 遍历查询 + 输出（人类/JSON）
- * + 未解析边界 + CLI**（S2a / S2b / S2c）。
+ * + 未解析边界（带类别）+ CLI**（S2a / S2b / S2c / S3c）。
  *
  * 纯逻辑：
  *
@@ -10,6 +10,8 @@
  *  4. `renderTree()`：人类视图（缩进树 + ⚠ 未解析边界 + 汇总 + 可信度警告）；
  *  5. `buildCallIndex()` / `collectBoundaries()` / `buildResultJson()`：`--json` 契约与
  *     未解析边界（读 `rules/out/func-calls.json`，**只在需要边界时才加载**）。
+ *  6. `loadBoundaryData()`：读 S3b 的 `rules/out/func-boundaries.json`（callId → 类别），
+ *     给边界补 `kind` / `kindLabel` / `symbol`；文件缺失时**优雅降级**成 `kind: "unresolved"`。
  *
  * CLI（`callers` / `callees` / `impact`，`bun rules/graph-func-query.mjs <cmd> <selector> [--depth N] [--json]`）
  * 由文件末尾的 `import.meta.main` 守卫，**导入本模块不会执行 CLI**。
@@ -27,6 +29,9 @@
  *    调用点按**位置包含**归给「最内层」函数（词法嵌套 = 调用发生在哪个函数体内）；
  *    不在任何函数范围内（模块顶层）则归给该文件的模块节点。只报告**结果集合内**节点
  *    拥有的边界，避免把全仓库的噪音倒出来。
+ *  - **边界类别**（S3c）：每个边界带上离线分类（`func-boundaries.json`），人类视图按类别
+ *    汇总；`C2`（本仓库真漏，唯一「本该连上却没连上」的类别）用 `‼` 强标记。
+ *    分类文件缺失/残缺时，缺的那部分退回 `kind: "unresolved"`（不报错、不中断）。
  */
 
 import { readFileSync } from "node:fs";
@@ -40,6 +45,9 @@ export const FUNC_GRAPH_PATH = join(MODULE_DIR, "out", "func.json");
 
 /** 调用点基线路径：`rules/out/func-calls.json`（只在算未解析边界时读）。 */
 export const FUNC_CALLS_PATH = join(MODULE_DIR, "out", "func-calls.json");
+
+/** 未解析调用点分类基线（S3b 产物，S3c 消费）；缺失时优雅降级。 */
+export const FUNC_BOUNDARIES_PATH = join(MODULE_DIR, "out", "func-boundaries.json");
 
 /** 仓库根 = `rules/` 的上一级；读源码行（边界 `text`）时用。 */
 const REPO_ROOT = resolve(MODULE_DIR, "..");
@@ -441,6 +449,12 @@ const DEFAULT_MAX_CHILDREN = 20;
 /** 人类视图里最多列出的未解析边界条数（其余折叠成一行）。 */
 const DEFAULT_MAX_BOUNDARIES = 10;
 
+/** 无分类信息时的显示标签（降级路径）。 */
+const DEFAULT_KIND_LABELS = { unresolved: "未解析" };
+
+/** C2 = 本仓库真漏，是唯一「本该连上却没连上」的类别，用更强的 `‼` 标记。 */
+const REAL_MISS_KIND = "C2";
+
 const DIRECTION_LABELS = {
   callers: "callers 反向可达",
   callees: "callees 正向可达",
@@ -491,18 +505,58 @@ export function renderTree(graph, result, options = {}) {
   return lines.join("\n");
 }
 
-/** 人类视图的 ⚠ 边界行（§4.4）；最多列出 `maxBoundaries` 条，其余折叠。 */
+/** 人类视图的 ⚠/‼ 边界行 + 一行按类别汇总（§4.4 / S3c）；超过 `maxBoundaries` 条则折叠。 */
 function boundaryLines(boundaries, maxBoundaries) {
   if (boundaries.length === 0) return [];
   const cap = Number.isInteger(maxBoundaries) ? Math.max(0, maxBoundaries) : DEFAULT_MAX_BOUNDARIES;
-  const shown = boundaries.slice(0, cap);
-  const lines = shown.map((item) => `⚠ 边界：${item.file}:${item.line} 的 ${item.text} 未解析`);
+  const ordered = [...boundaries].sort(realMissFirst);
+  const shown = ordered.slice(0, cap);
+  const lines = [boundaryKindSummary(boundaries), ...shown.map(boundaryLine)];
   if (boundaries.length > shown.length) {
     lines.push(
       `  … 其余 ${boundaries.length - shown.length} 条边界省略（共 ${boundaries.length} 条）`,
     );
   }
   return lines;
+}
+
+/** 渲染顺序：C2（真漏）提前到最前，保证强标记不会被折叠吃掉；稳定排序保留原顺序。 */
+function realMissFirst(left, right) {
+  return (left.kind === REAL_MISS_KIND ? 0 : 1) - (right.kind === REAL_MISS_KIND ? 0 : 1);
+}
+
+/** 单条边界：未分类保持旧格式（兼容基线），已分类带 `[类别 标签]`，C2 用 `‼`。 */
+function boundaryLine(boundary) {
+  const location = `${boundary.file}:${boundary.line}`;
+  if (boundary.kind === "unresolved") {
+    return `⚠ 边界：${location} 的 ${boundary.text} 未解析`;
+  }
+  const label = boundary.kindLabel ?? DEFAULT_KIND_LABELS[boundary.kind] ?? boundary.kind;
+  const marker = boundary.kind === REAL_MISS_KIND ? "‼" : "⚠";
+  return `${marker} [${boundary.kind} ${label}] ${location} 的 ${boundary.text} 未解析`;
+}
+
+/** `边界按类别：C1×3, A×9, …`；C2 永远排最前，其余按计数降序、同数按类别名升序。 */
+function boundaryKindSummary(boundaries) {
+  const entries = Object.entries(countByKind(boundaries)).sort(compareKindCounts);
+  return `边界按类别：${entries.map(([kind, count]) => `${kind}×${count}`).join(", ")}`;
+}
+
+/** 按 `kind` 计数（边界 / summary 共用）。 */
+function countByKind(boundaries) {
+  const counts = {};
+  for (const boundary of boundaries) {
+    counts[boundary.kind] = (counts[boundary.kind] ?? 0) + 1;
+  }
+  return counts;
+}
+
+function compareKindCounts([leftKind, leftCount], [rightKind, rightCount]) {
+  if (leftKind === REAL_MISS_KIND || rightKind === REAL_MISS_KIND) {
+    if (leftKind !== rightKind) return leftKind === REAL_MISS_KIND ? -1 : 1;
+  }
+  if (leftCount !== rightCount) return rightCount - leftCount;
+  return leftKind.localeCompare(rightKind);
 }
 
 /** §4.4：边界数 ≥ 可达函数数时，影响面可能不可信。 */
@@ -597,6 +651,72 @@ function summaryLine(summary) {
 /** 调用点来源（在需要边界时才读）。 */
 export function loadCallData(jsonPath = FUNC_CALLS_PATH) {
   return JSON.parse(readFileSync(jsonPath, "utf8"));
+}
+
+/**
+ * 分类基线缺失/不可用时的空数据：legend 为空、无任何 callId。
+ * 消费方据此把每个边界退化成 `kind: "unresolved"`（S3c 降级路径）。
+ */
+export function emptyBoundaryData() {
+  return { legend: {}, kinds: new Map() };
+}
+
+/**
+ * 读 S3b 的 `rules/out/func-boundaries.json`（`{ legend, kinds: [[callId, kind, symbol|null]] }`）。
+ *
+ * **优雅降级是硬要求**（S3c）：文件不存在 / JSON 解析失败 / 结构不符时，只向 `stderr`
+ * 提示一条，返回 `emptyBoundaryData()`，调用方继续按 `kind: "unresolved"` 输出，不报错、
+ * 不中断。`symbol` 为 `null` 时不写入边界对象。
+ *
+ * @returns {{ legend: Record<string, string>, kinds: Map<number, {kind: string, symbol: string|null}> }}
+ */
+export function loadBoundaryData(jsonPath = FUNC_BOUNDARIES_PATH) {
+  let parsed;
+  try {
+    parsed = JSON.parse(readFileSync(jsonPath, "utf8"));
+  } catch (error) {
+    return degradeBoundaryData(jsonPath, error);
+  }
+  const legend = normalizeBoundaryLegend(parsed.legend);
+  const kinds = normalizeBoundaryKinds(parsed.kinds);
+  if (!legend || !kinds) return degradeBoundaryData(jsonPath, missingShapeError());
+  return { legend, kinds };
+}
+
+/** 降级：一条 stderr 提示 + 空分类（不抛）。 */
+function degradeBoundaryData(jsonPath, error) {
+  process.stderr.write(
+    `[graph-func-query] 无法加载分类基线 ${jsonPath}（${error?.message ?? error}），` +
+      `未解析边界将统一为 kind="unresolved"\n`,
+  );
+  return emptyBoundaryData();
+}
+
+function missingShapeError() {
+  return new Error("结构不符：需要 { legend: object, kinds: [[callId, kind, symbol?]] }");
+}
+
+/** `legend` 归一化：非对象 / 数组 → `null`（触发降级）；只保留字符串标签。 */
+function normalizeBoundaryLegend(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const legend = {};
+  for (const [kind, label] of Object.entries(value)) {
+    if (typeof label === "string") legend[kind] = label;
+  }
+  return legend;
+}
+
+/** `kinds` 归一化：非数组 → `null`（触发降级）；跳过畸形条目（部分覆盖也照常工作）。 */
+function normalizeBoundaryKinds(value) {
+  if (!Array.isArray(value)) return null;
+  const kinds = new Map();
+  for (const entry of value) {
+    if (!Array.isArray(entry) || entry.length < 2) continue;
+    const id = Number(entry[0]);
+    if (!Number.isInteger(id) || typeof entry[1] !== "string") continue;
+    kinds.set(id, { kind: entry[1], symbol: typeof entry[2] === "string" ? entry[2] : null });
+  }
+  return kinds;
 }
 
 /**
@@ -707,31 +827,47 @@ function innermostFirst(left, right) {
 }
 
 /**
- * 结果集合内的未解析边界（§4.4）。
+ * 结果集合内的未解析边界（§4.4 / S3c）。
  *
  * 只报告 `result.nodes` 里节点的调用点；`text` 从源码读该行并 `trim()`。
- * 返回对象字段严格照 §4.3 契约：`{ kind, file, line, text }`（`kind` 本轮统一 `unresolved`）。
+ * 传了 `options.boundaryData`（`loadBoundaryData()` 的产物）时，命中分类的 callId 变成
+ * `{ kind, kindLabel, file, line, text, symbol? }`；未命中（分类文件缺失 / 部分覆盖）退回
+ * `{ kind: "unresolved", file, line, text }`。
  *
  * @param {object} options
  * @param {(file: string, line: number) => string} [options.readLine] 自定义读行（单测用）
  * @param {string} [options.sourceRoot]                           源码根目录，默认仓库根
+ * @param {{legend: Record<string,string>, kinds: Map<number,{kind:string,symbol:string|null}>}} [options.boundaryData]
+ *        S3b 分类基线；缺省 = 全部 `unresolved`
  */
 export function collectBoundaries(graph, result, callIndex, options = {}) {
   const readLine = options.readLine ?? makeReadLine(options.sourceRoot);
+  const boundaryData = options.boundaryData ?? null;
   const resultIds = new Set(result.nodes.map((item) => item.id));
   const boundaries = [];
   for (const id of callIndex.unresolvedIds) {
     const point = callIndex.points.get(id);
     if (!point || point.ownerId === null || !resultIds.has(point.ownerId)) continue;
-    boundaries.push({
-      kind: "unresolved",
-      file: point.file,
-      line: point.line,
-      text: readLine(point.file, point.line),
-    });
+    boundaries.push(makeBoundary(point, readLine, boundaryData));
   }
   boundaries.sort((left, right) => left.file.localeCompare(right.file) || left.line - right.line);
   return boundaries;
+}
+
+/** 单个边界对象：有分类就带 `kindLabel` /（有值时）`symbol`，否则退回 `unresolved`。 */
+function makeBoundary(point, readLine, boundaryData) {
+  const text = readLine(point.file, point.line);
+  const classification = boundaryData?.kinds?.get(point.id);
+  if (!classification) return { kind: "unresolved", file: point.file, line: point.line, text };
+  const boundary = {
+    kind: classification.kind,
+    kindLabel: boundaryData.legend?.[classification.kind] ?? classification.kind,
+    file: point.file,
+    line: point.line,
+    text,
+  };
+  if (classification.symbol) boundary.symbol = classification.symbol;
+  return boundary;
 }
 
 const SOURCE_CACHE = new Map();
@@ -772,6 +908,9 @@ function readSourceLines(abs) {
 /**
  * 汇总（§4.3 `summary`）：`functions` 只数函数节点（模块节点不计）。
  * `modules` = 去重文件数，`directories` = 去重目录数。
+ *
+ * 边界带真实类别（S3c）时额外加 `boundariesByKind`；全为 `unresolved`（分类基线缺失 /
+ * 全部未命中）时不加，以保持降级输出与旧契约一致。
  */
 export function summarizeResult(graph, result, boundaries = []) {
   const files = new Set();
@@ -783,13 +922,17 @@ export function summarizeResult(graph, result, boundaries = []) {
     files.add(node.file);
     directories.add(dirname(node.file));
   }
-  return {
+  const summary = {
     functions,
     modules: files.size,
     directories: directories.size,
     boundaries: boundaries.length,
     maxDepthReached: result.maxDepthReached,
   };
+  if (boundaries.some((boundary) => boundary.kind !== "unresolved")) {
+    summary.boundariesByKind = countByKind(boundaries);
+  }
+  return summary;
 }
 
 /**
@@ -923,7 +1066,9 @@ function runCli(argv) {
   if (!roots) return 1;
   const result = traverse(graph, { start: roots, direction, depth: parsed.depth });
   const callIndex = buildCallIndex(graph, loadCallData());
-  const boundaries = collectBoundaries(graph, result, callIndex);
+  const boundaries = collectBoundaries(graph, result, callIndex, {
+    boundaryData: loadBoundaryData(),
+  });
   if (parsed.json) {
     const payload = buildResultJson(graph, result, { targetIds: roots, boundaries, callIndex });
     process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);

@@ -41,3 +41,4 @@ Analysis errors: 0, warnings: 129 (show all with --warnings-unsupported)
 Call graph written to ./rules/out/func.html
 Call graph written to ./rules/out/func.json
 [graph:func] 已拆分 → func.json（图）+ func-calls.json（调用点）
+[graph:func] 未解析分类 → func-boundaries.json（A=1281 B=82 C1=103 C2=2 D=60 I=22 U=617 9=18）

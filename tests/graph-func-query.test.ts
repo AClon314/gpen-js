@@ -1,4 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import {
   SelectorError,
@@ -11,6 +14,7 @@ import {
   describeNode,
   globMatches,
   globToRegExp,
+  loadBoundaryData,
   loadCallData,
   loadFuncGraph,
   renderTree,
@@ -608,5 +612,154 @@ describe("未解析边界 —— 基线", () => {
     // §4.4：边界数 ≥ 可达函数数 → 人类视图给出「不可信」警告
     expect(boundaries.length).toBeGreaterThanOrEqual(payload.summary.functions);
     expect(renderTree(graph, result, { rootId: roots, boundaries })).toContain("影响面可能不可信");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// S3c —— 边界类别：合成数据 + 临时分类文件（不依赖真实基线）
+// ---------------------------------------------------------------------------
+
+const boundaryLegend = {
+  A: "native(JS/DOM 内建)",
+  C2: "本仓库函数(真漏)",
+  U: "无法用 TS 归类(.svelte 等)",
+};
+
+/** 写一个临时分类文件；`cleanup()` 删除整个临时目录。 */
+function tempBoundaryFile(payload: unknown): { path: string; cleanup: () => void } {
+  const dir = mkdtempSync(join(tmpdir(), "gpen-bounds-"));
+  const path = join(dir, "func-boundaries.json");
+  writeFileSync(path, JSON.stringify(payload));
+  return { path, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
+}
+
+/** 一个确定不存在的临时路径（用来验证缺文件降级）。 */
+function missingBoundaryPath(): string {
+  const dir = mkdtempSync(join(tmpdir(), "gpen-missing-"));
+  rmSync(dir, { recursive: true, force: true });
+  return join(dir, "func-boundaries.json");
+}
+
+describe("边界类别（S3c）—— loadBoundaryData / collectBoundaries / renderTree", () => {
+  const result = traverse(boundaryGraph, { start: 2, direction: "callees", depth: 2 });
+  const readLine = (file: string, line: number) => `${file}:${line}`;
+  const index = buildCallIndex(boundaryGraph, boundaryCallData);
+
+  test("有分类文件：命中 callId 得到真实类别 + kindLabel + symbol", () => {
+    const { path, cleanup } = tempBoundaryFile({
+      legend: boundaryLegend,
+      kinds: [
+        [102, "A", "push"], // 模块顶层，不在结果集 → 被排除
+        [103, "C2", "onEvict"],
+        [104, "U", null], // symbol 为 null → 不写入
+      ],
+    });
+    try {
+      const data = loadBoundaryData(path);
+      expect(data.legend).toEqual(boundaryLegend);
+      expect(data.kinds.get(103)).toEqual({ kind: "C2", symbol: "onEvict" });
+      const boundaries = collectBoundaries(boundaryGraph, result, index, {
+        readLine,
+        boundaryData: data,
+      });
+      expect(boundaries).toEqual([
+        {
+          kind: "C2",
+          kindLabel: "本仓库函数(真漏)",
+          file: "a.ts",
+          line: 9,
+          text: "a.ts:9",
+          symbol: "onEvict",
+        },
+        {
+          kind: "U",
+          kindLabel: "无法用 TS 归类(.svelte 等)",
+          file: "b/c.ts",
+          line: 3,
+          text: "b/c.ts:3",
+        },
+      ]);
+      expect(Object.keys(boundaries[0]).sort()).toEqual([
+        "file",
+        "kind",
+        "kindLabel",
+        "line",
+        "symbol",
+        "text",
+      ]);
+      expect(summarizeResult(boundaryGraph, result, boundaries).boundariesByKind).toEqual({
+        C2: 1,
+        U: 1,
+      });
+      const tree = renderTree(boundaryGraph, result, { rootId: 2, boundaries });
+      expect(tree).toContain("边界按类别：C2×1, U×1");
+      expect(tree).toContain("‼ [C2 本仓库函数(真漏)] a.ts:9 的 a.ts:9 未解析");
+      expect(tree).toContain("⚠ [U 无法用 TS 归类(.svelte 等)] b/c.ts:3 的 b/c.ts:3 未解析");
+    } finally {
+      cleanup();
+    }
+  });
+
+  test("无分类文件：不报错，kind 退回 unresolved 且 summary 不带 boundariesByKind", () => {
+    const data = loadBoundaryData(missingBoundaryPath());
+    expect(data.legend).toEqual({});
+    expect(data.kinds.size).toBe(0);
+    const boundaries = collectBoundaries(boundaryGraph, result, index, {
+      readLine,
+      boundaryData: data,
+    });
+    expect(boundaries.every((item) => item.kind === "unresolved")).toBe(true);
+    expect(boundaries.every((item) => !("kindLabel" in item) && !("symbol" in item))).toBe(true);
+    expect(summarizeResult(boundaryGraph, result, boundaries).boundariesByKind).toBeUndefined();
+    const tree = renderTree(boundaryGraph, result, { rootId: 2, boundaries });
+    expect(tree).toContain("⚠ 边界：a.ts:9 的 a.ts:9 未解析");
+    expect(tree).toContain("边界按类别：unresolved×2");
+  });
+
+  test("部分覆盖：只分类 103，104 退回 unresolved，summary 同时统计两类", () => {
+    const { path, cleanup } = tempBoundaryFile({
+      legend: boundaryLegend,
+      kinds: [[103, "C2", "onEvict"]], // 缺 104
+    });
+    try {
+      const data = loadBoundaryData(path);
+      const boundaries = collectBoundaries(boundaryGraph, result, index, {
+        readLine,
+        boundaryData: data,
+      });
+      expect(boundaries.map((item) => item.kind)).toEqual(["C2", "unresolved"]);
+      expect(boundaries[1]).toEqual({
+        kind: "unresolved",
+        file: "b/c.ts",
+        line: 3,
+        text: "b/c.ts:3",
+      });
+      expect(summarizeResult(boundaryGraph, result, boundaries).boundariesByKind).toEqual({
+        C2: 1,
+        unresolved: 1,
+      });
+      const tree = renderTree(boundaryGraph, result, { rootId: 2, boundaries });
+      expect(tree).toContain("边界按类别：C2×1, unresolved×1");
+      expect(tree).toContain("‼ [C2 本仓库函数(真漏)] a.ts:9 的 a.ts:9 未解析");
+    } finally {
+      cleanup();
+    }
+  });
+
+  test("分类文件损坏 / 结构不符：解析失败也优雅降级为空分类", () => {
+    const broken = tempBoundaryFile(null);
+    const malformed = mkdtempSync(join(tmpdir(), "gpen-malformed-"));
+    try {
+      writeFileSync(broken.path, "{ not json");
+      expect(loadBoundaryData(broken.path).kinds.size).toBe(0);
+      const badShape = join(malformed, "func-boundaries.json");
+      writeFileSync(badShape, JSON.stringify({ legend: [], kinds: "nope" }));
+      const data = loadBoundaryData(badShape);
+      expect(data.legend).toEqual({});
+      expect(data.kinds.size).toBe(0);
+    } finally {
+      broken.cleanup();
+      rmSync(malformed, { recursive: true, force: true });
+    }
   });
 });

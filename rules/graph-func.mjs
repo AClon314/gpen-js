@@ -9,11 +9,14 @@
  *   bun run graph:func:call                            # 分析 src，忽略外部依赖
  *   bun run graph:func:call -- --warnings-unsupported  # 额外参数透传给 jelly
  *
- * 产出（全部写入 `rules/out/`；**func.json / func-calls.json / func.log 提交为基线**，见 .gitignore）：
+ * 产出（全部写入 `rules/out/`；**func.json / func-calls.json / func-boundaries.json / func.log
+ * 提交为基线**，见 .gitignore）：
  *   func.json       调用图：模块、函数、边（可视化 / 影响面查询）—— 提交
  *   func-calls.json 调用点索引：调用点位置与 call→function 边（漏洞调用栈 / 可达性 /
  *                   未解析边界）—— 提交；其中的函数下标指 `func.json` 的索引空间
- *   func.log        本次运行日志（提交，与上面两份同一次运行对应）
+ *   func-boundaries.json  未解析调用点的离线分类（A/B/C1/C2/D/I/U/9，见
+ *                   `graph-func-classify.mjs`）—— 提交；位置 id 索引，源码增删会让它 churn
+ *   func.log        本次运行日志（提交，与上面几份同一次运行对应）
  *   func.html       浏览器可视化（忽略，随时重新生成）—— **不内联数据**，运行时 fetch
  *                 `./func.json` 并现场构建图，所以它只是一份静态模板（~31KB，与仓库规模无关）
  *   func-vendor/    可视化的前端依赖（忽略，见下）
@@ -30,7 +33,7 @@
  */
 import { spawnSync } from "node:child_process";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -124,6 +127,52 @@ if (existsSync(oxfmt)) {
 }
 
 appendFileSync(logPath, `[graph:func] 已拆分 → func.json（图）+ func-calls.json（调用点）\n`);
+
+// 拆分产物排版之后，链式跑一次「未解析调用点分类」（S3d）：把匿名的未解析边界
+// （`calls` 减去 `call2fun`，当前 2185 个）经官方 TS checker 归成 A/B/C1/C2/D/I/U/9，
+// 产出可行动的清单 `func-boundaries.json`（提交为基线；类别含义见 `graph-func-classify.mjs`）。
+// 失败必须优雅：分类器依赖仓库自带的 typescript 与 tsconfig，缺一即可能失败；但
+// func.json / func-calls.json 已经写好，附加产物不该拖垮整个命令——记警告、保留旧文件。
+const classifyScript = resolve(here, "graph-func-classify.mjs");
+const boundariesPath = resolve(outDir, "func-boundaries.json");
+const previousBoundaries = existsSync(boundariesPath) ? readFileSync(boundariesPath) : null;
+const classify = spawnSync(process.execPath, [classifyScript], { cwd: root, encoding: "utf8" });
+if (classify.status !== 0) {
+  // 分类器只在成功路径写文件；失败时把可能被写坏的旧基线还原，确保「保留旧文件」。
+  if (previousBoundaries) writeFileSync(boundariesPath, previousBoundaries);
+  const detail = `${classify.stderr ?? ""}${classify.stdout ?? ""}`
+    .trim()
+    .split("\n")
+    .slice(-3)
+    .join("\n");
+  console.error(
+    `[graph:func] 警告：调用点分类失败，保留旧的 ${relative(root, boundariesPath)}（func.json / func-calls.json 不受影响）`,
+  );
+  if (detail) console.error(detail);
+  appendFileSync(logPath, "[graph:func] 警告：调用点分类失败，func-boundaries.json 保持旧版本\n");
+} else {
+  // 用与 func.json / func-calls.json 相同的 oxfmt 口径排版（规则同下：绕过 .prettierignore）。
+  if (existsSync(oxfmt)) {
+    const ignore = existsSync("/dev/null") ? ["--ignore-path=/dev/null"] : [];
+    const fmtBoundaries = spawnSync(oxfmt, [...ignore, "--write", boundariesPath], {
+      cwd: root,
+      encoding: "utf8",
+    });
+    if (fmtBoundaries.status !== 0)
+      console.error(
+        `[graph:func] oxfmt 排版失败（产物仍可用）: ${(fmtBoundaries.stderr ?? "").trim()}`,
+      );
+  }
+  // 类别分布写进日志：基线 diff 时能看出「哪些边界类别变多了」（C2 变多尤其要警觉）。
+  const counts = {};
+  for (const [, kind] of JSON.parse(readFileSync(boundariesPath, "utf8")).kinds)
+    counts[kind] = (counts[kind] ?? 0) + 1;
+  const summary = ["A", "B", "C1", "C2", "D", "I", "U", "9"]
+    .filter((kind) => counts[kind])
+    .map((kind) => `${kind}=${counts[kind]}`)
+    .join(" ");
+  appendFileSync(logPath, `[graph:func] 未解析分类 → func-boundaries.json（${summary}）\n`);
+}
 
 /**
  * 把可视化 HTML 里的 jsdelivr 资源下载到 func-vendor/ 并改成相对路径，使页面不再依赖外网。
