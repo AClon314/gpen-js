@@ -79,7 +79,7 @@ export interface StrokeCanvasHandle {
 /**
  * Mutable per-gesture state of one stroke canvas. Kept in one object so the
  * pointer handlers can stay module-level (and therefore out of
- * `createStrokeCanvas`, which repowise measures as one function).
+ * `createStrokeCanvas`, which health:gate measures as one function).
  */
 interface StrokeCanvasRuntime {
   canvas: HTMLCanvasElement;

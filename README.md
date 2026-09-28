@@ -22,7 +22,7 @@ bun run dev
 | `bun run test:coverage` | 单测 + lcov 覆盖率（过滤后落 `coverage/`） |
 | `bun run test:e2e` | Playwright e2e |
 | `bun run lint` | `typecheck` + `oxlint` + `eslint` + `lint:exports`（导出顺序） |
-| `bun run health:gate` | repowise 健康度门禁（`-- --module <path>` 限定范围） |
+| `bun run health:gate` | oxlint 健康度门禁（`-- --module <path>` 限定范围） |
 | `bun run build` | 构建 SvelteKit 静态站点到 `build/` |
 | `bun run build:embed` | 构建框架无关的 embed bundle 到 `dist/embed/` |
 | `bun run test:embed` | embed bundle 的 Playwright 测试 |

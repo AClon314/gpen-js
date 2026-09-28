@@ -10,7 +10,7 @@
  * 依赖全部通过 getter 注入（`getWorkspaceState` / `getLayerTree` / …）——`$derived`
  * 变量按值传进来会冻结成调用时的快照，必须按 getter 读才保持响应式。
  *
- * 按面板拆成几个小工厂（每个 ≤ 60 NLOC，见 repowise 门禁）：一个工厂同时拥有
+ * 按面板拆成几个小工厂（每个 ≤ 60 NLOC，见 health:gate 门禁）：一个工厂同时拥有
  * 「props 初值」与「它的同步 `$effect`」，改一个面板只看一处。
  */
 import type { BrushSettingsT, EraserSettingsT } from "gpen-protocol/flatbuffers";

@@ -6,9 +6,9 @@
  *   `bun test --coverage --coverage-reporter=lcov` 会为测试进程**加载过的每个
  *   文件**写一条 SF 记录，其中包含 `file:` 依赖 `../gpen-protocol` 里由
  *   FlatBuffers 生成的代码（本仓库实测 146 条中有 86 条来自仓库外）。
- *   `repowise coverage add` 无法把这些仓库外路径映射进代码树，未映射比例过半
- *   时会**以非 0 退出**（防止脚本把“覆盖率片段”误当成“整仓覆盖率”），
- *   从而中断 `test:coverage → repowise coverage add` 链路。
+ *   仓库外路径无法映射进本仓库的代码树，覆盖率工具在未映射比例过半时会
+ *   **以非 0 退出**（防止把“覆盖率片段”误当成“整仓覆盖率”），从而中断
+ *   `test:coverage` 链路。
  *   这些文件不属于本仓库，本就不该计入本仓库覆盖率，因此直接丢弃。
  *
  * 用法：

@@ -19,7 +19,7 @@
  *
  * 结构：状态与 history 的纯操作在 `DocumentSessionCore`，其余按职责拆成模块级的
  * `commitStroke` / `commitErase` / `createNew` / `writeBrush` / `saveNow` … 函数，
- * `createGpenDocumentSession` 只做装配（每个函数 ≤ 60 行，见 repowise 门禁）。
+ * `createGpenDocumentSession` 只做装配（每个函数 ≤ 60 行，见 health:gate 门禁）。
  */
 import {
   createGpenBinaryStore,
