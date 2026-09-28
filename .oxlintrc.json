@@ -16,8 +16,24 @@
   },
   "rules": {
     "catch/must-return-or-throw": "error",
-    "catch/no-bare-return": "warn"
+    "catch/no-bare-return": "warn",
+    "complexity": ["warn", 8],
+    "max-depth": ["warn", 3],
+    "max-lines-per-function": [
+      "warn",
+      { "max": 60, "skipBlankLines": true, "skipComments": true }
+    ]
   },
+  "overrides": [
+    {
+      "files": ["tests/**", "**/*.test.ts", "**/*.e2e.ts"],
+      "rules": {
+        "complexity": "off",
+        "max-depth": "off",
+        "max-lines-per-function": "off"
+      }
+    }
+  ],
   "env": {
     "builtin": true
   }

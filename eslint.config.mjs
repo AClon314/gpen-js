@@ -24,6 +24,7 @@ export default [
       "**/*.css",
       "rules/jelly/**", // git submodule：第三方分析器，由上游工具链负责
       "rules/exec-flows/**", // Jelly 生成物（调用图）
+      "tmp/**", // 本地实验/生成物，已被 .gitignore 忽略
     ],
   },
   {

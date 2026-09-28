@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { rmSync, writeFileSync } from "node:fs";
 
 import {
   baselineKeysFrom,
@@ -9,7 +10,10 @@ import {
   isFailingFinding,
   type HealthFinding,
   type HealthReport,
+  type OxlintDiagnostic,
+  oxlintDiagnosticsToFindings,
   parseArgs,
+  productionFiles,
 } from "../scripts/health-gate.ts";
 
 /** 构造一条 finding，只覆盖断言关心的字段。 */
@@ -24,12 +28,23 @@ function finding(
   };
 }
 
-/** 内联假 JSON —— 本测试不真跑 repowise，只断言判定逻辑。 */
+/** 构造一条 oxlint diagnostic（fixture 形状与 `oxlint -f json` 的输出一致）。 */
+function diagnostic(
+  partial: Partial<OxlintDiagnostic> & Pick<OxlintDiagnostic, "message">,
+): OxlintDiagnostic {
+  return {
+    code: "eslint(complexity)",
+    filename: "src/lib/example.ts",
+    labels: [{ span: { line: 1 } }],
+    ...partial,
+  };
+}
+
+/** 内联假报告 —— 只断言判定逻辑，不真跑 oxlint。 */
 const FAKE_REPORT: HealthReport = JSON.parse(
   JSON.stringify({
     scope: "production",
     counts: "code_shape",
-    metrics: [{ file_path: "src/lib/example.ts", score: 6 }],
     findings: [
       {
         biomarker_type: "large_method",
@@ -42,12 +57,6 @@ const FAKE_REPORT: HealthReport = JSON.parse(
         severity: "critical",
         file_path: "src/b.ts",
         function_name: "b",
-      },
-      {
-        biomarker_type: "brain_method",
-        severity: "high",
-        file_path: "src/c.ts",
-        function_name: "c",
       },
       {
         biomarker_type: "complex_method",
@@ -80,12 +89,6 @@ const FAKE_REPORT: HealthReport = JSON.parse(
         function_name: "h",
       },
       {
-        biomarker_type: "low_cohesion",
-        severity: "critical",
-        file_path: "src/i.ts",
-        function_name: "i",
-      },
-      {
         biomarker_type: "dry_violation",
         severity: "high",
         file_path: "src/j.ts",
@@ -102,17 +105,14 @@ const FAKE_REPORT: HealthReport = JSON.parse(
 ) as HealthReport;
 
 describe("isFailingFinding", () => {
-  test("large_method / brain_method 任意 severity 都判失败", () => {
+  test("large_method 任意 severity 都判失败", () => {
     expect(isFailingFinding(finding({ biomarker_type: "large_method", severity: "low" }))).toBe(
-      true,
-    );
-    expect(isFailingFinding(finding({ biomarker_type: "brain_method", severity: "low" }))).toBe(
       true,
     );
   });
 
-  test("complex_method / nested_complexity / low_cohesion 只在高严重度判失败", () => {
-    for (const biomarker_type of ["complex_method", "nested_complexity", "low_cohesion"]) {
+  test("complex_method / nested_complexity 只在高严重度判失败", () => {
+    for (const biomarker_type of ["complex_method", "nested_complexity"]) {
       expect(isFailingFinding(finding({ biomarker_type, severity: "critical" }))).toBe(true);
       expect(isFailingFinding(finding({ biomarker_type, severity: "high" }))).toBe(true);
       expect(isFailingFinding(finding({ biomarker_type, severity: "medium" }))).toBe(false);
@@ -120,7 +120,13 @@ describe("isFailingFinding", () => {
     }
   });
 
-  test("策略外的 biomarker 即便 critical 也不判失败（交给 WARN）", () => {
+  test("已放弃的维度（brain_method / low_cohesion）与策略外 biomarker 都不判失败", () => {
+    expect(isFailingFinding(finding({ biomarker_type: "brain_method", severity: "high" }))).toBe(
+      false,
+    );
+    expect(
+      isFailingFinding(finding({ biomarker_type: "low_cohesion", severity: "critical" })),
+    ).toBe(false);
     expect(
       isFailingFinding(finding({ biomarker_type: "dry_violation", severity: "critical" })),
     ).toBe(false);
@@ -138,11 +144,9 @@ describe("decideGate", () => {
     expect(decision.failing.map((f) => `${f.biomarker_type}:${f.severity}`)).toEqual([
       "large_method:low",
       "large_method:critical",
-      "brain_method:high",
       "complex_method:high",
       "complex_method:critical",
       "nested_complexity:high",
-      "low_cohesion:critical",
     ]);
     // complex_method:medium、nested_complexity:medium、dry_violation:high 进 WARN；
     // primitive_obsession:low 两者都不进。
@@ -200,6 +204,103 @@ describe("decideGate", () => {
   });
 });
 
+describe("oxlintDiagnosticsToFindings", () => {
+  test("complexity：CCN ≥15 → complex_method high，9–14 → medium，<9 不出", () => {
+    const findings = oxlintDiagnosticsToFindings([
+      diagnostic({
+        message: "function `big` has a complexity of 16. Maximum allowed is 8.",
+        labels: [{ span: { line: 10 } }],
+      }),
+      diagnostic({
+        message: "function `mid` has a complexity of 9. Maximum allowed is 8.",
+        labels: [{ span: { line: 20 } }],
+      }),
+      diagnostic({
+        message: "function `small` has a complexity of 8. Maximum allowed is 8.",
+        labels: [{ span: { line: 30 } }],
+      }),
+    ]);
+    expect(findings.map((f) => `${f.function_name}:${f.severity}`)).toEqual([
+      "big:high",
+      "mid:medium",
+    ]);
+    expect(findings.every((f) => f.biomarker_type === "complex_method")).toBe(true);
+  });
+
+  test("max-depth：同一个文件的 depth 归因到所属函数，4 → medium，5 → high", () => {
+    const findings = oxlintDiagnosticsToFindings([
+      diagnostic({
+        code: "eslint(max-depth)",
+        message: "Blocks are nested too deeply (4). Maximum allowed is 3.",
+        labels: [{ span: { line: 5 } }],
+      }),
+      diagnostic({
+        code: "eslint(max-depth)",
+        message: "Blocks are nested too deeply (6). Maximum allowed is 3.",
+        labels: [{ span: { line: 50 } }],
+      }),
+      diagnostic({
+        message: "function `first` has a complexity of 2. Maximum allowed is 8.",
+        labels: [{ span: { line: 1 } }],
+      }),
+      diagnostic({
+        message: "function `second` has a complexity of 2. Maximum allowed is 8.",
+        labels: [{ span: { line: 40 } }],
+      }),
+    ]);
+    const nested = findings.filter((f) => f.biomarker_type === "nested_complexity");
+    expect(nested.map((f) => `${f.function_name}:${f.details!.max_nesting}:${f.severity}`)).toEqual(
+      ["first:4:medium", "second:6:high"],
+    );
+  });
+
+  test("large_method 必须带 CCN ≥ 3 下限：nloc 70 + ccn 2 不报，ccn 3 才报", () => {
+    const lines = (ccn: number): OxlintDiagnostic[] => [
+      diagnostic({
+        code: "eslint(max-lines-per-function)",
+        message: "The function `long` has too many lines (70). Maximum allowed is 60.",
+        labels: [{ span: { line: 1 } }],
+      }),
+      diagnostic({
+        message: `function \`long\` has a complexity of ${ccn}. Maximum allowed is 8.`,
+        labels: [{ span: { line: 1 } }],
+      }),
+    ];
+    expect(
+      oxlintDiagnosticsToFindings(lines(2)).some((f) => f.biomarker_type === "large_method"),
+    ).toBe(false);
+    const reported = oxlintDiagnosticsToFindings(lines(3));
+    expect(reported.some((f) => f.biomarker_type === "large_method")).toBe(true);
+    expect(decideGate({ findings: reported }).failed).toBe(true);
+  });
+
+  test("灵敏度：ccn 20 / depth 6 / nloc 70 的探针 → FAIL", () => {
+    const findings = oxlintDiagnosticsToFindings([
+      diagnostic({
+        code: "eslint(max-lines-per-function)",
+        message: "The function `nastyProbe` has too many lines (70). Maximum allowed is 60.",
+        labels: [{ span: { line: 1 } }],
+      }),
+      diagnostic({
+        message: "function `nastyProbe` has a complexity of 20. Maximum allowed is 8.",
+        labels: [{ span: { line: 1 } }],
+      }),
+      diagnostic({
+        code: "eslint(max-depth)",
+        message: "Blocks are nested too deeply (6). Maximum allowed is 3.",
+        labels: [{ span: { line: 3 } }],
+      }),
+    ]);
+    const decision = decideGate({ findings });
+    expect(decision.failed).toBe(true);
+    expect(decision.failing.map((f) => f.biomarker_type).sort()).toEqual([
+      "complex_method",
+      "large_method",
+      "nested_complexity",
+    ]);
+  });
+});
+
 describe("baselineKeysFrom / buildBaseline", () => {
   test("buildBaseline 输出的 keys 能被 baselineKeysFrom 原样读回", () => {
     const baseline = buildBaseline(FAKE_REPORT, "src/lib");
@@ -221,7 +322,7 @@ describe("countByBiomarker", () => {
   test("按 biomarker × severity 计数", () => {
     const counts = countByBiomarker(decideGate(FAKE_REPORT).failing);
     expect(Object.fromEntries(counts.get("large_method")!)).toEqual({ low: 1, critical: 1 });
-    expect(Object.fromEntries(counts.get("brain_method")!)).toEqual({ high: 1 });
+    expect(Object.fromEntries(counts.get("complex_method")!)).toEqual({ high: 1, critical: 1 });
   });
 });
 
@@ -239,5 +340,19 @@ describe("parseArgs", () => {
   test("缺值 / 未知 flag 抛错", () => {
     expect(() => parseArgs(["--module"])).toThrow();
     expect(() => parseArgs(["--nope"])).toThrow();
+  });
+});
+
+describe("productionFiles", () => {
+  test("包含未跟踪的新文件，但不包含被 .gitignore 忽略的 tmp/", () => {
+    const probe = "src/lib/__health-gate-probe.ts";
+    writeFileSync(probe, "export const probe = 1;\n");
+    try {
+      const files = productionFiles();
+      expect(files).toContain(probe);
+      expect(files.some((file) => file.startsWith("tmp/"))).toBe(false);
+    } finally {
+      rmSync(probe, { force: true });
+    }
   });
 });
