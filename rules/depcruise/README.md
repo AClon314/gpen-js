@@ -6,13 +6,32 @@ jelly 回答「谁调用了谁」。
 
 ## 命令
 
+四种视图都是同一个 `rules/depcruise/graph.mjs`，每次输出 `out/<name>.{mmd,json,dot,svg}`：
+
 ```sh
-bun run graph:deps            # src 全量模块依赖图 → out/deps.mmd + out/deps.json（218 模块 / ~490 边）
-bun run graph:deps:affected   # 相对 origin/main 的变更影响面 → out/affected.mmd（src + scripts + rules）
+bun run graph:deps                              # 全量（218 模块 / 490 边）
+bun run graph:deps -- --no-svg                  # 跳过 dot/svg（全量 svg 约 2.6s）
+bun run graph:deps:focus -- <regex> --depth 1   # 子图：focus 模块 ± N 跳
+bun run graph:deps:overview                     # 目录级折叠总览（默认 -S '^src/[^/]+/'）
+bun run graph:deps:affected                     # 相对 origin/main 的变更影响面
+bun run graph:deps:affected -- --base main~4    # 自定义基线 ref
 ```
 
-- `deps.json` 是机器可读的模块/依赖明细，用来数模块数、边数、unresolved。
-- `affected` 是 `--affected origin/main`：只含变更模块 + 能到达它们的模块，贴在 PR / review 里最直观。
+- `.mmd`（mermaid）适合进 PR / GitHub 渲染与 git diff；`.svg`（graphviz `dot`）适合本地放大看
+  —— 浏览器直接打开，Ctrl/⌘ + 滚轮缩放。`.json` 是机器可读明细（数模块/边/unresolved）。
+- `--no-svg` 用于没有 graphviz 的环境；`svg` 模式需要本机有 `dot`。
+
+## 可读性：别直接看全量图
+
+| 视图                               | 规模              | `.mmd` | `.svg` | 适合                                    |
+| ---------------------------------- | ----------------- | ------ | ------ | --------------------------------------- |
+| `deps`（全量）                     | 218 模块 / 490 边 | 56 KB  | 552 KB | 机器/工具；人眼约 **62 个屏幕**，看不动 |
+| `overview`（目录级折叠）           | 51 / 58           | 9 KB   | 88 KB  | 先看整体分层                            |
+| `focus <某模块> --depth 1`         | 6 / 9             | 2 KB   | 13 KB  | **日常读图就用这个**                    |
+| `affected`（相对 `origin/main~4`） | 17 / 14           | 3 KB   | 28 KB  | PR 里贴图                               |
+
+全量图无论 mermaid 还是 SVG 都只是「换了个容器」，节点多到 62 屏不是渲染器的问题；
+可读性靠 `focus` / `overview` / `affected` 切子图，全量 svg 仅用于「需要时在地图里找位置」。
 
 ## 为什么 `minify: false`
 
@@ -21,7 +40,11 @@ depcruise 的 mermaid reporter 默认压缩节点名（节点 id 变成 `1W` 这
 `config.mjs` 里关掉：
 
 ```js
-reporterOptions: { mermaid: { minify: false } }
+reporterOptions: {
+  mermaid: {
+    minify: false;
+  }
+}
 ```
 
 之后节点 id 由模块路径派生（如 `src_lib_components_workspace_GpenWorkspace_svelte`），
@@ -37,6 +60,6 @@ reporterOptions: { mermaid: { minify: false } }
 
 ## 产物
 
-`out/` **未入库**（已 gitignore）：`.mmd` / `.json` 每次改动都会 churn，且 `affected.mmd`
-依赖 `origin/main` 的当前状态，不适合当稳定基线。要看就现场 `bun run graph:deps` 生成。
+`out/` **未入库**（已 gitignore）：`.mmd` / `.json` / `.dot` / `.svg` 每次改动都会 churn，且 `affected`
+依赖基线 ref 的当前状态，不适合当稳定基线。要看就现场 `bun run graph:deps[:<视图>]` 生成。
 （对比：jelly 的 `exec-flows/callgraph.json` 是刻意提交的**函数级**基线，二者定位不同。）
