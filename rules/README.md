@@ -11,6 +11,7 @@
 | `no-void-catch-return.mjs`       | ESLint type-aware 规则（`.catch()` 回调不得返回 void）。                                                       |
 | `jelly/`                         | **git submodule**：Jelly 静态分析器（fork）。                                                                  |
 | `graph-func.mjs`                 | 跑 Jelly，产出**函数级**调用图（`bun run graph:func:call`）。                                                  |
+| `graph-func-query.mjs`           | 只读基线 json 的影响面查询（`bun run graph:func:{impact,callers,callees}`）。详见「命令」一节。                |
 | `depcruise/`                     | dependency-cruiser 配置 + **模块级**依赖图脚本（`bun run graph:module:*`）。详见 `rules/depcruise/README.md`。 |
 | `out/`                           | **全部产物**（见下）。                                                                                         |
 
@@ -79,7 +80,79 @@ bun run graph:module:deps                          # 模块级全量 → rules/o
 bun run graph:module:focus -- <regex> [--depth 1]  # 子图：focus 模块 ± N 跳
 bun run graph:module:overview [--collapse <re>]    # 目录级折叠总览（默认 -S '^src/[^/]+/'）
 bun run graph:module:affected [--base <ref>]       # 变更影响面（默认 origin/main）
+bun run graph:func:impact -- <选择器> [--depth N] [--json]   # 影响面（双向可达 = 谁会受影响 + 它依赖谁）
+bun run graph:func:callers -- <选择器> [--depth N] [--json]  # 反向可达：谁（间接）调用它
+bun run graph:func:callees -- <选择器> [--depth N] [--json]  # 正向可达：它（间接）调用了谁
 ```
+
+## graph:func 影响面查询（`callers` / `callees` / `impact`）
+
+`rules/graph-func-query.mjs` 是一把**只读基线 json、不重跑 jelly** 的查询工具，
+用来在不看全量图的前提下回答「改这个函数会影响谁」。三个子命令共用同一套选择器与输出：
+
+- `callers`：沿调用边**反向** BFS → 谁（间接）调用它；
+- `callees`：沿调用边**正向** BFS → 它（间接）调用了谁；
+- `impact`：把两个方向合并（`direction: "both"`）。
+
+`--depth N` 是 BFS 层数，默认 `2`；`0` 表示只看目标自身。只读调用边（`call`），
+**import / require 边不参与影响面**（那是模块加载，不是「谁会受影响」）。
+
+### 数据来源
+
+- **图**：`rules/out/func.json`（`functionNames` / `moduleNodes` / `requireEdges` / `fun2fun`）。
+  它是提交入库的基线，命令**从不**触发 `graph:func:call`（冷启动毫秒级）。
+- **未解析边界**：`rules/out/func-calls.json` 的 `calls` 与 `call2fun`。三个子命令**每次都会**
+  读它来算边界（人类视图与 `--json` 都带边界），所以实际是两张 json 都读。
+
+### 选择器（三种，歧义不猜）
+
+| 形式 | 例子 | 说明 |
+| --- | --- | --- |
+| 函数名 | `createEditHistory` | 精确匹配 `functionNames` |
+| `file:line` | `src/lib/inputs/units.ts:90` | 行号落在函数范围内即命中 |
+| glob | `src/lib/bindings/storage/**` | 匹配文件路径，返回**全部**命中（有意不算歧义） |
+
+函数名 / `file:line` 命中多个时**报错并列出全部候选**（`ambiguous`，退出码非 0），**不静默取第一个**——
+重名函数的影响面完全不同，猜错比报错更危险：
+
+```
+$ bun run graph:func:callers -- commit
+选择器错误（ambiguous）：选择器 "commit" 有歧义，命中 4 个：...
+  - commit  (src/lib/history.ts:152, id=19)
+  - commit  (src/lib/bindings/storage/objects/gpenBinary.ts:462, id=128)
+  - commit  (src/lib/components/areas/CodeArea.svelte:86, id=711)
+  - commit  (src/lib/components/widgets/inputs/InputNumber.svelte:189, id=932)
+```
+
+### `--json`：给 AI 消费的主要形式
+
+`--json` 输出固定契约（`target` / `direction` / `depth` / `nodes` / `edges` / `boundaries` / `summary`）；
+默认的人类视图是同一结果的缩进树渲染。**下游（AI / 脚本）一律消费 `--json`**，不要解析人类视图。
+
+```bash
+bun run graph:func:callees -- src/lib/inputs/units.ts:90 --depth 1
+bun run graph:func:impact -- createEditHistory --depth 3
+bun run graph:func:impact -- createEditHistory --depth 3 --json
+```
+
+### 未解析边界：这个工具最重要的诚实性设计
+
+图上约 **45%** 的调用点没有 callee（实测 `2185 / 4841`；`--ignore-dependencies` 排除依赖 + 不建模 DOM。
+注意别和 jelly 自报的 `33.53%`「native/external」混用——那是另一个口径）。
+`boundaries[]` 报的是「**结果集合里每个可达函数自己发出的**未解析调用点」，含义是：
+**经 DOM 事件 / 第三方回调 / 注入的依赖接口回流的路径没有被覆盖**。所以「可达函数 N 个」永远不是
+「影响面就这么大」——`summary.boundaries` 必须一起读。
+
+当 `boundaries >= functions` 时，人类视图会打印 `影响面可能不可信：...`。
+已知口径（别误读）：
+
+- **import 行也算未解析调用点**（它们确实指向未分析的代码），所以 `boundaries[].text`
+  **不保证是调用表达式**，可能是 `import { ... }`；
+- **模块顶层的调用点归属模块节点**，默认选择器也**不会**选中模块节点；但「模块顶层一律不在
+  口径内」**并不成立**：模块节点自身也带 call 边（实测 `GpenWorkspace.svelte` 的模块节点可达，
+  它的 `import` 行 / 顶层 `Math.max` 就出现在 `boundaries` 里），所以模块节点被拉进结果集时，
+  其顶层调用点同样计入。只有**沿 call 边走不到的模块**（以及不选模块节点时的起点）才确实不在口径内；
+- **同一行有多个调用点会出多条记录**（按调用点计数，不去重）。
 
 ## rules/jelly（git submodule）
 
