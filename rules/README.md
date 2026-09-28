@@ -11,7 +11,7 @@
 | `no-void-catch-return.mjs` | ESLint type-aware 规则（`.catch()` 回调不得返回 void）。 |
 | `jelly/` | **git submodule**：Jelly 静态分析器（fork）。 |
 | `exec-flows.mjs` | 运行 Jelly，产出调用图基线的脚本（`bun run exec-flows`）。 |
-| `exec-flows/` | 生成物：`callgraph.json`（提交为基线）、`callgraph.html`（可视化，未跟踪）。 |
+| `exec-flows/` | 生成物：`callgraph.json`（提交为基线）、`callgraph.html` 与 `vendor/`（未跟踪）。 |
 
 ## rules/jelly（git submodule）
 
@@ -67,6 +67,13 @@ jelly -b . --ignore-dependencies --no-print-progress \
       -j rules/exec-flows/callgraph.json \
       -m rules/exec-flows/callgraph.html src
 ```
+
+脚本随后会把浏览器可视化的前端依赖本地化：jelly 自带的 `visualizer.html` 从
+`cdn.jsdelivr.net` 加载 cytoscape 等库，浏览器访问不到该 CDN（离线 / 国内网络 /
+客户端走 Tailscale MagicDNS）时页面会全白。`exec-flows.mjs` 生成后把这些资源
+镜像到 `rules/exec-flows/vendor/` 并把 URL 改成相对路径，因此只要浏览器能访问
+本机 http server 就能渲染。首次生成需要本机有网，之后有 `vendor/` 缓存即可离线。
+用浏览器打开时记得强刷（Ctrl/Cmd+Shift+R），避免旧 HTML 被缓存。
 
 **第一次基线**（2025，`src/`，忽略外部依赖）：
 
