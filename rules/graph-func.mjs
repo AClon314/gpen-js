@@ -9,12 +9,14 @@
  *   bun run graph:func:call                            # 分析 src，忽略外部依赖
  *   bun run graph:func:call -- --warnings-unsupported  # 额外参数透传给 jelly
  *
- * 产出（全部写入 `rules/out/`；**只有 func.json 与 func.log 提交为基线**，见 .gitignore）：
- *   func.json     机器可读调用图（提交，便于后续 diff）
- *   func.log      本次运行日志（提交，与 func.json 同一次运行对应）
- *   func.html     浏览器可视化（忽略，随时重新生成）—— **不内联数据**，运行时 fetch
+ * 产出（全部写入 `rules/out/`；**func.json / func-calls.json / func.log 提交为基线**，见 .gitignore）：
+ *   func.json       调用图：模块、函数、边（可视化 / 影响面查询）—— 提交
+ *   func-calls.json 调用点索引：调用点位置与 call→function 边（漏洞调用栈 / 可达性 /
+ *                   未解析边界）—— 提交；其中的函数下标指 `func.json` 的索引空间
+ *   func.log        本次运行日志（提交，与上面两份同一次运行对应）
+ *   func.html       浏览器可视化（忽略，随时重新生成）—— **不内联数据**，运行时 fetch
  *                 `./func.json` 并现场构建图，所以它只是一份静态模板（~31KB，与仓库规模无关）
- *   func-vendor/  可视化的前端依赖（忽略，见下）
+ *   func-vendor/    可视化的前端依赖（忽略，见下）
  *
  * Jelly 自带的 visualizer.html 从 cdn.jsdelivr.net 加载 cytoscape 等库。浏览器打不开
  * jsdelivr（离线 / 国内网络 / 走 Tailscale MagicDNS 的客户端）时页面会全白，因为 cytoscape
@@ -27,7 +29,7 @@
  *         -j rules/out/func.json -m rules/out/func.html src
  */
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -89,13 +91,39 @@ writeFileSync(
 );
 if (result.status !== 0) process.exit(result.status ?? 1);
 
-// func.json 里 jelly 写的 "time" 每次运行都变，会让提交为基线的 diff 永远有一行噪音。
-// 基线只需要反映结构变化，所以删掉该行（CallGraph.time 是可选的）。
-// 注意：只能做字符串替换，不能 JSON.parse + stringify —— jelly 自己的排版是
-// 「1 空格缩进 + fun2fun/call2fun 每个数组压在一行」，重新序列化会把文件从 277KB 撑到 342KB。
-const jsonText = readFileSync(jsonPath, "utf8");
-const withoutTime = jsonText.replace(/^\s*"time": "[^"]*",\n/m, "");
-if (withoutTime !== jsonText) writeFileSync(jsonPath, withoutTime);
+// jelly 写出的是一份「什么都有」的调用图。这里把它拆成两个文件，并统一排版。
+//
+// 为什么要拆（实测当前文件 319KB）：`calls`(44.1%) + `call2fun`(11.7%) 共 55.8%，
+// 而可视化和「函数影响面」查询**两者都不用** —— 它们只服务调用点级分析（漏洞调用栈、
+// 可达性、未解析边界）。拆开后常见的图查询只读三分之一的体积，每个文件也各有明确用途。
+//
+// 为什么用 oxfmt 而不是 JSON.stringify(x, null, 1)：后者会把 `[3, 1]` 展开成 6 行；
+// oxfmt 是「每个元素一行、短数组保持内联」，既有逐行 diff 粒度又不至于爆炸。
+// 对照：jelly 原排版把 2562 条边压在**一行 37KB** 里，改一条边就重写整行。
+const full = JSON.parse(readFileSync(jsonPath, "utf8"));
+const callsPath = resolve(outDir, "func-calls.json");
+// jelly 的 "time" 每次运行都变，会让基线的 diff 永远有一行噪音 → 两个文件都不要它。
+const graph = {};
+for (const [key, value] of Object.entries(full))
+  if (key !== "time" && key !== "calls" && key !== "call2fun") graph[key] = value;
+const calls = { graph: "func.json", files: full.files, calls: full.calls, call2fun: full.call2fun };
+writeFileSync(jsonPath, `${JSON.stringify(graph, null, 2)}\n`);
+writeFileSync(callsPath, `${JSON.stringify(calls, null, 2)}\n`);
+
+// 统一排版（oxfmt 是仓库已有的 devDependency；失败不影响产物可用性，只是排版不同）
+// `rules/out` 在 .prettierignore 里（不想让 `bun run format` 爬生成物），所以这里显式绕过它。
+const oxfmt = resolve(root, "node_modules/.bin/oxfmt");
+if (existsSync(oxfmt)) {
+  const ignore = existsSync("/dev/null") ? ["--ignore-path=/dev/null"] : [];
+  const fmt = spawnSync(oxfmt, [...ignore, "--write", jsonPath, callsPath], {
+    cwd: root,
+    encoding: "utf8",
+  });
+  if (fmt.status !== 0)
+    console.error(`[graph:func] oxfmt 排版失败（产物仍可用）: ${(fmt.stderr ?? "").trim()}`);
+}
+
+appendFileSync(logPath, `[graph:func] 已拆分 → func.json（图）+ func-calls.json（调用点）\n`);
 
 /**
  * 把可视化 HTML 里的 jsdelivr 资源下载到 func-vendor/ 并改成相对路径，使页面不再依赖外网。

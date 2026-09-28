@@ -16,32 +16,64 @@
 
 ## rules/out（产物）
 
-| 文件                         | 内容                                                                         | 入库？      |
-| ---------------------------- | ---------------------------------------------------------------------------- | ----------- |
-| `func.json`                  | 函数级调用图（jelly 输出）                                                   | ✅ **基线** |
-| `func.log`                   | 与 `func.json` 同一次运行的日志                                              | ✅ **基线** |
-| `module.json` / `module.dot` | 模块级依赖图全量视图（depcruise）                                            | ✅ **基线** |
-| `module.mmd` / `module.svg`  | 同一张图的 mermaid / graphviz 渲染                                           | ❌ churn    |
-| `module-focus-<slug>.*`      | focus 子图（`<slug>` 由 focus regex 派生）                                   | ❌ churn    |
-| `module-overview-<slug>.*`   | 目录级折叠总览                                                               | ❌ churn    |
-| `module-affected-<slug>.*`   | 相对基线 ref 的变更影响面                                                    | ❌ churn    |
-| `func.html` / `func-vendor/` | 调用图可视化（**不内联数据**，运行时 fetch `./func.json`）+ 本地化的前端依赖 | ❌ churn    |
+| 文件                         | 内容                                                                            | 入库？      |
+| ---------------------------- | ------------------------------------------------------------------------------- | ----------- |
+| `func.json`                  | **图**：模块、函数、调用/import 边（可视化、影响面查询）                        | ✅ **基线** |
+| `func-calls.json`            | **调用点索引**：调用点位置与 call→function 边（漏洞调用栈、可达性、未解析边界） | ✅ **基线** |
+| `func.log`                   | 与上面两份同一次运行的日志                                                      | ✅ **基线** |
+| `module.json` / `module.dot` | 模块级依赖图全量视图（depcruise）                                               | ✅ **基线** |
+| `module.mmd` / `module.svg`  | 同一张图的 mermaid / graphviz 渲染                                              | ❌ churn    |
+| `module-focus-<slug>.*`      | focus 子图（`<slug>` 由 focus regex 派生）                                      | ❌ churn    |
+| `module-overview-<slug>.*`   | 目录级折叠总览                                                                  | ❌ churn    |
+| `module-affected-<slug>.*`   | 相对基线 ref 的变更影响面                                                       | ❌ churn    |
+| `func.html` / `func-vendor/` | 调用图可视化（**不内联数据**，运行时 fetch `./func.json`）+ 本地化的前端依赖    | ❌ churn    |
 
-`.gitignore` 用「白名单取反」只放行上面 4 个基线文件（不用 `func-*` 通配——`func.html`
+`.gitignore` 用「白名单取反」只放行上面 5 个基线文件（不用 `func-*` 通配——`func.html`
 并不匹配 `func-*`）。
+
+### 为什么把调用图拆成两份
+
+实测原来那份 319KB 的文件里，`calls`(44.1%) + `call2fun`(11.7%) 占 **55.8%**，
+而**可视化和「函数影响面」查询两者都不用** —— 它们只服务调用点级分析（漏洞调用栈、
+可达性、未解析边界）。拆开后常见的图查询只读一半的体积，每个文件也各有明确用途。
+
+|                             | 拆分前                            | 拆分后        |
+| --------------------------- | --------------------------------- | ------------- |
+| 图（`func.json`）           | 319 365 B                         | **160 905 B** |
+| 调用点（`func-calls.json`） | （含在上面）                      | 206 271 B     |
+| 最长行                      | **37 337 B**（2562 条边压在一行） | **99 B**      |
+
+`func-calls.json` 里的函数下标指 `func.json` 的索引空间（文件里用 `"graph": "func.json"` 自述）。
+两份都不带 jelly 写的 `time`（见下）。
+
+### 排版：用 oxfmt，每个元素一行
+
+拆分时顺手把 jelly 的手写排版换成 **oxfmt**（仓库已有的 devDependency）：
+
+```js
+// rules/graph-func.mjs
+spawnSync(oxfmt, ["--ignore-path=/dev/null", "--write", jsonPath, callsPath]);
+```
+
+- 选 oxfmt 而不是 `JSON.stringify(x, null, 1)`：后者会把 `[3, 1]` 展开成 6 行；oxfmt 是
+  「每个元素一行、短数组保持内联」，既有逐行 diff 粒度又不至于爆炸。
+- 为什么 diff 粒度重要：jelly 原排版把 2562 条边压在**一行 37KB** 里，改一条边就重写整行
+  （约 66KB diff）。新排版下同一个改动是 **1 行**（实测 `4117d4116` / `-    [5, 4],`）。
+- `--ignore-path=/dev/null` 是因为 `rules/out` 在 `.prettierignore` 里（不想让
+  `bun run format` 爬生成物），而 oxfmt 默认会读它。
 
 ## 为什么基线要幂等
 
-`func.json` 里 jelly 写的 `time` 字段、`func.log` 里的绝对路径与 `Analysis time:` 行，
-每次运行都会变，会让「提交为基线」变成纯噪音。`rules/graph-func.mjs` 在生成后把这三处
-去掉/归一化（终端输出保持原样，信息不丢），使**同一份源码跑两次的产物完全一致**。
+jelly 写的 `time` 字段、`func.log` 里的绝对路径与 `Analysis time:` 行，每次运行都会变，
+会让「提交为基线」变成纯噪音。`rules/graph-func.mjs` 在生成后把这几处去掉/归一化
+（终端输出保持原样，信息不丢），使**同一份源码跑两次的产物完全一致**。
 
 > 改动生成逻辑后请跑两次并 `diff`，确认产物幂等。
 
 ## 命令
 
 ```bash
-bun run graph:func:call                            # 函数级调用图 → rules/out/func.{json,log,html}
+bun run graph:func:call                            # 函数级调用图 → rules/out/func.json + func-calls.json + func.log + func.html
 bun run graph:func:call -- --warnings-unsupported  # 额外参数透传给 jelly
 bun run graph:module:deps                          # 模块级全量 → rules/out/module.{json,mmd,dot,svg}
 bun run graph:module:focus -- <regex> [--depth 1]  # 子图：focus 模块 ± N 跳

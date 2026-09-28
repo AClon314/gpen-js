@@ -40,3 +40,4 @@ Functions with zero callers: 314/1722 (18.23%), reachable functions: 1421/1722 (
 Analysis errors: 0, warnings: 129 (show all with --warnings-unsupported)
 Call graph written to ./rules/out/func.html
 Call graph written to ./rules/out/func.json
+[graph:func] 已拆分 → func.json（图）+ func-calls.json（调用点）
