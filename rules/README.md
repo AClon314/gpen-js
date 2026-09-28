@@ -16,16 +16,16 @@
 
 ## rules/out（产物）
 
-| 文件                         | 内容                                       | 入库？      |
-| ---------------------------- | ------------------------------------------ | ----------- |
-| `func.json`                  | 函数级调用图（jelly 输出）                 | ✅ **基线** |
-| `func.log`                   | 与 `func.json` 同一次运行的日志            | ✅ **基线** |
-| `module.json` / `module.dot` | 模块级依赖图全量视图（depcruise）          | ✅ **基线** |
-| `module.mmd` / `module.svg`  | 同一张图的 mermaid / graphviz 渲染         | ❌ churn    |
-| `module-focus-<slug>.*`      | focus 子图（`<slug>` 由 focus regex 派生） | ❌ churn    |
-| `module-overview-<slug>.*`   | 目录级折叠总览                             | ❌ churn    |
-| `module-affected-<slug>.*`   | 相对基线 ref 的变更影响面                  | ❌ churn    |
-| `func.html` / `func-vendor/` | 调用图可视化 + 本地化的前端依赖            | ❌ churn    |
+| 文件                         | 内容                                                                         | 入库？      |
+| ---------------------------- | ---------------------------------------------------------------------------- | ----------- |
+| `func.json`                  | 函数级调用图（jelly 输出）                                                   | ✅ **基线** |
+| `func.log`                   | 与 `func.json` 同一次运行的日志                                              | ✅ **基线** |
+| `module.json` / `module.dot` | 模块级依赖图全量视图（depcruise）                                            | ✅ **基线** |
+| `module.mmd` / `module.svg`  | 同一张图的 mermaid / graphviz 渲染                                           | ❌ churn    |
+| `module-focus-<slug>.*`      | focus 子图（`<slug>` 由 focus regex 派生）                                   | ❌ churn    |
+| `module-overview-<slug>.*`   | 目录级折叠总览                                                               | ❌ churn    |
+| `module-affected-<slug>.*`   | 相对基线 ref 的变更影响面                                                    | ❌ churn    |
+| `func.html` / `func-vendor/` | 调用图可视化（**不内联数据**，运行时 fetch `./func.json`）+ 本地化的前端依赖 | ❌ churn    |
 
 `.gitignore` 用「白名单取反」只放行上面 4 个基线文件（不用 `func-*` 通配——`func.html`
 并不匹配 `func-*`）。
@@ -130,8 +130,21 @@ bun run graph:func:call -- --warnings-unsupported # 额外参数透传给 jelly
 ```bash
 jelly -b . --ignore-dependencies --no-print-progress \
       -j rules/out/func.json \
+      --callgraph-html-data ./func.json \
       -m rules/out/func.html src
 ```
+
+`--callgraph-html-data` 让生成的 HTML **不内联数据**，而是运行时 `fetch('./func.json')`
+并在浏览器里现场把原始调用图转成可视化的图。所以 `func.html` 只是一份静态模板
+（~31KB，与仓库规模无关），而**提交的 `func.json` 本身就是可打开的可视化数据源**。
+代价：页面必须经 http 提供（`file://` 下 `fetch` 被 CORS 拦）；不传该选项时行为与以前一样（内联）。
+
+为此 `func.json` 比通用调用图格式多了三个字段（见 `rules/jelly/src/typings/callgraph.ts`）：
+`functionNames`（节点标签）、`moduleNodes`（哪些索引是整个模块）、`requireEdges`（把 import 边
+从调用边里区分出来，因为 `fun2fun` 是两者合并的）。
+
+> 与内联版的一个已知差别：JSON 里只有**被分析**的模块（`--ignore-dependencies` 下 162 个），
+> 内联版还会把“已抵达但未分析”的依赖模块也画出来（197 个 / 13 个包）。函数数与边数完全一致。
 
 脚本随后会把浏览器可视化的前端依赖本地化：jelly 自带的 `visualizer.html` 从
 `cdn.jsdelivr.net` 加载 cytoscape 等库，浏览器访问不到该 CDN（离线 / 国内网络 /

@@ -11,7 +11,9 @@
  *
  * 产出（全部写入 `rules/out/`；**只有 func.json 与 func.log 提交为基线**，见 .gitignore）：
  *   func.json     机器可读调用图（提交，便于后续 diff）
- *   func.log      本次运行日志（提交，与 func.json 同一次运行对应） *   func.html     浏览器可视化（忽略，随时重新生成）
+ *   func.log      本次运行日志（提交，与 func.json 同一次运行对应）
+ *   func.html     浏览器可视化（忽略，随时重新生成）—— **不内联数据**，运行时 fetch
+ *                 `./func.json` 并现场构建图，所以它只是一份静态模板（~31KB，与仓库规模无关）
  *   func-vendor/  可视化的前端依赖（忽略，见下）
  *
  * Jelly 自带的 visualizer.html 从 cdn.jsdelivr.net 加载 cytoscape 等库。浏览器打不开
@@ -60,6 +62,10 @@ const args = [
   ...process.argv.slice(2),
   "-j",
   jsonPath,
+  // func.html 不内联数据，而是运行时 fetch ./func.json（jelly 的 --callgraph-html-data）。
+  // 这样 HTML 只是一份静态模板，体积与仓库规模无关，且能直接看已提交的基线。
+  "--callgraph-html-data",
+  "./func.json",
   "-m",
   htmlPath,
   resolve(root, "src"),
