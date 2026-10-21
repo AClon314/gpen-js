@@ -53,6 +53,7 @@ rules/out/*
 !rules/out/func-boundaries.json
 !rules/out/func.log
 !rules/out/callgraph-tooling-comparison.md
+!rules/out/callgraph-render-comparison.md
 
 # codegraph 本地索引（codegraph init 生成）
 .codegraph/
