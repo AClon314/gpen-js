@@ -569,6 +569,11 @@ SCIP 需要整程序、确定性、一次遍历。共享的是**语义引擎**�
 | **cbm** | 9 | 1 | 3 | 漏 `useAlias -> UserRepo/get`（路径别名 + 重导出）、漏 `go -> get`（Svelte 脚本的类型推断）；`Comp.svelte -> go` 落到 module 节点 |
 | **SCIP** | 11 | 2 | 1 | 漏 `useHof -> helper`（内联箭头归到 module）；`apply -> apply` 自环 FP；`name -> go` 是响应式语句的额外边 |
 
+> **A0.6 update（2026-10-21）**：上表是 A0.5 的历史结果。writer 现在只把
+> `SyntaxKind.IdentifierFunction` 当调用，并用 `enclosing_range` 约束 caller 回退；
+> 重跑后 **function 11/11、module 2/2、0 FP**。回归见
+> `rules/cbm/dev/a05/README.md`。
+
 具体差异：
 
 - **cbm 能做的**：泛型、条件类型、重载、HOF、继承、`this.load`（suffix_match 到
