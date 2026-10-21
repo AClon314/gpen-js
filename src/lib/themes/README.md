@@ -114,8 +114,7 @@ dockview 用 `--dv-*` 变量描述 tab 条、sash、drop preview、浮动组。�
    而不是退化成「半透明但没模糊」的糊状。
 
 代价：`backdrop-filter` 在移动端是 GPU 大头，且每个面板一层合成层 —— 所以默认关，而且
-filter 只加在「组」这一层（不是每个面板内容各加一次）。实测截图见 `tmp/blur-on.png`
-（工作区）与 `tmp/blur-on-menu.png`（右键菜单）。
+filter 只加在「组」这一层（不是每个面板内容各加一次）。
 
 ## 三态：`system` / `light` / `dark`（2026-09-19）
 

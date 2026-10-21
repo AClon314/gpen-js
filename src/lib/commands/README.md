@@ -74,7 +74,6 @@ installKeymapDispatcher(window?)   // 一个 keydown 监听，capture: false
 - **显示的快捷键必须真的注册**：`registerWorkspaceKeyBindings()` 绑
   `Ctrl+Z` / `Ctrl+Shift+Z` / `Ctrl+Y` / `F2` / `Ctrl+S` / `Ctrl+N` / `Ctrl+O` /
   `Ctrl+Shift+O` / `Ctrl+Shift+S` / `Ctrl+Alt+U`。
-- 真实现的项（✅）与灰掉的项（🔒）的完整对照见 handoff `tmp/919-night.md` §5.2。
 
 ### Escape 的优先级（踩过的坑）
 

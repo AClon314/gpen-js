@@ -1,3 +1,15 @@
 [submodule "rules/jelly"]
 	path = rules/jelly
 	url = https://github.com/AClon314/jelly
+[submodule "rules/scip-typescript"]
+	path = rules/scip-typescript
+	url = https://github.com/AClon314/scip-typescript
+	branch = gpen
+[submodule "rules/scip-symbol-graph"]
+	path = rules/scip-symbol-graph
+	url = https://github.com/taber-miyauchi/scip-symbol-graph
+	branch = main
+[submodule "rules/cbm"]
+	path = rules/cbm
+	url = https://github.com/AClon314/codebase-memory-mcp
+	branch = main

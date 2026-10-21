@@ -56,7 +56,7 @@ clientToLayer(c) = pivot + R(-θ)·(c - (origin - scroll) - pivot)
 R(θ)·(dx,dy)   = (dx·cosθ - dy·sinθ, dx·sinθ + dy·cosθ)     // y 向下的 CSS 约定
 ```
 
-⚠️ 相对 `tmp/handoff.md` 的公式补了 `+ pivot`：枢轴旋转的错切中心是 `pivot`，不是
+⚠️ 相对初版推导的公式补了 `+ pivot`：枢轴旋转的错切中心是 `pivot`，不是
 元素原点；少了这一项在 `θ = 0` 时会整体偏移 `-pivot`，只有 `pivot = (0,0)` 才碰巧正确。
 
 θ = 0 也能映射（`createLayerView` 立即以 `setRotation(0)` 捕获一次），所以滚动 / resize 后

@@ -6,7 +6,7 @@
 !.husky/commit-msg
 !.husky/pre-push
 node_modules
-tmp/
+**/tmp/
 
 # Output
 .output
@@ -42,15 +42,20 @@ dist/
 /coverage
 
 # 静态分析产物（rules/out）
-# 只提交 6 个基线文件：module.dot / module.json（模块图）与
-# func.json（调用图） / func-calls.json（调用点索引） / func-boundaries.json（未解析调用点分类）
-# / func.log（运行日志）。
-# 其余（可视化 func.html、CDN 镜像 func-vendor/、以及全部 module-* 子图视图）都是 churn，现场生成。
-# 这里用「白名单取反」而不是 `func-*` / `module-*` 通配——因为 `func.html` 并不匹配 `func-*`。
+# 只提交 5 个基线文件：func.json（调用图） / func-calls.json（调用点索引） /
+# func-boundaries.json（未解析调用点分类） / func.log（运行日志） /
+# callgraph-tooling-comparison.md（工具选型汇总报告）。
+# 其余（可视化 func.html、CDN 镜像 func-vendor/、scip-* 等）都是 churn / 可重生成，现场生成。
+# 这里用「白名单取反」而不是 `func-*` 通配——因为 `func.html` 并不匹配 `func-*`。
 rules/out/*
-!rules/out/module.dot
-!rules/out/module.json
 !rules/out/func.json
 !rules/out/func-calls.json
 !rules/out/func-boundaries.json
 !rules/out/func.log
+!rules/out/callgraph-tooling-comparison.md
+
+# codegraph 本地索引（codegraph init 生成）
+.codegraph/
+
+# cbm npm runtime（源码 fork 在 rules/cbm/）
+rules/cbm-runtime/

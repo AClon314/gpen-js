@@ -1,7 +1,9 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "ignorePatterns": [
-    "rules/jelly/**"
+    "rules/jelly/**",
+    "rules/scip-graph/**",
+    "rules/scip-typescript/**"
   ],
   "plugins": [
     "typescript",

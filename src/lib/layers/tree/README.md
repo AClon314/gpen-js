@@ -5,9 +5,6 @@
 本文是选型调研 + 接口设计。**行为层与 Outliner 已实现**（纯函数入口 `src/lib/layers/tree/`，
 见 §七「实现现状」）；虚拟化与懒加载仍是后续工作。
 
-调研原件（未跟踪的草稿，细节更全）：`tmp/tree-reactaria.md`（52 KB，含源码级扩展点索引）、
-`tmp/tree-webawesome.md`、`tmp/tree-elementplus.md`。
-
 ## 一、选型结论：自研，借 React Aria 的扩展点设计
 
 | 候选 | 结论 |
