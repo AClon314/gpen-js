@@ -134,9 +134,9 @@ Jelly 侧分类只覆盖未解析调用点（`calls − call2fun`，当前 2185 
 
 ```bash
 cd rules/cbm/dev
-./install.sh                    # 只装 codebase-memory-mcp 0.12.1
-./run-fixture.sh                # cbm + SCIP 硬 fixture + SCIP→cbm 探针
-./run-demo.sh                   # A0 writer + cbm HTTP + B0 UI 端到端
+./run.sh --setup                # 只装 codebase-memory-mcp 0.12.1 + writer 依赖
+./run.sh                        # 硬 fixture → SCIP → writer → cbm → code-server GUI
+./run.sh --vite                 # 同上，但 UI 走独立 Vite（历史 run-demo.sh 仍保留）
 ```
 
 只读结论：[`out/callgraph-tooling-comparison.md`](out/callgraph-tooling-comparison.md)。

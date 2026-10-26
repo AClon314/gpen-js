@@ -460,18 +460,15 @@ scip-typescript fork（保留，Svelte + display_name + enclosing_range）
 
 #### 外部写库实验
 
-[`../cbm/dev/scip-cbm-probe.py`](../cbm/dev/scip-cbm-probe.py) 把 `scip print --json` 的输出写成
-cbm schema v3 的 SQLite（Project/Folder/File/Module/Function/Method/Class + `CONTAINS_*` +
+> 历史探针 `scip-cbm-probe.py` 已移除；当前路径是
+> `tools/scip-cbm-writer`，入口见 `rules/cbm/dev/run.sh`。
+
+早期探针把 `scip print --json` 的输出写成 cbm schema v3 的 SQLite（Project/Folder/File/Module/Function/Method/Class + `CONTAINS_*` +
 `CALLS`，边属性带 `confidence=1.0, strategy="scip", line, column, sites[]`），然后直接调用 cbm：
 
 ```bash
-python3 rules/cbm/dev/scip-cbm-probe.py rules/cbm/dev/out/scip/fixture.json scip-probe \
-  rules/cbm/dev/fixtures/callgraph-ts
-
-codebase-memory-mcp cli --json trace_path --function-name run --project scip-probe \
-  --direction outbound --depth 1 --format json
-codebase-memory-mcp cli --json query_graph --project scip-probe \
-  --query "MATCH (a:Function)-[r:CALLS]->(b:Function) RETURN a.name,b.name"
+# 当前写库入口（历史 probe 命令已删除）
+cd rules/cbm/dev && ./run.sh --setup && ./run.sh --vite
 ```
 
 实测全部通过：
@@ -686,12 +683,10 @@ gpen 规模下速度基本打平，**主要收益是磁盘减半 + 去掉一个�
 
 ```bash
 cd rules/cbm/dev
-./install.sh              # 只装 codebase-memory-mcp 0.12.1
-./run-fixture.sh          # cbm + SCIP + SCIP→cbm 探针
-./run-demo.sh             # A0 writer + cbm HTTP + B0 UI 端到端
-
-# SCIP → cbm 兼容库（§7.5）
-python3 scip-cbm-probe.py out/scip/fixture.json scip-probe fixtures/callgraph-ts
+./run.sh --setup          # cbm runtime + writer deps
+./run.sh                  # 硬 fixture → SCIP → writer → cbm → code-server GUI
+./run.sh --vite           # 同上，但 UI 走独立 Vite
+# 旧的 run-demo.sh 仍保留，作为 A0/B0 + 内嵌 React UI 的历史脚本
 ```
 
 真实仓库口径：
